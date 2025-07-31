@@ -12,7 +12,9 @@ const server = http.createServer(app);
 // Configure CORS for Socket.IO
 const io = socketIo(server, {
   cors: {
-    origin: ["http://localhost:3000", "https://your-frontend-domain.vercel.app"],
+    origin: process.env.NODE_ENV === 'production' 
+      ? [process.env.FRONTEND_URL || "https://choker-game.vercel.app"]
+      : ["http://localhost:3000"],
     methods: ["GET", "POST"],
     credentials: true
   }
@@ -22,7 +24,9 @@ const gameManager = new GameManager();
 
 // Middleware
 app.use(cors({
-  origin: ["http://localhost:3000", "https://your-frontend-domain.vercel.app"],
+  origin: process.env.NODE_ENV === 'production' 
+    ? [process.env.FRONTEND_URL || "https://choker-game.vercel.app"]
+    : ["http://localhost:3000"],
   credentials: true
 }));
 app.use(express.json());
