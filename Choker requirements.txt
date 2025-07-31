@@ -1,0 +1,234 @@
+# **Key questions**
+
+- Platform: web  
+- Players: real-time multiplayer  
+- Game complexity: see below in requirements. Relatively low graphical performance needs, however performance should support multiplayer   
+- UX requirements: let’s work with basic HTML UI and tokens for now
+
+
+# **Requirements**
+
+* Players  
+  * Teams  
+    * Each game has two teams  
+      * Black team  
+      * White team  
+    * Each team has two players  
+    * Each team has a bank indicating how much money that team has  
+  * Roles  
+    * Each player is assigned the role of either chess player or poker player  
+    * Each team must have only one of each role  
+    * *Chess player*  
+      * Actions \-- The chess player can…  
+        * Move their team's chess pieces when it is their turn  
+    * *Poker player*  
+      * Actions \-- The poker player can…  
+        * Choose how much money to bet when it is their turn to bet  
+        * Decide to fold their hand when possible  
+        * View the cards in their hand  
+        * Buy pieces for the chess player when possible  
+        * Buy upgrades when possible  
+        * Invest money from liquid assets into invested assets  
+        * Withdraw money from invested assets into liquid assets  
+* Game boards  
+  * The game board should have two areas: one for a chess-like board, and one for a Texas hold 'em style card game  
+  * Chess  
+    * Size  
+      * The chess board should be made up of checkered squares and the  length/width dimensions of the board should be adjustable based on settings.  
+      * Default settings should put the board at 16 squares wide and 10 squares long  
+    * Control zones  
+      * The chess board should have the ability to set certain squares or regions of squares as designated control zones.  
+      * Control zones will yield benefits to the poker game  
+      * Control zone locations and benefits should be adjustable based on settings  
+      * Control zone locations should also be changeable based on events or cards that happen in the poker game  
+      * Control zone benefits should be adjustable or edited in settings  
+      * A control zone may provide one or more of the following benefits  
+        * Hand multiplier: give a percentage multiplier effect to your team's poker player when winning a round with a certain hand (e.g. pair, straight, etc.)  
+        * Knowledge: Allow your team's poker player to view a certain hidden card on the table  
+        * Extra card in hand: Allow your team's poker player to add an extra card to their hand when dealt cards  
+        * No blind: Allow your team's poker player to participate in hands without having to pay for the blind  
+        * Reduce piece cost: Pieces cost less to buy in the shop  
+        * Higher piece value: Captured enemy pieces are worth more  
+        * Remove money: each N number of rounds, the opposing team loses X amount of money from their liquid assets  
+  * Poker  
+    * The poker side of the game board should have a place for the following constructs:  
+      * Poker deck  
+      * Burn and discarded cards  
+      * Table cards  
+        * Flop  
+        * Turn  
+        * River  
+      * Players' cards in their hands  
+      * The pot for the current hand  
+      * The amount users are currently betting  
+      * The blind indicators  
+        * Big blind  
+        * Little blind  
+      * Each player's bank  
+      * Dealer indicator  
+* Pieces  
+  * Chess pieces  
+    * Types  
+      * Chess pieces should have a single type from one of the following list:  
+        * Pawn  
+        * Rook  
+        * Knight  
+        * Bishop  
+        * Queen  
+        * King  
+    * Move sets  
+      * Chess pieces should have a move set indicating how they can move on the chess board  
+      * A move set should consist of a set of instructions for how that piece can move on the chess board  
+      * Instructions can be multi-step (e.g., the knight moves two spaces forward, left, right, or down, and then one space perpendicular to its previous move)  
+      * Instructions can be edited and modified in the settings as well as by in-game conditions  
+    * Other behavior  
+      * Pieces may have additional behavior that effects how they function in the game  
+        * Pawns may change into another piece if they reach the opposite side of the board  
+      * Other behaviors may be edited and modified in the settings as well as by in-game conditions  
+    * Cost  
+      * A piece should have a cost for how much it is to buy in the shop  
+      * Piece costs can be modified in settings as well as by in-game conditions  
+    * Value  
+      * A piece should have a value for how much it adds to the poker player's bank when captured  
+      * Piece values can be modified in settings as well as by in-game conditions  
+    * Upgrades  
+      * Pieces may have their move sets or other behavior improved by purchasing certain upgrades in the shop or satisfying certain conditions  
+      * Pieces should have a list of available upgrades that are not yet applied to the piece, as well as what conditions must be met to apply them  
+      * Pieces should have a list of which upgrades are currently applied to them  
+      * Upgrades have a duration indicating how long they last  
+    * Token  
+      * Pieces should have a token which represents them on the game board and in the shop  
+      * Tokens can be modified in the settings as well as by in-game conditions (like upgrades)  
+  * Poker pieces  
+    * Types  
+      * Each poker card should have a single suit of the following types:  
+        * Hearts  
+        * Spades  
+        * Diamonds  
+        * Clubs  
+      * Each poker cards should have a single value from 1 to 13  
+      * Each suit should have one card for each value 1 to 13  
+      * The result is that there should be 52 total poker cards  
+    * Tokens  
+      * Each poker card should have a token which represents them on the game board  
+      * Tokens can be modified in the settings as well as by in-game conditions  
+* Bank and money  
+  * Each team has a bank which holds their money  
+  * Each team starts with an amount of money, which is determined in the settings  
+  * Money is controlled by the poker player  
+  * Money cannot go below 0  
+  * Money uses  
+    * Betting  
+      * The poker player can use money from their liquid assets to bet during the poker rounds  
+      * Money from invested assets cannot be used to bet  
+    * Buying  
+      * The poker player can purchase pieces for the chess player  
+        * Where and how are chess pieces placed when purchased?  
+      * The poker player can purchase upgrades for their own bank or also for the chess player's pieces  
+      * The poker player can purchase modifiers which impact other aspects of the game  
+    * Investing  
+      * The poker player can take some portion of their liquid assets and move it to their invested assets  
+      * The poker player can withdraw some portion of their invested assets and move it into their invested assets  
+      * Investing actions can only happen at certain allowed times  
+  * Liquid and invested assets  
+    * When assets are invested they return a percentage yield as a dividend at the start of each poker round  
+    * The percentage yield can be modified in settings as well as by in-game conditions (like upgrades)  
+    * When percentage yields result in a non-whole number dividend, the amount is rounded down to the nearest whole number  
+    * Money that is in the invested assets may not be used for betting  
+    * If a player's liquid assets go to 0, they must withdraw some money from their invested assets at the start of the next hand  
+* Store  
+  * The store allows the poker player to purchase items of the following types:  
+    * Chess pieces  
+    * Upgrades  
+    * Modifiers  
+  * Inventory  
+    * Each item has an inventory, indicating how many of them can be purchased  
+    * Item inventory amounts can be modified in the settings as well as by in-game conditions  
+  * Cost  
+    * Each item has a cost, indicating how much money is required for purchase  
+    * Item cost can be modified in the settings as well as by in-game conditions  
+  * Description  
+    * Each item has a description, indicating what happens when it is purchased  
+    * Where appropriate, descriptions duration of purchase and which team or player is affected by the purchase  
+* Items  
+  * Chess pieces  
+  * Upgrades  
+    * Increase hand: Increase by one the number of cards your team's poker player is dealt at the start of the round  
+    * Decrease hand: Decrease by one the number of cards the opposing team's poker player is dealt at the start of the round  
+  * Modifiers  
+    * Increase blinds: increases the blind amounts for both players  
+    * Decrease blinds: decreases the blind amounts for both players  
+    * Control zone change: change one of the control zone on the chess board to another control zone  
+* Game rules  
+  * Team and role selection  
+    * When players join the game, they select which team they would like to be on: black team or white team  
+    * When players join a team, they select which role they would like to play  
+    * Teams must have two players each  
+    * Teams must have one poker player and one chess player  
+  * Starting setup  
+    * Teams start with a certain amount of money, which can be adjusted in the settings  
+    * *Chess setup*  
+      * Each team's starting chess pieces are placed on the board in the starting positions  
+        * Define starting pieces and positions  
+      * White team starts first  
+    * *Poker setup*  
+      * One team's poker player is randomly assigned to be the dealer  
+      * The player who is assigned to be the dealer is the small blind for that round and must ante the appropriate amount of money for the small blind  
+      * The other player is the big blind for that round and must ante the appropriate amount of money for the big blind  
+      * The deck of poker cards is shuffled and placed on the deck spot on the poker game board  
+      * The amount of money in both liquid and invested assets is displayed to all players  
+  * Game flow  
+    * Each game happens independently of each other; the poker game progresses at its own pace, while the chess game happens at its own pace  
+    * *Chess flow*  
+      * Players alternate turns moving their pieces  
+      * Players may only move one piece at a time unless otherwise indicated by a modifier or an upgrade  
+      * Capturing pieces  
+        * When pieces are captured, their value is immediately added to the capturing team's liquid assets  
+        * When a piece is captured, the store inventory for that unit's piece is increased by one, however this may be modified in the game settings as well as in-game conditions.  
+      * Control zones  
+        * Control zone benefits are determined at the start of the game  
+        * In order to activate the benefit of a control zone, a player must have the largest number of pieces occupying the squares of that control zone  
+        * If a control zone consists of one square, then simply moving a piece into that control zone will activate its benefit  
+        * If a control zone consists of more than one square, a player must have at least one piece in the control zone to activate its benefit  
+        * If both player have pieces in the control zone, then whichever player has more pieces in the control zone will activate its benefit  
+        * If both players have the same number of pieces in the control zone, the benefit is deactivated  
+    * *Poker flow*  
+      * Pre-hand  
+        * If a player has 0 money in their liquid assets, they must withdraw some money from their invested assets  
+        * If a player has money in their invested assets, they receive their dividend. Dividends are rounded down if they are not a whole number  
+        * Players must ante the required amount for their respective blind  
+      * First deal  
+        * Players are each dealt two cards, unless otherwise indicated by some modifier or upgrade  
+        * Players have the opportunity to bet, check, or fold in their respective order (non-dealer first)  
+        * Players can re-bet according to standard poker rules  
+          * What are the standard poker rules for this  
+        * If one player folds, then the opposing player collects the pot winnings, adjusted by any applicable modifiers  
+        * When players have finished betting, the next stage of the flow begins  
+      * Flop  
+        * Three cards are discarded face down, unless otherwise indicated by some modifier or upgrade  
+        * Three cards are placed face up in their respective area  
+        * Players have the opportunity to bet, check, or fold in their respective order (non-dealer first)  
+        * Players can re-bet according to standard poker rules  
+        * If one player folds, then the opposing player collects the pot winnings, adjusted by any applicable modifiers  
+        * When players have finished betting, the next stage of the flow begins  
+      * Turn  
+        * One card is discarded face down, unless otherwise indicated by some modifier or upgrade  
+        * One card is placed face up in their respective area  
+        * Players have the opportunity to bet, check, or fold in their respective order (non-dealer first)  
+        * Players can re-bet according to standard poker rules  
+        * If one player folds, then the opposing player collects the pot winnings, adjusted by any applicable modifiers  
+        * When players have finished betting, the next stage of the flow begins  
+      * River  
+        * One card is discarded face down, unless otherwise indicated by some modifier or upgrade  
+        * One card is placed face up in their respective area  
+        * Players have the opportunity to bet, check, or fold in their respective order (non-dealer first)  
+        * Players can re-bet according to standard poker rules  
+        * If one player folds, then the opposing player collects the pot winnings, adjusted by any applicable modifiers  
+        * When players have finished betting, the next stage of the flow begins  
+      * Purchasing  
+        * Chess players can purchase items from the shop at any time before, during, or after the current round  
+        * Purchases go into effect immediately unless otherwise indicated  
+  * Win conditions  
+    * Military victory: If one team's king is captured, their team loses  
+      * If one team's chess player can only make a move that would put their king in check, they must skip their turn and the other team's chess player may go again  
+    * Economic victory: If one team's total money in the bank (both liquid and invested assets) is reduced to 0, their team loses
