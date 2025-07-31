@@ -1,0 +1,337 @@
+.chess-game {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 20px;
+  font-family: 'Arial', sans-serif;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.game-header {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.game-header h1 {
+  color: #333;
+  margin-bottom: 10px;
+}
+
+.game-info {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.player-indicator {
+  font-weight: bold;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.player-indicator.white {
+  background-color: #f0f0f0;
+  color: #333;
+}
+
+.player-indicator.black {
+  background-color: #333;
+  color: #f0f0f0;
+}
+
+.check-warning {
+  color: #ff4444;
+  font-weight: bold;
+  font-size: 18px;
+  margin: 0;
+}
+
+.game-over {
+  color: #ff0000;
+  font-weight: bold;
+  font-size: 20px;
+  margin: 0;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.reset-button {
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: background-color 0.3s;
+}
+
+.reset-button:hover {
+  background-color: #45a049;
+}
+
+.game-main {
+  display: flex;
+  gap: 30px;
+  align-items: flex-start;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.game-left,
+.game-right {
+  flex: 0 0 300px;
+  min-width: 250px;
+}
+
+.game-center {
+  flex: 0 0 auto;
+}
+
+.move-history {
+  max-width: 300px;
+}
+
+.move-history h3 {
+  text-align: center;
+  color: #333;
+  border-bottom: 2px solid #ddd;
+  padding-bottom: 10px;
+}
+
+.moves-list {
+  max-height: 200px;
+  overflow-y: auto;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 10px;
+  background-color: #f9f9f9;
+}
+
+.move-item {
+  padding: 5px 0;
+  border-bottom: 1px solid #eee;
+  font-family: monospace;
+}
+
+.move-item:last-child {
+  border-bottom: none;
+}
+
+@media (max-width: 1200px) {
+  .chess-board {
+    grid-template-columns: repeat(16, 45px);
+    grid-template-rows: repeat(10, 45px);
+  }
+  
+  .chess-square {
+    width: 45px;
+    height: 45px;
+  }
+  
+  .chess-piece {
+    font-size: 28px;
+  }
+  
+  .column-label {
+    width: 45px;
+    font-size: 12px;
+  }
+  
+  .row-label {
+    height: 45px;
+    font-size: 12px;
+    width: 20px;
+  }
+  
+  .corner-space {
+    width: 20px;
+  }
+}
+
+@media (max-width: 900px) {
+  .chess-board {
+    grid-template-columns: repeat(16, 35px);
+    grid-template-rows: repeat(10, 35px);
+  }
+  
+  .chess-square {
+    width: 35px;
+    height: 35px;
+  }
+  
+  .chess-piece {
+    font-size: 22px;
+  }
+  
+  .column-label {
+    width: 35px;
+    font-size: 11px;
+  }
+  
+  .row-label {
+    height: 35px;
+    font-size: 11px;
+    width: 18px;
+  }
+  
+  .corner-space {
+    width: 18px;
+  }
+}
+
+@media (max-width: 1200px) {
+  .game-main {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .game-left,
+  .game-right {
+    flex: none;
+    width: 100%;
+    max-width: 600px;
+  }
+}
+
+@media (max-width: 768px) {
+  .chess-game {
+    padding: 10px;
+  }
+  
+  .game-info {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .chess-board {
+    grid-template-columns: repeat(16, 30px);
+    grid-template-rows: repeat(10, 30px);
+  }
+  
+  .chess-square {
+    width: 30px;
+    height: 30px;
+  }
+  
+  .chess-piece {
+    font-size: 18px;
+  }
+  
+  .column-label {
+    width: 30px;
+    font-size: 10px;
+  }
+  
+  .row-label {
+    height: 30px;
+    font-size: 10px;
+    width: 15px;
+  }
+  
+  .corner-space {
+    width: 15px;
+  }
+  
+  .game-main {
+    gap: 15px;
+  }
+}
+
+/* Multiplayer specific styles */
+.players-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.player-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.turn-indicator {
+  color: #28a745;
+  font-weight: bold;
+  font-size: 12px;
+}
+
+.game-status {
+  margin-bottom: 15px;
+}
+
+.your-turn {
+  color: #28a745;
+  font-weight: bold;
+}
+
+.opponent-turn {
+  color: #6c757d;
+}
+
+.error-message {
+  background-color: #f8d7da;
+  color: #721c24;
+  padding: 10px;
+  border-radius: 4px;
+  margin-bottom: 15px;
+  border: 1px solid #f5c6cb;
+}
+
+.game-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.leave-game-button {
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: background-color 0.3s;
+}
+
+.leave-game-button:hover {
+  background-color: #c82333;
+}
+
+.connection-status {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+}
+
+.connection-status p {
+  margin: 0;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.connected {
+  color: #28a745;
+}
+
+.disconnected {
+  color: #dc3545;
+}
+
+.loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 50vh;
+}
+
+.loading p {
+  font-size: 18px;
+  color: #666;
+}

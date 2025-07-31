@@ -1,0 +1,68 @@
+.chess-square {
+  width: 60px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  position: relative;
+  transition: background-color 0.2s ease;
+}
+
+.chess-square.light {
+  background-color: #f0d9b5;
+}
+
+.chess-square.dark {
+  background-color: #b58863;
+}
+
+.chess-square.selected {
+  box-shadow: inset 0 0 0 4px #ffff00;
+  background-color: #ffff99 !important;
+}
+
+.chess-square.possible-move {
+  position: relative;
+}
+
+.chess-square.possible-move::after {
+  content: '';
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background-color: rgba(0, 255, 0, 0.6);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.chess-square.possible-move:hover {
+  background-color: rgba(0, 255, 0, 0.2);
+}
+
+.chess-square:hover {
+  opacity: 0.8;
+}
+
+.chess-square.control-zone {
+  border: 3px solid transparent;
+  box-sizing: border-box;
+}
+
+.chess-square.control-zone-a {
+  border-color: #3498db;
+  background-color: rgba(52, 152, 219, 0.3) !important;
+}
+
+.chess-square.control-zone-b {
+  border-color: #e74c3c;
+  background-color: rgba(231, 76, 60, 0.3) !important;
+}
+
+.chess-square.control-zone-c {
+  border-color: #27ae60;
+  background-color: rgba(39, 174, 96, 0.3) !important;
+}
