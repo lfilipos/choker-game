@@ -5,6 +5,7 @@ const cors = require('cors');
 require('dotenv').config();
 
 const GameManager = require('./gameManager');
+const { getPossibleMoves } = require('./gameLogic');
 
 const app = express();
 const server = http.createServer(app);
@@ -170,6 +171,81 @@ io.on('connection', (socket) => {
     try {
       const waitingGames = gameManager.getWaitingGames();
       socket.emit('waiting_games', waitingGames);
+    } catch (error) {
+      socket.emit('error', { message: error.message });
+    }
+  });
+
+  // Get available upgrades
+  socket.on('get_available_upgrades', () => {
+    try {
+      const upgrades = gameManager.getAvailableUpgrades(socket.id);
+      socket.emit('available_upgrades', { upgrades });
+    } catch (error) {
+      socket.emit('error', { message: error.message });
+    }
+  });
+
+  // Get possible moves for a piece (with upgrades applied)
+  socket.on('get_possible_moves', (data) => {
+    try {
+      const { position } = data;
+      const gameId = gameManager.playerSockets.get(socket.id);
+      const game = gameManager.games.get(gameId);
+      
+      if (!game) {
+        throw new Error('Game not found');
+      }
+      
+      const piece = game.board[position.row][position.col];
+      console.log(`Getting possible moves for ${piece?.color} ${piece?.type} at (${position.row}, ${position.col})`);
+      console.log(`Upgrades for ${piece?.color}:`, game.upgrades[piece?.color]);
+      
+      const possibleMoves = getPossibleMoves(
+        game.board, 
+        position, 
+        game.upgrades, 
+        game.upgradeManager
+      );
+      
+      console.log(`Found ${possibleMoves.length} possible moves`);
+      
+      socket.emit('possible_moves', {
+        position,
+        moves: possibleMoves
+      });
+    } catch (error) {
+      console.error('Error in get_possible_moves:', error);
+      socket.emit('error', { message: error.message });
+    }
+  });
+
+  // Purchase an upgrade
+  socket.on('purchase_upgrade', (data) => {
+    try {
+      const { upgradeId } = data;
+      const result = gameManager.purchaseUpgrade(socket.id, upgradeId);
+      
+      if (result.success) {
+        const gameId = gameManager.playerSockets.get(socket.id);
+        const game = gameManager.games.get(gameId);
+        
+        // Send updated game state to all players
+        Object.keys(game.players).forEach(playerId => {
+          const playerGameState = gameManager.getGameState(gameId, playerId);
+          io.to(playerId).emit('game_state_updated', {
+            gameState: playerGameState
+          });
+        });
+        
+        socket.emit('upgrade_purchased', {
+          upgradeId,
+          upgrades: result.upgrades,
+          economy: result.economy
+        });
+      } else {
+        socket.emit('upgrade_error', { message: result.error });
+      }
     } catch (error) {
       socket.emit('error', { message: error.message });
     }

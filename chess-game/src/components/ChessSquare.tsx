@@ -1,5 +1,6 @@
 import React from 'react';
 import { ChessPiece, Position, ControlZone } from '../types';
+import { UpgradeState } from '../types/upgrades';
 import { ChessPieceComponent } from './ChessPieceComponent';
 import './ChessSquare.css';
 
@@ -11,6 +12,7 @@ interface ChessSquareProps {
   isPossibleMove: boolean;
   controlZone: ControlZone | null;
   onClick: (position: Position) => void;
+  upgrades?: UpgradeState;
 }
 
 export const ChessSquare: React.FC<ChessSquareProps> = ({
@@ -21,6 +23,7 @@ export const ChessSquare: React.FC<ChessSquareProps> = ({
   isPossibleMove,
   controlZone,
   onClick,
+  upgrades,
 }) => {
   const handleClick = () => {
     onClick(position);
@@ -53,7 +56,7 @@ export const ChessSquare: React.FC<ChessSquareProps> = ({
 
   return (
     <div className={getSquareClasses()} onClick={handleClick}>
-      {piece && <ChessPieceComponent piece={piece} />}
+      {piece && <ChessPieceComponent piece={piece} upgrades={upgrades} />}
     </div>
   );
 };

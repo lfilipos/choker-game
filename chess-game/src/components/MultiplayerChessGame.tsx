@@ -1,9 +1,12 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { Position } from '../types';
+import { Position, PieceColor } from '../types';
 import { ChessBoard } from './ChessBoard';
 import { ControlZoneStatusComponent } from './ControlZoneStatus';
 import { socketService, MultiplayerGameState } from '../services/socketService';
-import { getPossibleMoves } from '../utils/chessLogic';
+import { UpgradeDefinition } from '../types/upgrades';
+import TeamEconomy from './TeamEconomy';
+import UpgradeStore from './UpgradeStore';
+import AdminPanel from './AdminPanel';
 import './ChessGame.css';
 
 interface MultiplayerChessGameProps {
@@ -24,6 +27,10 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
   const [possibleMoves, setPossibleMoves] = useState<Position[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isConnected, setIsConnected] = useState(true);
+  const [showUpgradeStore, setShowUpgradeStore] = useState(false);
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const [isAdminMode, setIsAdminMode] = useState(false);
+  const [availableUpgrades, setAvailableUpgrades] = useState<UpgradeDefinition[]>([]);
 
   useEffect(() => {
     console.log('MultiplayerChessGame: Setting up socket listeners for game:', gameId);
@@ -51,10 +58,46 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
       setError(error.message);
     });
 
+    socketService.onGameStateUpdated((data) => {
+      setGameState(data.gameState);
+    });
+
+    socketService.onAvailableUpgrades((data) => {
+      setAvailableUpgrades(data.upgrades);
+    });
+
+    socketService.onUpgradePurchased((data) => {
+      setGameState(prevState => {
+        if (!prevState) return prevState;
+        return {
+          ...prevState,
+          upgrades: data.upgrades,
+          economy: data.economy
+        };
+      });
+      // Refresh available upgrades
+      socketService.getAvailableUpgrades();
+    });
+
+    socketService.onUpgradeError((error) => {
+      setError(error.message);
+    });
+
+    socketService.onPossibleMoves((data) => {
+      if (data.position.row === selectedSquare?.row && data.position.col === selectedSquare?.col) {
+        setPossibleMoves(data.moves);
+      }
+    });
+
+    // Get initial available upgrades
+    if (gameState?.status === 'active') {
+      socketService.getAvailableUpgrades();
+    }
+
     return () => {
       socketService.removeAllListeners();
     };
-  }, []);
+  }, [gameState?.status, selectedSquare]);
 
   const handleSquareClick = useCallback((position: Position) => {
     if (!gameState || !gameState.isPlayerTurn) {
@@ -73,9 +116,9 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
     if (!selectedSquare) {
       // Select the square if it has a piece of the current player's color
       if (clickedPiece && clickedPiece.color === gameState.playerColor) {
-        const moves = getPossibleMoves(gameState.board, position);
         setSelectedSquare(position);
-        setPossibleMoves(moves);
+        setPossibleMoves([]); // Clear moves while we wait for server response
+        socketService.getPossibleMoves(position); // Request moves from server
         setError(null);
       }
       return;
@@ -90,9 +133,9 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
 
     // If clicking on another piece of the same color, select it instead
     if (clickedPiece && clickedPiece.color === gameState.playerColor) {
-      const moves = getPossibleMoves(gameState.board, position);
       setSelectedSquare(position);
-      setPossibleMoves(moves);
+      setPossibleMoves([]); // Clear moves while we wait for server response
+      socketService.getPossibleMoves(position); // Request moves from server
       return;
     }
 
@@ -119,6 +162,25 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
   const handleLeaveGame = () => {
     socketService.disconnect();
     onLeaveGame();
+  };
+
+  const handlePurchaseUpgrade = (upgradeId: string) => {
+    socketService.purchaseUpgrade(upgradeId);
+  };
+
+  const handleUpdateEconomy = (color: PieceColor, amount: number) => {
+    // Admin function - would need backend support
+    console.log('Update economy:', color, amount);
+  };
+
+  const handleToggleUpgrade = (color: PieceColor, pieceType: string, upgradeId: string) => {
+    // Admin function - would need backend support
+    console.log('Toggle upgrade:', color, pieceType, upgradeId);
+  };
+
+  const handleResetUpgrades = (color: PieceColor) => {
+    // Admin function - would need backend support
+    console.log('Reset upgrades:', color);
   };
 
   if (!gameState) {
@@ -192,9 +254,32 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
             <button onClick={handleLeaveGame} className="leave-game-button">
               Leave Game
             </button>
+            {gameState.status === 'active' && (
+              <>
+                <button 
+                  onClick={() => setShowUpgradeStore(!showUpgradeStore)} 
+                  className="upgrade-store-button"
+                >
+                  🛒 Upgrade Store
+                </button>
+                <button 
+                  onClick={() => setShowAdminPanel(!showAdminPanel)} 
+                  className="admin-panel-button"
+                >
+                  ⚙️ Admin Panel
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>
+
+      {gameState.status === 'active' && gameState.economy && (
+        <TeamEconomy 
+          economy={gameState.economy} 
+          playerColor={gameState.playerColor as PieceColor | null}
+        />
+      )}
       
       <div className="game-main">
         <div className="game-left">
@@ -208,6 +293,7 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
             possibleMoves={possibleMoves}
             controlZones={gameState.controlZones}
             onSquareClick={handleSquareClick}
+            upgrades={gameState.upgrades}
           />
         </div>
         
@@ -233,6 +319,38 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
           {isConnected ? '🟢 Connected' : '🔴 Disconnected'}
         </p>
       </div>
+
+      {showUpgradeStore && gameState.upgrades && gameState.economy && (
+        <div className="modal-overlay" onClick={() => setShowUpgradeStore(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <button className="modal-close" onClick={() => setShowUpgradeStore(false)}>✖</button>
+            <UpgradeStore
+              playerColor={gameState.playerColor as PieceColor | null}
+              upgrades={gameState.upgrades}
+              economy={gameState.economy}
+              onPurchaseUpgrade={handlePurchaseUpgrade}
+              availableUpgrades={availableUpgrades}
+            />
+          </div>
+        </div>
+      )}
+
+      {showAdminPanel && gameState.upgrades && gameState.economy && (
+        <div className="modal-overlay" onClick={() => setShowAdminPanel(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <button className="modal-close" onClick={() => setShowAdminPanel(false)}>✖</button>
+            <AdminPanel
+              economy={gameState.economy}
+              upgrades={gameState.upgrades}
+              onUpdateEconomy={handleUpdateEconomy}
+              onToggleUpgrade={handleToggleUpgrade}
+              onResetUpgrades={handleResetUpgrades}
+              isAdminMode={isAdminMode}
+              onToggleAdminMode={() => setIsAdminMode(!isAdminMode)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

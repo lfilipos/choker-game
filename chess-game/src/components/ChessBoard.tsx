@@ -1,5 +1,6 @@
 import React from 'react';
 import { Board, Position, ControlZone } from '../types';
+import { UpgradeState } from '../types/upgrades';
 import { ChessSquare } from './ChessSquare';
 import { isSquareInControlZone } from '../utils/controlZones';
 import './ChessBoard.css';
@@ -10,6 +11,7 @@ interface ChessBoardProps {
   possibleMoves: Position[];
   controlZones: ControlZone[];
   onSquareClick: (position: Position) => void;
+  upgrades?: UpgradeState;
 }
 
 export const ChessBoard: React.FC<ChessBoardProps> = ({
@@ -18,6 +20,7 @@ export const ChessBoard: React.FC<ChessBoardProps> = ({
   possibleMoves,
   controlZones,
   onSquareClick,
+  upgrades,
 }) => {
   const isSquareSelected = (row: number, col: number): boolean => {
     return selectedSquare !== null && selectedSquare.row === row && selectedSquare.col === col;
@@ -70,6 +73,7 @@ export const ChessBoard: React.FC<ChessBoardProps> = ({
                   isPossibleMove={isSquarePossibleMove(rowIndex, colIndex)}
                   controlZone={controlZone}
                   onClick={onSquareClick}
+                  upgrades={upgrades}
                 />
               );
             })

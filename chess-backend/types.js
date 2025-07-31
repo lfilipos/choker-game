@@ -63,10 +63,26 @@ const CONTROL_ZONES = [
   }
 ];
 
+const UpgradeType = {
+  MOVEMENT: 'movement',
+  ATTACK: 'attack',
+  DEFENSE: 'defense',
+  SPECIAL: 'special'
+};
+
+const ActivationMethod = {
+  PURCHASE: 'purchase',
+  CONTROL_ZONE: 'control_zone',
+  ACHIEVEMENT: 'achievement',
+  TIMED: 'timed'
+};
+
 module.exports = {
   GameStatus,
   PieceType,
   PieceColor,
   ControlZoneType,
-  CONTROL_ZONES
+  CONTROL_ZONES,
+  UpgradeType,
+  ActivationMethod
 };

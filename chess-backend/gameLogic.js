@@ -1,4 +1,5 @@
 const { PieceType, PieceColor, CONTROL_ZONES } = require('./types');
+const { applyUpgradesToMoves, isProtectedByQueenAura } = require('./upgradeLogic');
 
 // Create initial chess board (16x10)
 function createInitialBoard() {
@@ -30,26 +31,44 @@ function isValidPosition(pos) {
 }
 
 // Get possible moves for a piece
-function getPossibleMoves(board, position) {
+function getPossibleMoves(board, position, upgrades = null, upgradeManager = null) {
   const piece = board[position.row][position.col];
   if (!piece) return [];
   
+  let standardMoves = [];
+  
   switch (piece.type) {
     case PieceType.PAWN:
-      return getPawnMoves(board, position, piece.color);
+      standardMoves = getPawnMoves(board, position, piece.color);
+      break;
     case PieceType.ROOK:
-      return getRookMoves(board, position, piece.color);
+      standardMoves = getRookMoves(board, position, piece.color);
+      break;
     case PieceType.BISHOP:
-      return getBishopMoves(board, position, piece.color);
+      standardMoves = getBishopMoves(board, position, piece.color);
+      break;
     case PieceType.QUEEN:
-      return getQueenMoves(board, position, piece.color);
+      standardMoves = getQueenMoves(board, position, piece.color);
+      break;
     case PieceType.KING:
-      return getKingMoves(board, position, piece.color);
+      standardMoves = getKingMoves(board, position, piece.color);
+      break;
     case PieceType.KNIGHT:
-      return getKnightMoves(board, position, piece.color);
+      standardMoves = getKnightMoves(board, position, piece.color);
+      break;
     default:
       return [];
   }
+  
+  // Apply upgrades if available
+  if (upgrades && upgradeManager) {
+    console.log(`Standard moves for ${piece.type}: ${standardMoves.length} moves`);
+    const upgradedMoves = applyUpgradesToMoves(board, position, piece, standardMoves, upgrades, upgradeManager);
+    console.log(`Upgraded moves: ${upgradedMoves.length} moves`);
+    return upgradedMoves;
+  }
+  
+  return standardMoves;
 }
 
 function getPawnMoves(board, position, color) {
@@ -221,11 +240,11 @@ function calculateAllControlZoneStatuses(board) {
 }
 
 // Validate if a move is legal
-function isValidMove(board, from, to, color) {
+function isValidMove(board, from, to, color, upgrades = null, upgradeManager = null) {
   const piece = board[from.row][from.col];
   if (!piece || piece.color !== color) return false;
   
-  const possibleMoves = getPossibleMoves(board, from);
+  const possibleMoves = getPossibleMoves(board, from, upgrades, upgradeManager);
   return possibleMoves.some(move => move.row === to.row && move.col === to.col);
 }
 

@@ -1,6 +1,7 @@
 const { v4: uuidv4 } = require('uuid');
 const { GameStatus, PieceColor, CONTROL_ZONES } = require('./types');
 const { createInitialBoard, makeMove, isValidMove, calculateAllControlZoneStatuses } = require('./gameLogic');
+const UpgradeManager = require('./upgradeManager');
 
 class GameManager {
   constructor() {
@@ -11,6 +12,9 @@ class GameManager {
   // Create a new game
   createGame(creatorSocketId, creatorName) {
     const gameId = uuidv4();
+    const upgradeManager = new UpgradeManager();
+    const upgradeState = upgradeManager.getUpgradeState();
+    
     const game = {
       id: gameId,
       status: GameStatus.WAITING,
@@ -25,6 +29,9 @@ class GameManager {
       currentPlayer: PieceColor.WHITE,
       moveHistory: [],
       controlZones: CONTROL_ZONES,
+      upgrades: upgradeState.upgrades,
+      economy: upgradeState.economy,
+      upgradeManager: upgradeManager, // Store the manager instance
       createdAt: new Date(),
       lastActivity: new Date()
     };
@@ -96,7 +103,7 @@ class GameManager {
       throw new Error('Not your turn');
     }
 
-    if (!isValidMove(game.board, from, to, player.color)) {
+    if (!isValidMove(game.board, from, to, player.color, game.upgrades, game.upgradeManager)) {
       throw new Error('Invalid move');
     }
 
@@ -105,6 +112,11 @@ class GameManager {
     const capturedPiece = game.board[to.row][to.col];
     
     game.board = makeMove(game.board, from, to);
+    
+    // Award capture income if a piece was captured
+    if (capturedPiece) {
+      game.upgradeManager.awardCaptureIncome(player.color);
+    }
     
     // Add to move history
     const move = {
@@ -116,6 +128,18 @@ class GameManager {
       timestamp: new Date()
     };
     game.moveHistory.push(move);
+
+    // Process turn end for the current player
+    const controlledZones = this.countControlledZones(game, player.color);
+    game.upgradeManager.processTurnEnd(player.color, controlledZones);
+    
+    // Update control zone upgrades
+    game.upgradeManager.activateControlZoneUpgrades(game.controlZones, game.board);
+    
+    // Update game state with latest upgrade/economy info
+    const upgradeState = game.upgradeManager.getUpgradeState();
+    game.upgrades = upgradeState.upgrades;
+    game.economy = upgradeState.economy;
 
     // Switch turns
     game.currentPlayer = game.currentPlayer === PieceColor.WHITE ? PieceColor.BLACK : PieceColor.WHITE;
@@ -206,6 +230,8 @@ class GameManager {
       controlZones: game.controlZones,
       controlZoneStatuses,
       moveHistory: game.moveHistory,
+      upgrades: game.upgrades,
+      economy: game.economy,
       playerColor: player?.color || null,
       isPlayerTurn: player?.color === game.currentPlayer
     };
@@ -228,6 +254,67 @@ class GameManager {
         this.games.delete(gameId);
       }
     }
+  }
+
+  // Count how many control zones a team controls
+  countControlledZones(game, color) {
+    const zoneControl = game.upgradeManager.calculateZoneControl(game.controlZones, game.board);
+    return Object.values(zoneControl).filter(controller => controller === color).length;
+  }
+
+  // Purchase an upgrade for a player
+  purchaseUpgrade(socketId, upgradeId) {
+    const gameId = this.playerSockets.get(socketId);
+    const game = this.games.get(gameId);
+    
+    if (!game) {
+      throw new Error('Game not found');
+    }
+    
+    const player = game.players[socketId];
+    if (!player) {
+      throw new Error('Player not in this game');
+    }
+    
+    try {
+      game.upgradeManager.purchaseUpgrade(player.color, upgradeId);
+      
+      // Update game state with latest upgrade/economy info
+      const upgradeState = game.upgradeManager.getUpgradeState();
+      game.upgrades = upgradeState.upgrades;
+      game.economy = upgradeState.economy;
+      
+      console.log(`Upgrade purchased: ${upgradeId} for ${player.color}`);
+      console.log(`Updated upgrades for ${player.color}:`, game.upgrades[player.color]);
+      
+      return {
+        success: true,
+        upgrades: game.upgrades,
+        economy: game.economy
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
+  // Get available upgrades for a player
+  getAvailableUpgrades(socketId) {
+    const gameId = this.playerSockets.get(socketId);
+    const game = this.games.get(gameId);
+    
+    if (!game) {
+      throw new Error('Game not found');
+    }
+    
+    const player = game.players[socketId];
+    if (!player) {
+      throw new Error('Player not in this game');
+    }
+    
+    return game.upgradeManager.getAvailableUpgrades(player.color);
   }
 }
 

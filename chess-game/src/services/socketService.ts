@@ -1,5 +1,6 @@
 import { io, Socket } from 'socket.io-client';
 import { GameState, Position, Move, ControlZoneStatus } from '../types';
+import { UpgradeDefinition, UpgradeState, TeamEconomy } from '../types/upgrades';
 
 export interface MultiplayerGameState extends Omit<GameState, 'selectedSquare' | 'possibleMoves'> {
   id: string;
@@ -8,6 +9,8 @@ export interface MultiplayerGameState extends Omit<GameState, 'selectedSquare' |
   playerColor: string | null;
   isPlayerTurn: boolean;
   controlZoneStatuses: ControlZoneStatus[];
+  upgrades: UpgradeState;
+  economy: TeamEconomy;
 }
 
 export interface WaitingGame {
@@ -165,6 +168,39 @@ class SocketService {
 
   onError(callback: (error: { message: string }) => void): void {
     this.socket?.on('error', callback);
+  }
+
+  onGameStateUpdated(callback: (data: { gameState: MultiplayerGameState }) => void): void {
+    this.socket?.on('game_state_updated', callback);
+  }
+
+  onAvailableUpgrades(callback: (data: { upgrades: UpgradeDefinition[] }) => void): void {
+    this.socket?.on('available_upgrades', callback);
+  }
+
+  onUpgradePurchased(callback: (data: { upgradeId: string; upgrades: UpgradeState; economy: TeamEconomy }) => void): void {
+    this.socket?.on('upgrade_purchased', callback);
+  }
+
+  onUpgradeError(callback: (data: { message: string }) => void): void {
+    this.socket?.on('upgrade_error', callback);
+  }
+
+  // Upgrade actions
+  getAvailableUpgrades(): void {
+    this.socket?.emit('get_available_upgrades');
+  }
+
+  purchaseUpgrade(upgradeId: string): void {
+    this.socket?.emit('purchase_upgrade', { upgradeId });
+  }
+
+  getPossibleMoves(position: Position): void {
+    this.socket?.emit('get_possible_moves', { position });
+  }
+
+  onPossibleMoves(callback: (data: { position: Position; moves: Position[] }) => void): void {
+    this.socket?.on('possible_moves', callback);
   }
 
   // Remove event listeners

@@ -1,0 +1,251 @@
+.admin-panel {
+  background: #f0f0f0;
+  border: 2px solid #999;
+  border-radius: 10px;
+  padding: 20px;
+  margin: 20px auto;
+  max-width: 800px;
+}
+
+.admin-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 2px solid #ccc;
+}
+
+.admin-header h2 {
+  margin: 0;
+  color: #333;
+}
+
+.admin-toggle {
+  padding: 10px 20px;
+  border: 2px solid #666;
+  background: #fff;
+  border-radius: 5px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.3s;
+}
+
+.admin-toggle.active {
+  background: #ff5722;
+  color: white;
+  border-color: #ff5722;
+}
+
+.team-selector {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.team-selector button {
+  flex: 1;
+  padding: 10px;
+  border: 2px solid #ddd;
+  background: #fff;
+  cursor: pointer;
+  font-size: 16px;
+  transition: all 0.3s;
+}
+
+.team-selector button.active {
+  background: #2196F3;
+  color: white;
+  border-color: #2196F3;
+}
+
+.admin-section {
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 15px;
+  margin-bottom: 20px;
+}
+
+.admin-section h3 {
+  margin: 0 0 15px 0;
+  color: #444;
+  font-size: 18px;
+}
+
+.current-balance {
+  font-size: 18px;
+  margin-bottom: 15px;
+  padding: 10px;
+  background: #f5f5f5;
+  border-radius: 5px;
+}
+
+.balance-amount {
+  font-weight: bold;
+  color: #2e7d32;
+}
+
+.money-controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.money-controls input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 2px solid #ddd;
+  border-radius: 4px;
+  font-size: 16px;
+}
+
+.money-controls button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.3s;
+}
+
+.btn-add {
+  background: #4CAF50;
+  color: white;
+}
+
+.btn-add:hover {
+  background: #45a049;
+}
+
+.btn-subtract {
+  background: #f44336;
+  color: white;
+}
+
+.btn-subtract:hover {
+  background: #da190b;
+}
+
+.btn-set {
+  background: #2196F3;
+  color: white;
+}
+
+.btn-set:hover {
+  background: #0b7dda;
+}
+
+.upgrades-control {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.piece-upgrades {
+  background: #f9f9f9;
+  border: 1px solid #eee;
+  border-radius: 5px;
+  padding: 10px;
+}
+
+.piece-upgrades h4 {
+  margin: 0 0 10px 0;
+  font-size: 14px;
+  color: #666;
+}
+
+.upgrade-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.upgrade-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 5px 8px;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  font-size: 12px;
+}
+
+.upgrade-item span {
+  text-transform: capitalize;
+  font-size: 11px;
+}
+
+.btn-remove {
+  background: #f44336;
+  color: white;
+  border: none;
+  padding: 2px 6px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 10px;
+}
+
+.btn-remove:hover {
+  background: #da190b;
+}
+
+.no-upgrades {
+  color: #999;
+  font-style: italic;
+  font-size: 12px;
+  margin: 0;
+}
+
+.btn-reset {
+  width: 100%;
+  padding: 10px;
+  background: #ff9800;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.3s;
+}
+
+.btn-reset:hover {
+  background: #e68900;
+}
+
+.quick-actions {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.btn-quick {
+  padding: 12px;
+  background: #9C27B0;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.3s;
+}
+
+.btn-quick:hover {
+  background: #7B1FA2;
+}
+
+@media (max-width: 600px) {
+  .money-controls {
+    flex-wrap: wrap;
+  }
+  
+  .money-controls input {
+    width: 100%;
+  }
+  
+  .quick-actions {
+    grid-template-columns: 1fr;
+  }
+}

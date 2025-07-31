@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { GameState, Position, Move } from '../types';
+import { UpgradeState, TeamEconomy } from '../types/upgrades';
 import { ChessBoard } from './ChessBoard';
 import { 
   createInitialBoard, 
@@ -15,6 +16,30 @@ import { ControlZoneStatusComponent } from './ControlZoneStatus';
 import './ChessGame.css';
 
 export const ChessGame: React.FC = () => {
+  const initialUpgrades: UpgradeState = {
+    white: {
+      pawn: [],
+      knight: [],
+      bishop: [],
+      rook: [],
+      queen: [],
+      king: []
+    },
+    black: {
+      pawn: [],
+      knight: [],
+      bishop: [],
+      rook: [],
+      queen: [],
+      king: []
+    }
+  };
+
+  const initialEconomy: TeamEconomy = {
+    white: 500,
+    black: 500
+  };
+
   const [gameState, setGameState] = useState<GameState>({
     board: createInitialBoard(),
     currentPlayer: 'white',
@@ -22,7 +47,9 @@ export const ChessGame: React.FC = () => {
     possibleMoves: [],
     gameStatus: 'playing',
     moveHistory: [],
-    controlZones: createControlZones()
+    controlZones: createControlZones(),
+    upgrades: initialUpgrades,
+    economy: initialEconomy
   });
 
   const handleSquareClick = useCallback((position: Position) => {
@@ -117,7 +144,9 @@ export const ChessGame: React.FC = () => {
       possibleMoves: [],
       gameStatus: 'playing',
       moveHistory: [],
-      controlZones: createControlZones()
+      controlZones: createControlZones(),
+      upgrades: initialUpgrades,
+      economy: initialEconomy
     });
   };
 
