@@ -300,6 +300,19 @@ class MatchManager {
       };
     }
 
+    // Always include chess game info for all players
+    const chessGame = match.games[GameSlot.A];
+    const controlZoneStatuses = calculateAllControlZoneStatuses(chessGame.board);
+    const chessGameInfo = {
+      moveHistory: chessGame.moveHistory || [],
+      currentPlayer: chessGame.currentPlayer,
+      board: chessGame.board,
+      controlZones: chessGame.controlZones || [],
+      controlZoneStatuses: controlZoneStatuses
+    };
+    
+    console.log(`Sending match state to ${role}, chess move history length: ${chessGameInfo.moveHistory.length}`);
+
     return {
       id: match.id,
       status: match.status,
@@ -319,6 +332,7 @@ class MatchManager {
         }
       },
       currentGame: gameState,
+      chessGameInfo: chessGameInfo,
       winCondition: match.sharedState.winCondition,
       winReason: match.sharedState.winReason
     };

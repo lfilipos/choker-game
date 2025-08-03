@@ -74,13 +74,20 @@
   color: #666;
 }
 
+.chess-game-section {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 20px;
+  align-items: flex-start;
+}
+
 .chess-move-history {
   background-color: white;
   padding: 20px;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  margin-bottom: 20px;
-  max-height: 300px;
+  flex: 1;
+  max-height: 400px;
   overflow-y: auto;
 }
 
@@ -179,4 +186,15 @@
 
 .close-modal:hover {
   background-color: #d32f2f;
+}
+
+/* Responsive design for smaller screens */
+@media (max-width: 768px) {
+  .chess-game-section {
+    flex-direction: column;
+  }
+  
+  .chess-move-history {
+    max-width: 100%;
+  }
 }

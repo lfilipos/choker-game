@@ -1,0 +1,156 @@
+.mini-chess-board-container {
+  background: #f5f5f5;
+  border-radius: 8px;
+  padding: 12px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.mini-board-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  padding: 0 4px;
+}
+
+.mini-board-header h4 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+}
+
+.mini-current-player {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.mini-current-player.white {
+  color: #666;
+}
+
+.mini-current-player.black {
+  color: #333;
+}
+
+.mini-chess-board {
+  display: inline-block;
+  border: 2px solid #8B7355;
+  border-radius: 4px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.mini-board-row {
+  display: flex;
+}
+
+.mini-board-square {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  font-size: 14px;
+}
+
+.mini-board-square.white {
+  background-color: #F0D9B5;
+}
+
+.mini-board-square.black {
+  background-color: #B58863;
+}
+
+.mini-piece {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  font-size: 14px;
+  line-height: 1;
+  cursor: default;
+  user-select: none;
+}
+
+.mini-piece.white {
+  color: #fff;
+  text-shadow: 0 0 2px #000, 0 0 3px #000;
+}
+
+.mini-piece.black {
+  color: #000;
+  text-shadow: 0 0 2px #fff, 0 0 3px #fff;
+}
+
+/* Control zones */
+.mini-board-square.control-zone {
+  position: relative;
+}
+
+.mini-board-square.control-zone::before {
+  content: '';
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  right: 1px;
+  bottom: 1px;
+  border-radius: 2px;
+  pointer-events: none;
+}
+
+.mini-board-square.control-zone.zone-A::before {
+  border: 2px solid #2196F3;
+  background-color: rgba(33, 150, 243, 0.15);
+}
+
+.mini-board-square.control-zone.zone-B::before {
+  border: 2px solid #F44336;
+  background-color: rgba(244, 67, 54, 0.15);
+}
+
+.mini-board-square.control-zone.zone-C::before {
+  border: 2px solid #4CAF50;
+  background-color: rgba(76, 175, 80, 0.15);
+}
+
+.mini-board-coordinates {
+  margin-top: 4px;
+}
+
+.mini-file-labels {
+  display: flex;
+  padding: 0 2px;
+  margin-left: 2px;
+}
+
+.mini-file-label {
+  width: 20px;
+  text-align: center;
+  font-size: 10px;
+  color: #666;
+  font-weight: 500;
+}
+
+/* Responsive adjustments for larger screens */
+@media (min-width: 1200px) {
+  .mini-board-square {
+    width: 24px;
+    height: 24px;
+    font-size: 16px;
+  }
+  
+  .mini-file-label {
+    width: 24px;
+    font-size: 11px;
+  }
+  
+  .mini-piece {
+    font-size: 16px;
+  }
+}

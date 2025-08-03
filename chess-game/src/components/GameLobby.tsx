@@ -26,6 +26,7 @@ export const GameLobby: React.FC<GameLobbyProps> = ({ onMatchSelect }) => {
     setError(null);
 
     try {
+      console.log('Attempting to connect to server...');
       await socketService.connect();
       setIsConnected(true);
       
@@ -43,7 +44,8 @@ export const GameLobby: React.FC<GameLobbyProps> = ({ onMatchSelect }) => {
       setWaitingMatches(matches);
 
     } catch (error) {
-      setError('Failed to connect to server. Please try again.');
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      setError(`Failed to connect to server: ${errorMessage}`);
       console.error('Connection error:', error);
     } finally {
       setIsConnecting(false);

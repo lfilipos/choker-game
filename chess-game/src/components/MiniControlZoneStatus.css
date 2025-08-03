@@ -1,0 +1,95 @@
+.mini-control-zone-status {
+  background: #f5f5f5;
+  border-radius: 8px;
+  padding: 12px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.mini-control-zone-status h4 {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+}
+
+.mini-zone-list {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.mini-zone-item {
+  background: white;
+  border: 2px solid;
+  border-radius: 6px;
+  padding: 8px;
+  min-width: 80px;
+  transition: all 0.3s ease;
+}
+
+.mini-zone-item.white {
+  background-color: rgba(255, 255, 255, 0.9);
+}
+
+.mini-zone-item.black {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.mini-zone-item.neutral {
+  background-color: rgba(128, 128, 128, 0.05);
+}
+
+.mini-zone-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.mini-zone-id {
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.mini-zone-controller {
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.mini-zone-count {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  margin-top: 4px;
+}
+
+.mini-count {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.mini-count.white {
+  color: #666;
+}
+
+.mini-count.black {
+  color: #333;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1200px) {
+  .mini-zone-list {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 768px) {
+  .mini-zone-list {
+    flex-direction: column;
+  }
+  
+  .mini-zone-item {
+    width: 100%;
+  }
+}

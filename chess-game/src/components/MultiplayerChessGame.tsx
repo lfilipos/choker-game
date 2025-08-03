@@ -134,9 +134,8 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
     });
 
     socket.on('possible_moves', (data: { position: Position; moves: Position[] }) => {
-      if (data.position.row === selectedSquare?.row && data.position.col === selectedSquare?.col) {
-        setPossibleMoves(data.moves);
-      }
+      console.log('Received possible moves:', data);
+      setPossibleMoves(data.moves);
     });
 
     socket.on('error', (error: { message: string }) => {
@@ -160,6 +159,8 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
   }, [gameId, convertMatchStateToGameState]);
 
   const handleSquareClick = useCallback((position: Position) => {
+    console.log('handleSquareClick called:', { position, gameState: gameState?.status, isPlayerTurn: gameState?.isPlayerTurn, playerColor: gameState?.playerColor });
+    
     if (!gameState || !gameState.isPlayerTurn) {
       setError("It's not your turn!");
       return;
@@ -171,6 +172,7 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
     }
 
     const clickedPiece = gameState.board[position.row][position.col];
+    console.log('Clicked piece:', clickedPiece, 'Player color:', gameState.playerColor);
 
     // If no square is selected
     if (!selectedSquare) {
@@ -195,16 +197,19 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
     if (clickedPiece && clickedPiece.color === gameState.playerColor) {
       setSelectedSquare(position);
       setPossibleMoves([]); // Clear moves while we wait for server response
-      socketService.getPossibleMoves(position); // Request moves from server
+      socketService.getPossibleMoves(position, 'A'); // Request moves from server for chess game
       return;
     }
 
     // Try to make a move
+    console.log('Checking move validity:', { possibleMoves: possibleMoves.length, targetPosition: position });
     const isValidMove = possibleMoves.some(move => move.row === position.row && move.col === position.col);
     
     if (isValidMove) {
+      console.log('Valid move, sending to server');
       // Send move to server
       socketService.makeMove(selectedSquare, position, 'A').catch((error) => {
+        console.error('Move error:', error);
         setError(error.message);
       });
       
@@ -212,6 +217,7 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
       setSelectedSquare(null);
       setPossibleMoves([]);
     } else {
+      console.log('Invalid move - possibleMoves:', possibleMoves);
       // Invalid move, just deselect
       setSelectedSquare(null);
       setPossibleMoves([]);

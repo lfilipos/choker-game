@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Socket } from 'socket.io-client';
 import TeamEconomy from './TeamEconomy';
 import UpgradeStore from './UpgradeStore';
-import { ChessPiece, Move, UpgradeState, TeamEconomy as TeamEconomyType } from '../types';
+import MiniChessBoard from './MiniChessBoard';
+import MiniControlZoneStatus from './MiniControlZoneStatus';
+import { ChessPiece, Move, UpgradeState, TeamEconomy as TeamEconomyType, ControlZone, ControlZoneStatus } from '../types';
 import './GameBView.css';
 
 interface MatchState {
@@ -27,6 +29,13 @@ interface MatchState {
     isPlayerTurn: boolean;
     moveHistory?: Move[];
   };
+  chessGameInfo?: {
+    moveHistory: Move[];
+    currentPlayer: string;
+    board: any;
+    controlZones?: ControlZone[];
+    controlZoneStatuses?: ControlZoneStatus[];
+  };
 }
 
 interface GameBViewProps {
@@ -41,6 +50,10 @@ const GameBView: React.FC<GameBViewProps> = ({ matchId, socket, playerName, onLe
   const [showUpgradeStore, setShowUpgradeStore] = useState(false);
   const [chessMoveHistory, setChessMoveHistory] = useState<Move[]>([]);
   const [availableUpgrades, setAvailableUpgrades] = useState<any[]>([]);
+  const [chessBoard, setChessBoard] = useState<(ChessPiece | null)[][] | null>(null);
+  const [chessCurrentPlayer, setChessCurrentPlayer] = useState<string>('white');
+  const [controlZones, setControlZones] = useState<ControlZone[]>([]);
+  const [controlZoneStatuses, setControlZoneStatuses] = useState<ControlZoneStatus[]>([]);
 
   useEffect(() => {
     // Get initial match state
@@ -49,19 +62,69 @@ const GameBView: React.FC<GameBViewProps> = ({ matchId, socket, playerName, onLe
     // Listen for match updates
     socket.on('match_state', (state: MatchState) => {
       setMatchState(state);
+      // Update chess move history and board from the dedicated field
+      if (state.chessGameInfo) {
+        if (state.chessGameInfo.moveHistory) {
+          setChessMoveHistory(state.chessGameInfo.moveHistory);
+        }
+        if (state.chessGameInfo.board) {
+          setChessBoard(state.chessGameInfo.board);
+        }
+        if (state.chessGameInfo.currentPlayer) {
+          setChessCurrentPlayer(state.chessGameInfo.currentPlayer);
+        }
+        if (state.chessGameInfo.controlZones) {
+          setControlZones(state.chessGameInfo.controlZones);
+        }
+        if (state.chessGameInfo.controlZoneStatuses) {
+          setControlZoneStatuses(state.chessGameInfo.controlZoneStatuses);
+        }
+      }
     });
 
     socket.on('match_state_updated', (data: { matchState: MatchState }) => {
       setMatchState(data.matchState);
+      // Update chess move history and board from the dedicated field
+      if (data.matchState.chessGameInfo) {
+        if (data.matchState.chessGameInfo.moveHistory) {
+          setChessMoveHistory(data.matchState.chessGameInfo.moveHistory);
+        }
+        if (data.matchState.chessGameInfo.board) {
+          setChessBoard(data.matchState.chessGameInfo.board);
+        }
+        if (data.matchState.chessGameInfo.currentPlayer) {
+          setChessCurrentPlayer(data.matchState.chessGameInfo.currentPlayer);
+        }
+        if (data.matchState.chessGameInfo.controlZones) {
+          setControlZones(data.matchState.chessGameInfo.controlZones);
+        }
+        if (data.matchState.chessGameInfo.controlZoneStatuses) {
+          setControlZoneStatuses(data.matchState.chessGameInfo.controlZoneStatuses);
+        }
+      }
     });
 
     socket.on('move_made', (data: { move: Move; gameSlot: string; matchState: MatchState }) => {
       // Update match state
       setMatchState(data.matchState);
       
-      // If the move was from Game A (chess), update our move history
-      if (data.gameSlot === 'A' && data.matchState.currentGame?.moveHistory) {
-        setChessMoveHistory(data.matchState.currentGame.moveHistory);
+      // If the move was from Game A (chess), update our move history and board
+      if (data.gameSlot === 'A' && data.matchState.chessGameInfo) {
+        if (data.matchState.chessGameInfo.moveHistory) {
+          setChessMoveHistory(data.matchState.chessGameInfo.moveHistory);
+        }
+        if (data.matchState.chessGameInfo.board) {
+          setChessBoard(data.matchState.chessGameInfo.board);
+        }
+        if (data.matchState.chessGameInfo.currentPlayer) {
+          setChessCurrentPlayer(data.matchState.chessGameInfo.currentPlayer);
+        }
+        if (data.matchState.chessGameInfo.controlZones) {
+          setControlZones(data.matchState.chessGameInfo.controlZones);
+        }
+        if (data.matchState.chessGameInfo.controlZoneStatuses) {
+          setControlZoneStatuses(data.matchState.chessGameInfo.controlZoneStatuses);
+        }
       }
     });
 
@@ -146,18 +209,32 @@ const GameBView: React.FC<GameBViewProps> = ({ matchId, socket, playerName, onLe
 
         <TeamEconomy economy={economy} playerColor={matchState.playerTeam as 'white' | 'black'} />
 
-        <div className="chess-move-history">
-          <h3>Chess Game (Game A) Move History</h3>
-          <div className="move-list">
-            {chessMoveHistory.length === 0 ? (
-              <p>No moves yet in the chess game</p>
-            ) : (
-              chessMoveHistory.map((move, index) => (
-                <div key={index} className={`move-item ${move.piece.color}`}>
-                  {formatMove(move, index)}
-                </div>
-              ))
-            )}
+        <div className="chess-game-section">
+          {chessBoard && (
+            <MiniChessBoard 
+              board={chessBoard} 
+              currentPlayer={chessCurrentPlayer}
+              controlZones={controlZones}
+            />
+          )}
+          
+          {controlZoneStatuses.length > 0 && (
+            <MiniControlZoneStatus controlZoneStatuses={controlZoneStatuses} />
+          )}
+          
+          <div className="chess-move-history">
+            <h3>Chess Game (Game A) Move History</h3>
+            <div className="move-list">
+              {chessMoveHistory.length === 0 ? (
+                <p>No moves yet in the chess game</p>
+              ) : (
+                chessMoveHistory.map((move, index) => (
+                  <div key={index} className={`move-item ${move.piece.color}`}>
+                    {formatMove(move, index)}
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         </div>
 

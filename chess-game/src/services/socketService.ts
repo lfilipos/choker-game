@@ -54,6 +54,13 @@ export interface MatchState {
     controlZoneStatuses?: ControlZoneStatus[];
     isPlayerTurn: boolean;
   };
+  chessGameInfo?: {
+    moveHistory: Move[];
+    currentPlayer: string;
+    board: any;
+    controlZones?: any[];
+    controlZoneStatuses?: ControlZoneStatus[];
+  };
   winCondition?: string | null;
   winReason?: string | null;
 }
@@ -70,8 +77,11 @@ class SocketService {
     return new Promise((resolve, reject) => {
       console.log('Attempting to connect to:', this.serverUrl);
       this.socket = io(this.serverUrl, {
-        transports: ['websocket', 'polling'],
-        timeout: 10000,
+        transports: ['polling', 'websocket'],
+        reconnection: true,
+        reconnectionAttempts: 5,
+        reconnectionDelay: 1000,
+        timeout: 20000,
       });
 
       this.socket.on('connect', () => {
@@ -90,12 +100,18 @@ class SocketService {
       });
 
       // Add timeout for connection attempt
-      setTimeout(() => {
+      const timeoutId = setTimeout(() => {
         if (!this.socket?.connected) {
           console.error('Connection timeout - server may not be responding');
-          reject(new Error('Connection timeout'));
+          this.socket?.disconnect();
+          reject(new Error('Connection timeout - please ensure the server is running on port 3001'));
         }
-      }, 10000);
+      }, 20000);
+      
+      // Clear timeout on successful connection
+      this.socket.on('connect', () => {
+        clearTimeout(timeoutId);
+      });
     });
   }
 
