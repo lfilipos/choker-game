@@ -4,8 +4,9 @@ const socketIo = require('socket.io');
 const cors = require('cors');
 require('dotenv').config();
 
-const GameManager = require('./gameManager');
+const MatchManager = require('./matchManager');
 const { getPossibleMoves } = require('./gameLogic');
+const { GameSlot, getTeamFromRole } = require('./matchTypes');
 
 const app = express();
 const server = http.createServer(app);
@@ -21,7 +22,7 @@ const io = socketIo(server, {
   }
 });
 
-const gameManager = new GameManager();
+const matchManager = new MatchManager();
 
 // Middleware
 app.use(cors({
@@ -37,33 +38,54 @@ app.get('/', (req, res) => {
   res.json({ 
     message: 'Chess Game Server', 
     timestamp: new Date().toISOString(),
-    games: gameManager.games.size,
-    players: gameManager.playerSockets.size
+    matches: matchManager.matches.size,
+    players: matchManager.playerSockets.size
   });
 });
 
-// Get all waiting games
-app.get('/api/games', (req, res) => {
+// Get all waiting matches
+app.get('/api/matches', (req, res) => {
   try {
-    const waitingGames = gameManager.getWaitingGames();
-    res.json(waitingGames);
+    const waitingMatches = matchManager.getWaitingMatches();
+    res.json(waitingMatches);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// Get specific game info
-app.get('/api/games/:gameId', (req, res) => {
+// Get specific match info
+app.get('/api/matches/:matchId', (req, res) => {
   try {
-    const game = gameManager.getGame(req.params.gameId);
-    if (!game) {
-      return res.status(404).json({ error: 'Game not found' });
+    const match = matchManager.matches.get(req.params.matchId);
+    if (!match) {
+      return res.status(404).json({ error: 'Match not found' });
     }
+    // Calculate player count
+    let playerCount = 0;
+    for (const team of ['white', 'black']) {
+      for (const slot of ['A', 'B']) {
+        if (match.teams[team].players[slot]) {
+          playerCount++;
+        }
+      }
+    }
+    
+    // Calculate available slots
+    const availableSlots = [];
+    for (const team of ['white', 'black']) {
+      for (const slot of ['A', 'B']) {
+        if (!match.teams[team].players[slot]) {
+          availableSlots.push({ team, gameSlot: slot });
+        }
+      }
+    }
+    
     res.json({
-      id: game.id,
-      status: game.status,
-      playerCount: Object.keys(game.players).length,
-      createdAt: game.createdAt
+      id: match.id,
+      status: match.status,
+      playerCount: playerCount,
+      availableSlots: availableSlots,
+      createdAt: match.createdAt
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -74,57 +96,64 @@ app.get('/api/games/:gameId', (req, res) => {
 io.on('connection', (socket) => {
   console.log(`Player connected: ${socket.id}`);
 
-  // Create a new game
-  socket.on('create_game', (data) => {
+  // Create a new match
+  socket.on('create_match', (data) => {
     try {
-      const { playerName } = data;
-      const game = gameManager.createGame(socket.id, playerName || 'Anonymous');
+      const { playerName, preferredTeam, preferredGameSlot } = data;
+      const result = matchManager.createMatch(socket.id, playerName || 'Anonymous', preferredTeam, preferredGameSlot);
+      const { match, assignedRole } = result;
       
-      socket.join(game.id);
+      socket.join(match.id);
       
-      const gameState = gameManager.getGameState(game.id, socket.id);
+      const matchState = matchManager.getMatchState(match.id, socket.id);
       
-      socket.emit('game_created', {
-        gameId: game.id,
-        gameState: gameState
+      socket.emit('match_created', {
+        matchId: match.id,
+        assignedRole: assignedRole,
+        matchState: matchState
       });
 
-      // Also emit game_joined for consistency
-      socket.emit('game_joined', {
-        gameId: game.id,
-        gameState: gameState
+      // Also emit match_joined for consistency
+      socket.emit('match_joined', {
+        matchId: match.id,
+        assignedRole: assignedRole,
+        matchState: matchState
       });
 
-      // Broadcast updated game list to all clients
-      io.emit('games_updated', gameManager.getWaitingGames());
+      // Broadcast updated match list to all clients
+      io.emit('matches_updated', matchManager.getWaitingMatches());
       
-      console.log(`Game created: ${game.id} by ${playerName} (status: ${game.status})`);
+      console.log(`Match created: ${match.id} by ${playerName} with role ${assignedRole}`);
     } catch (error) {
       socket.emit('error', { message: error.message });
     }
   });
 
-  // Join an existing game
-  socket.on('join_game', (data) => {
+  // Join an existing match
+  socket.on('join_match', (data) => {
     try {
-      const { gameId, playerName } = data;
-      const game = gameManager.joinGame(gameId, socket.id, playerName || 'Anonymous');
+      const { matchId, playerName, preferredTeam, preferredGameSlot } = data;
+      const result = matchManager.joinMatch(matchId, socket.id, playerName || 'Anonymous', preferredTeam, preferredGameSlot);
+      const { match, assignedRole } = result;
       
-      socket.join(gameId);
+      socket.join(matchId);
       
-      // Send game state to each player individually with their perspective
-      Object.keys(game.players).forEach(playerId => {
-        const playerGameState = gameManager.getGameState(gameId, playerId);
-        io.to(playerId).emit('game_joined', {
-          gameId: gameId,
-          gameState: playerGameState
-        });
-      });
+      // Send match state to all players in the match
+      for (const [socketId] of matchManager.playerSockets) {
+        if (matchManager.playerSockets.get(socketId)?.matchId === matchId) {
+          const playerMatchState = matchManager.getMatchState(matchId, socketId);
+          io.to(socketId).emit('match_joined', {
+            matchId: matchId,
+            assignedRole: matchManager.playerSockets.get(socketId).role,
+            matchState: playerMatchState
+          });
+        }
+      }
 
-      // Broadcast updated game list to all clients
-      io.emit('games_updated', gameManager.getWaitingGames());
+      // Broadcast updated match list to all clients
+      io.emit('matches_updated', matchManager.getWaitingMatches());
       
-      console.log(`Player ${playerName} joined game: ${gameId}`);
+      console.log(`Player ${playerName} joined match: ${matchId} with role ${assignedRole}`);
     } catch (error) {
       socket.emit('error', { message: error.message });
     }
@@ -133,44 +162,48 @@ io.on('connection', (socket) => {
   // Make a move
   socket.on('make_move', (data) => {
     try {
-      const { from, to } = data;
-      const result = gameManager.makeGameMove(socket.id, from, to);
+      const { gameSlot, from, to } = data;
+      const result = matchManager.makeGameMove(socket.id, gameSlot, from, to);
       
-      // Send updated game state to each player individually with their perspective
-      Object.keys(result.game.players).forEach(playerId => {
-        const playerGameState = gameManager.getGameState(result.game.id, playerId);
-        io.to(playerId).emit('move_made', {
-          move: result.move,
-          gameState: playerGameState
-        });
-      });
+      // Send updated match state to all players in the match
+      const { match } = result;
+      for (const [socketId] of matchManager.playerSockets) {
+        if (matchManager.playerSockets.get(socketId)?.matchId === match.id) {
+          const playerMatchState = matchManager.getMatchState(match.id, socketId);
+          io.to(socketId).emit('move_made', {
+            move: result.move,
+            gameSlot: gameSlot,
+            matchState: playerMatchState
+          });
+        }
+      }
       
-      console.log(`Move made in game ${result.game.id}: ${JSON.stringify(result.move)}`);
+      console.log(`Move made in match ${match.id}, game ${gameSlot}: ${JSON.stringify(result.move)}`);
     } catch (error) {
       socket.emit('error', { message: error.message });
     }
   });
 
-  // Get current game state
-  socket.on('get_game_state', (data) => {
+  // Get current match state
+  socket.on('get_match_state', (data) => {
     try {
-      const { gameId } = data;
-      const gameState = gameManager.getGameState(gameId, socket.id);
-      if (gameState) {
-        socket.emit('game_state', gameState);
+      const { matchId } = data;
+      const matchState = matchManager.getMatchState(matchId, socket.id);
+      if (matchState) {
+        socket.emit('match_state', matchState);
       } else {
-        socket.emit('error', { message: 'Game not found' });
+        socket.emit('error', { message: 'Match not found' });
       }
     } catch (error) {
       socket.emit('error', { message: error.message });
     }
   });
 
-  // Get list of waiting games
-  socket.on('get_waiting_games', () => {
+  // Get list of waiting matches
+  socket.on('get_waiting_matches', () => {
     try {
-      const waitingGames = gameManager.getWaitingGames();
-      socket.emit('waiting_games', waitingGames);
+      const waitingMatches = matchManager.getWaitingMatches();
+      socket.emit('waiting_matches', waitingMatches);
     } catch (error) {
       socket.emit('error', { message: error.message });
     }
@@ -179,7 +212,16 @@ io.on('connection', (socket) => {
   // Get available upgrades
   socket.on('get_available_upgrades', () => {
     try {
-      const upgrades = gameManager.getAvailableUpgrades(socket.id);
+      const playerInfo = matchManager.playerSockets.get(socket.id);
+      if (!playerInfo) {
+        throw new Error('Player not found');
+      }
+      const match = matchManager.matches.get(playerInfo.matchId);
+      if (!match) {
+        throw new Error('Match not found');
+      }
+      const playerTeam = getTeamFromRole(playerInfo.role);
+      const upgrades = match.sharedState.upgradeManager.getAvailableUpgrades(playerTeam);
       socket.emit('available_upgrades', { upgrades });
     } catch (error) {
       socket.emit('error', { message: error.message });
@@ -189,23 +231,38 @@ io.on('connection', (socket) => {
   // Get possible moves for a piece (with upgrades applied)
   socket.on('get_possible_moves', (data) => {
     try {
-      const { position } = data;
-      const gameId = gameManager.playerSockets.get(socket.id);
-      const game = gameManager.games.get(gameId);
+      const { position, gameSlot } = data;
+      const playerInfo = matchManager.playerSockets.get(socket.id);
+      if (!playerInfo) {
+        throw new Error('Player not found');
+      }
       
-      if (!game) {
-        throw new Error('Game not found');
+      const match = matchManager.matches.get(playerInfo.matchId);
+      if (!match) {
+        throw new Error('Match not found');
+      }
+      
+      const game = match.games[gameSlot || GameSlot.A];
+      if (game.type !== 'chess') {
+        throw new Error('Possible moves only available for chess game');
       }
       
       const piece = game.board[position.row][position.col];
+      const teamUpgrades = match.teams[piece?.color]?.upgrades || {};
+      
       console.log(`Getting possible moves for ${piece?.color} ${piece?.type} at (${position.row}, ${position.col})`);
-      console.log(`Upgrades for ${piece?.color}:`, game.upgrades[piece?.color]);
+      console.log(`Upgrades for ${piece?.color}:`, teamUpgrades);
+      
+      const upgradeState = {
+        white: match.teams.white.upgrades,
+        black: match.teams.black.upgrades
+      };
       
       const possibleMoves = getPossibleMoves(
         game.board, 
         position, 
-        game.upgrades, 
-        game.upgradeManager
+        upgradeState, 
+        match.sharedState.upgradeManager
       );
       
       console.log(`Found ${possibleMoves.length} possible moves`);
@@ -224,19 +281,21 @@ io.on('connection', (socket) => {
   socket.on('purchase_upgrade', (data) => {
     try {
       const { upgradeId } = data;
-      const result = gameManager.purchaseUpgrade(socket.id, upgradeId);
+      const result = matchManager.purchaseUpgrade(socket.id, upgradeId);
       
       if (result.success) {
-        const gameId = gameManager.playerSockets.get(socket.id);
-        const game = gameManager.games.get(gameId);
+        const playerInfo = matchManager.playerSockets.get(socket.id);
+        const matchId = playerInfo.matchId;
         
-        // Send updated game state to all players
-        Object.keys(game.players).forEach(playerId => {
-          const playerGameState = gameManager.getGameState(gameId, playerId);
-          io.to(playerId).emit('game_state_updated', {
-            gameState: playerGameState
-          });
-        });
+        // Send updated match state to all players in the match
+        for (const [socketId] of matchManager.playerSockets) {
+          if (matchManager.playerSockets.get(socketId)?.matchId === matchId) {
+            const playerMatchState = matchManager.getMatchState(matchId, socketId);
+            io.to(socketId).emit('match_state_updated', {
+              matchState: playerMatchState
+            });
+          }
+        }
         
         socket.emit('upgrade_purchased', {
           upgradeId,
@@ -256,26 +315,31 @@ io.on('connection', (socket) => {
     console.log(`Player disconnected: ${socket.id}`);
     
     try {
-      const result = gameManager.removePlayer(socket.id);
+      const result = matchManager.removePlayer(socket.id);
       
-      if (result && !result.gameDeleted && result.game) {
+      if (result && !result.matchDeleted && result.match) {
         // Notify remaining players
-        io.to(result.game.id).emit('player_disconnected', {
-          gameState: gameManager.getGameState(result.game.id, socket.id)
-        });
+        for (const [socketId] of matchManager.playerSockets) {
+          if (matchManager.playerSockets.get(socketId)?.matchId === result.match.id) {
+            const playerMatchState = matchManager.getMatchState(result.match.id, socketId);
+            io.to(socketId).emit('player_disconnected', {
+              matchState: playerMatchState
+            });
+          }
+        }
       }
 
-      // Broadcast updated game list
-      io.emit('games_updated', gameManager.getWaitingGames());
+      // Broadcast updated match list
+      io.emit('matches_updated', matchManager.getWaitingMatches());
     } catch (error) {
       console.error('Error handling disconnect:', error);
     }
   });
 });
 
-// Cleanup old games every hour
+// Cleanup old matches every hour
 setInterval(() => {
-  gameManager.cleanupOldGames();
+  matchManager.cleanupOldMatches();
 }, 60 * 60 * 1000);
 
 const PORT = process.env.PORT || 3001;

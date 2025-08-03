@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { socketService, WaitingGame } from '../services/socketService';
+import { socketService, WaitingMatch } from '../services/socketService';
 import './GameLobby.css';
 
 interface GameLobbyProps {
-  onGameStart: (gameId: string, playerName: string, initialGameState?: any) => void;
+  onMatchSelect: (matchId: string, playerName: string) => void;
 }
 
-export const GameLobby: React.FC<GameLobbyProps> = ({ onGameStart }) => {
+export const GameLobby: React.FC<GameLobbyProps> = ({ onMatchSelect }) => {
   const [playerName, setPlayerName] = useState('');
-  const [waitingGames, setWaitingGames] = useState<WaitingGame[]>([]);
+  const [waitingMatches, setWaitingMatches] = useState<WaitingMatch[]>([]);
   const [isConnecting, setIsConnecting] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -30,17 +30,17 @@ export const GameLobby: React.FC<GameLobbyProps> = ({ onGameStart }) => {
       setIsConnected(true);
       
       // Set up event listeners
-      socketService.onGamesUpdated((games) => {
-        setWaitingGames(games);
+      socketService.onMatchesUpdated((matches) => {
+        setWaitingMatches(matches);
       });
 
       socketService.onError((error) => {
         setError(error.message);
       });
 
-      // Get initial list of waiting games
-      const games = await socketService.getWaitingGames();
-      setWaitingGames(games);
+      // Get initial list of waiting matches
+      const matches = await socketService.getWaitingMatches();
+      setWaitingMatches(matches);
 
     } catch (error) {
       setError('Failed to connect to server. Please try again.');
@@ -50,7 +50,7 @@ export const GameLobby: React.FC<GameLobbyProps> = ({ onGameStart }) => {
     }
   };
 
-  const handleCreateGame = async () => {
+  const handleCreateMatch = async () => {
     if (!playerName.trim()) {
       setError('Please enter your name');
       return;
@@ -59,29 +59,22 @@ export const GameLobby: React.FC<GameLobbyProps> = ({ onGameStart }) => {
     setError(null);
     
     try {
-      const result = await socketService.createGame(playerName.trim());
-      onGameStart(result.gameId, playerName.trim(), result.gameState);
+      const result = await socketService.createMatch(playerName.trim());
+      onMatchSelect(result.matchId, playerName.trim());
     } catch (error) {
-      setError('Failed to create game. Please try again.');
-      console.error('Create game error:', error);
+      setError('Failed to create match. Please try again.');
+      console.error('Create match error:', error);
     }
   };
 
-  const handleJoinGame = async (gameId: string) => {
+  const handleSelectMatch = async (matchId: string) => {
     if (!playerName.trim()) {
       setError('Please enter your name');
       return;
     }
 
     setError(null);
-
-    try {
-      const result = await socketService.joinGame(gameId, playerName.trim());
-      onGameStart(result.gameId, playerName.trim(), result.gameState);
-    } catch (error) {
-      setError('Failed to join game. Please try again.');
-      console.error('Join game error:', error);
-    }
+    onMatchSelect(matchId, playerName.trim());
   };
 
   const formatTimeAgo = (dateString: string) => {
@@ -104,7 +97,7 @@ export const GameLobby: React.FC<GameLobbyProps> = ({ onGameStart }) => {
     return (
       <div className="game-lobby">
         <div className="lobby-container">
-          <h1>Chess Game Lobby</h1>
+          <h1>Choker Game Lobby</h1>
           <div className="loading">
             <p>Connecting to server...</p>
           </div>
@@ -117,7 +110,7 @@ export const GameLobby: React.FC<GameLobbyProps> = ({ onGameStart }) => {
     return (
       <div className="game-lobby">
         <div className="lobby-container">
-          <h1>Chess Game Lobby</h1>
+          <h1>Choker Game Lobby</h1>
           <div className="connection-error">
             <p>Failed to connect to server</p>
             <button onClick={connectToServer} className="retry-button">
@@ -132,7 +125,7 @@ export const GameLobby: React.FC<GameLobbyProps> = ({ onGameStart }) => {
   return (
     <div className="game-lobby">
       <div className="lobby-container">
-        <h1>Chess Game Lobby</h1>
+        <h1>Choker Game Lobby</h1>
         
         <div className="player-setup">
           <label htmlFor="playerName">Your Name:</label>
@@ -154,36 +147,43 @@ export const GameLobby: React.FC<GameLobbyProps> = ({ onGameStart }) => {
 
         <div className="game-actions">
           <button 
-            onClick={handleCreateGame}
+            onClick={handleCreateMatch}
             className="create-game-button"
             disabled={!playerName.trim()}
           >
-            Create New Game
+            Create New Match
           </button>
         </div>
 
         <div className="waiting-games">
-          <h2>Available Games ({waitingGames.length})</h2>
+          <h2>Available Matches ({waitingMatches.length})</h2>
           
-          {waitingGames.length === 0 ? (
+          {waitingMatches.length === 0 ? (
             <div className="no-games">
-              <p>No games available. Create one to get started!</p>
+              <p>No matches available. Create one to get started!</p>
             </div>
           ) : (
             <div className="games-list">
-              {waitingGames.map((game) => (
-                <div key={game.id} className="game-item">
+              {waitingMatches.map((match) => (
+                <div key={match.id} className="game-item">
                   <div className="game-info">
-                    <h3>Game by {game.creatorName}</h3>
-                    <p>Players: {game.playerCount}/2</p>
-                    <p>Created: {formatTimeAgo(game.createdAt)}</p>
+                    <h3>Match #{match.id.slice(0, 8)}</h3>
+                    <p>Players: {match.playerCount}/4</p>
+                    <p>Created: {formatTimeAgo(match.createdAt)}</p>
+                    {match.availableSlots && match.availableSlots.length > 0 && (
+                      <p className="available-slots">
+                        Available: {match.availableSlots.map(slot => 
+                          `${slot.team} - Game ${slot.gameSlot}`
+                        ).join(', ')}
+                      </p>
+                    )}
                   </div>
                   <button
-                    onClick={() => handleJoinGame(game.id)}
+                    onClick={() => handleSelectMatch(match.id)}
                     className="join-game-button"
                     disabled={!playerName.trim()}
                   >
-                    Join Game
+                    Join Match
                   </button>
                 </div>
               ))}

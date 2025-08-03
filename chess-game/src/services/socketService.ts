@@ -13,12 +13,49 @@ export interface MultiplayerGameState extends Omit<GameState, 'selectedSquare' |
   economy: TeamEconomy;
 }
 
-export interface WaitingGame {
+export interface WaitingMatch {
   id: string;
   status: string;
   playerCount: number;
   createdAt: string;
-  creatorName: string;
+  availableSlots?: Array<{ team: string; gameSlot: string }>;
+}
+
+export interface MatchState {
+  id: string;
+  status: string;
+  playerRole: string;
+  playerTeam: string;
+  playerGameSlot: string;
+  teams: {
+    white: {
+      economy: number;
+      upgrades: any;
+      players: {
+        A?: { name: string; ready: boolean };
+        B?: { name: string; ready: boolean };
+      };
+    };
+    black: {
+      economy: number;
+      upgrades: any;
+      players: {
+        A?: { name: string; ready: boolean };
+        B?: { name: string; ready: boolean };
+      };
+    };
+  };
+  currentGame?: {
+    type: string;
+    board?: any;
+    currentPlayer: string;
+    moveHistory?: Move[];
+    controlZones?: any[];
+    controlZoneStatuses?: ControlZoneStatus[];
+    isPlayerTurn: boolean;
+  };
+  winCondition?: string | null;
+  winReason?: string | null;
 }
 
 class SocketService {
@@ -31,6 +68,7 @@ class SocketService {
 
   connect(): Promise<void> {
     return new Promise((resolve, reject) => {
+      console.log('Attempting to connect to:', this.serverUrl);
       this.socket = io(this.serverUrl, {
         transports: ['websocket', 'polling'],
         timeout: 10000,
@@ -43,12 +81,21 @@ class SocketService {
 
       this.socket.on('connect_error', (error) => {
         console.error('Connection error:', error);
+        console.error('Server URL:', this.serverUrl);
         reject(error);
       });
 
       this.socket.on('error', (error) => {
         console.error('Socket error:', error);
       });
+
+      // Add timeout for connection attempt
+      setTimeout(() => {
+        if (!this.socket?.connected) {
+          console.error('Connection timeout - server may not be responding');
+          reject(new Error('Connection timeout'));
+        }
+      }, 10000);
     });
   }
 
@@ -59,7 +106,38 @@ class SocketService {
     }
   }
 
-  // Game management
+  // Match management
+  createMatch(playerName: string, preferredTeam?: string, preferredGameSlot?: string): Promise<{ matchId: string; assignedRole: string; matchState: MatchState }> {
+    return new Promise((resolve, reject) => {
+      if (!this.socket) {
+        reject(new Error('Not connected'));
+        return;
+      }
+
+      this.socket.emit('create_match', { playerName, preferredTeam, preferredGameSlot });
+
+      // Listen for both events to ensure we catch the response
+      const handleSuccess = (data: any) => {
+        this.socket?.off('match_created');
+        this.socket?.off('match_joined');
+        this.socket?.off('error');
+        resolve(data);
+      };
+
+      const handleError = (error: any) => {
+        this.socket?.off('match_created');
+        this.socket?.off('match_joined');
+        this.socket?.off('error');
+        reject(new Error(error.message));
+      };
+
+      this.socket.once('match_created', handleSuccess);
+      this.socket.once('match_joined', handleSuccess);
+      this.socket.once('error', handleError);
+    });
+  }
+
+  // Legacy game management (for backward compatibility)
   createGame(playerName: string): Promise<{ gameId: string; gameState: MultiplayerGameState }> {
     return new Promise((resolve, reject) => {
       if (!this.socket) {
@@ -90,6 +168,32 @@ class SocketService {
     });
   }
 
+  joinMatch(matchId: string, playerName: string, preferredTeam?: string, preferredGameSlot?: string): Promise<{ matchId: string; assignedRole: string; matchState: MatchState }> {
+    return new Promise((resolve, reject) => {
+      if (!this.socket) {
+        reject(new Error('Not connected'));
+        return;
+      }
+
+      this.socket.emit('join_match', { matchId, playerName, preferredTeam, preferredGameSlot });
+
+      const handleSuccess = (data: any) => {
+        this.socket?.off('match_joined');
+        this.socket?.off('error');
+        resolve(data);
+      };
+
+      const handleError = (error: any) => {
+        this.socket?.off('match_joined');
+        this.socket?.off('error');
+        reject(new Error(error.message));
+      };
+
+      this.socket.once('match_joined', handleSuccess);
+      this.socket.once('error', handleError);
+    });
+  }
+
   joinGame(gameId: string, playerName: string): Promise<{ gameId: string; gameState: MultiplayerGameState }> {
     return new Promise((resolve, reject) => {
       if (!this.socket) {
@@ -116,37 +220,52 @@ class SocketService {
     });
   }
 
-  makeMove(from: Position, to: Position): Promise<void> {
+  makeMove(from: Position, to: Position, gameSlot?: string): Promise<void> {
     return new Promise((resolve, reject) => {
       if (!this.socket) {
         reject(new Error('Not connected'));
         return;
       }
 
-      this.socket.emit('make_move', { from, to });
+      this.socket.emit('make_move', { from, to, gameSlot: gameSlot || 'A' });
 
       // The response will come through the 'move_made' event listener
       resolve();
     });
   }
 
-  getWaitingGames(): Promise<WaitingGame[]> {
+  getWaitingMatches(): Promise<WaitingMatch[]> {
     return new Promise((resolve, reject) => {
       if (!this.socket) {
         reject(new Error('Not connected'));
         return;
       }
 
-      this.socket.emit('get_waiting_games');
+      this.socket.emit('get_waiting_matches');
 
-      this.socket.once('waiting_games', (games) => {
-        resolve(games);
+      // Set up one-time listeners with timeout
+      const timeout = setTimeout(() => {
+        this.socket?.off('waiting_matches');
+        this.socket?.off('error');
+        // Fallback to empty array if no response
+        resolve([]);
+      }, 5000);
+
+      this.socket.once('waiting_matches', (matches) => {
+        clearTimeout(timeout);
+        resolve(matches);
       });
 
       this.socket.once('error', (error) => {
+        clearTimeout(timeout);
         reject(new Error(error.message));
       });
     });
+  }
+
+  getWaitingGames(): Promise<WaitingMatch[]> {
+    // Legacy method for backward compatibility
+    return this.getWaitingMatches();
   }
 
   // Event listeners
@@ -162,8 +281,13 @@ class SocketService {
     this.socket?.on('player_disconnected', callback);
   }
 
-  onGamesUpdated(callback: (games: WaitingGame[]) => void): void {
-    this.socket?.on('games_updated', callback);
+  onMatchesUpdated(callback: (matches: WaitingMatch[]) => void): void {
+    this.socket?.on('matches_updated', callback);
+  }
+
+  onGamesUpdated(callback: (games: WaitingMatch[]) => void): void {
+    // Legacy method for backward compatibility
+    this.onMatchesUpdated(callback);
   }
 
   onError(callback: (error: { message: string }) => void): void {
@@ -195,8 +319,8 @@ class SocketService {
     this.socket?.emit('purchase_upgrade', { upgradeId });
   }
 
-  getPossibleMoves(position: Position): void {
-    this.socket?.emit('get_possible_moves', { position });
+  getPossibleMoves(position: Position, gameSlot?: string): void {
+    this.socket?.emit('get_possible_moves', { position, gameSlot: gameSlot || 'A' });
   }
 
   onPossibleMoves(callback: (data: { position: Position; moves: Position[] }) => void): void {
@@ -210,6 +334,10 @@ class SocketService {
 
   isConnected(): boolean {
     return this.socket?.connected || false;
+  }
+
+  getSocket(): Socket | null {
+    return this.socket;
   }
 }
 

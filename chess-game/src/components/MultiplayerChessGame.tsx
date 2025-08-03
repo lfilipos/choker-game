@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { Position, PieceColor } from '../types';
 import { ChessBoard } from './ChessBoard';
 import { ControlZoneStatusComponent } from './ControlZoneStatus';
-import { socketService, MultiplayerGameState } from '../services/socketService';
+import { socketService, MultiplayerGameState, MatchState } from '../services/socketService';
 import { UpgradeDefinition } from '../types/upgrades';
 import TeamEconomy from './TeamEconomy';
 import UpgradeStore from './UpgradeStore';
@@ -17,7 +17,7 @@ interface MultiplayerChessGameProps {
 }
 
 export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
-  gameId,
+  gameId, // This is actually the matchId now
   playerName,
   initialGameState,
   onLeaveGame
@@ -31,42 +31,93 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [isAdminMode, setIsAdminMode] = useState(false);
   const [availableUpgrades, setAvailableUpgrades] = useState<UpgradeDefinition[]>([]);
+  const [matchState, setMatchState] = useState<MatchState | null>(null);
+
+  // Convert match state to game state format
+  const convertMatchStateToGameState = useCallback((matchState: MatchState): MultiplayerGameState | null => {
+    if (!matchState || !matchState.currentGame) return null;
+    
+    const { currentGame, playerTeam, teams } = matchState;
+    
+    return {
+      id: matchState.id,
+      status: matchState.status,
+      board: currentGame.board || [],
+      currentPlayer: currentGame.currentPlayer as PieceColor,
+      gameStatus: 'playing',
+      moveHistory: currentGame.moveHistory || [],
+      controlZones: currentGame.controlZones || [],
+      controlZoneStatuses: currentGame.controlZoneStatuses || [],
+      upgrades: {
+        white: teams.white.upgrades,
+        black: teams.black.upgrades
+      },
+      economy: {
+        white: teams.white.economy,
+        black: teams.black.economy
+      },
+      players: {},
+      playerColor: playerTeam as PieceColor,
+      isPlayerTurn: currentGame.isPlayerTurn
+    };
+  }, []);
 
   useEffect(() => {
-    console.log('MultiplayerChessGame: Setting up socket listeners for game:', gameId);
+    console.log('MultiplayerChessGame: Setting up socket listeners for match:', gameId);
     
-    // Set up socket event listeners
-    socketService.onGameJoined((data) => {
-      console.log('MultiplayerChessGame: Received game_joined event:', data);
-      setGameState(data.gameState);
-      setError(null);
+    const socket = socketService.getSocket();
+    if (!socket) {
+      console.error('No socket connection available');
+      setError('Connection error');
+      return;
+    }
+
+    // Get initial match state
+    console.log('Requesting match state...');
+    socket.emit('get_match_state', { matchId: gameId });
+
+    // Listen for match state
+    socket.on('match_state', (state: MatchState) => {
+      console.log('Received match_state:', state);
+      setMatchState(state);
+      const gameState = convertMatchStateToGameState(state);
+      if (gameState) {
+        console.log('Converted to game state:', gameState);
+        setGameState(gameState);
+        setError(null);
+      }
     });
 
-    socketService.onMoveMade((data) => {
-      setGameState(data.gameState);
-      setSelectedSquare(null);
-      setPossibleMoves([]);
-      setError(null);
+    // Listen for moves
+    socket.on('move_made', (data: { move: any; gameSlot: string; matchState: MatchState }) => {
+      if (data.gameSlot === 'A') {
+        console.log('Received move in chess game:', data);
+        setMatchState(data.matchState);
+        const gameState = convertMatchStateToGameState(data.matchState);
+        if (gameState) {
+          setGameState(gameState);
+          setSelectedSquare(null);
+          setPossibleMoves([]);
+          setError(null);
+        }
+      }
     });
 
-    socketService.onPlayerDisconnected((data) => {
-      setGameState(data.gameState);
-      setError('Your opponent has disconnected');
+    // Listen for match state updates
+    socket.on('match_state_updated', (data: { matchState: MatchState }) => {
+      console.log('Match state updated:', data);
+      setMatchState(data.matchState);
+      const gameState = convertMatchStateToGameState(data.matchState);
+      if (gameState) {
+        setGameState(gameState);
+      }
     });
 
-    socketService.onError((error) => {
-      setError(error.message);
-    });
-
-    socketService.onGameStateUpdated((data) => {
-      setGameState(data.gameState);
-    });
-
-    socketService.onAvailableUpgrades((data) => {
+    socket.on('available_upgrades', (data: { upgrades: UpgradeDefinition[] }) => {
       setAvailableUpgrades(data.upgrades);
     });
 
-    socketService.onUpgradePurchased((data) => {
+    socket.on('upgrade_purchased', (data: any) => {
       setGameState(prevState => {
         if (!prevState) return prevState;
         return {
@@ -75,29 +126,38 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
           economy: data.economy
         };
       });
-      // Refresh available upgrades
-      socketService.getAvailableUpgrades();
+      socket.emit('get_available_upgrades');
     });
 
-    socketService.onUpgradeError((error) => {
+    socket.on('upgrade_error', (error: { message: string }) => {
       setError(error.message);
     });
 
-    socketService.onPossibleMoves((data) => {
+    socket.on('possible_moves', (data: { position: Position; moves: Position[] }) => {
       if (data.position.row === selectedSquare?.row && data.position.col === selectedSquare?.col) {
         setPossibleMoves(data.moves);
       }
     });
 
-    // Get initial available upgrades
-    if (gameState?.status === 'active') {
-      socketService.getAvailableUpgrades();
-    }
+    socket.on('error', (error: { message: string }) => {
+      console.error('Socket error:', error);
+      setError(error.message);
+    });
+
+    // Request available upgrades
+    socket.emit('get_available_upgrades');
 
     return () => {
-      socketService.removeAllListeners();
+      socket.off('match_state');
+      socket.off('move_made');
+      socket.off('match_state_updated');
+      socket.off('available_upgrades');
+      socket.off('upgrade_purchased');
+      socket.off('upgrade_error');
+      socket.off('possible_moves');
+      socket.off('error');
     };
-  }, [gameState?.status, selectedSquare]);
+  }, [gameId, convertMatchStateToGameState]);
 
   const handleSquareClick = useCallback((position: Position) => {
     if (!gameState || !gameState.isPlayerTurn) {
@@ -118,7 +178,7 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
       if (clickedPiece && clickedPiece.color === gameState.playerColor) {
         setSelectedSquare(position);
         setPossibleMoves([]); // Clear moves while we wait for server response
-        socketService.getPossibleMoves(position); // Request moves from server
+        socketService.getPossibleMoves(position, 'A'); // Request moves from server for chess game
         setError(null);
       }
       return;
@@ -144,7 +204,7 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
     
     if (isValidMove) {
       // Send move to server
-      socketService.makeMove(selectedSquare, position).catch((error) => {
+      socketService.makeMove(selectedSquare, position, 'A').catch((error) => {
         setError(error.message);
       });
       
