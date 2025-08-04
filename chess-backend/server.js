@@ -6,7 +6,7 @@ require('dotenv').config();
 
 const MatchManager = require('./matchManager');
 const { getPossibleMoves } = require('./gameLogic');
-const { GameSlot, getTeamFromRole } = require('./matchTypes');
+const { GameSlot, getTeamFromRole, getGameSlotFromRole } = require('./matchTypes');
 
 const app = express();
 const server = http.createServer(app);
@@ -80,12 +80,22 @@ app.get('/api/matches/:matchId', (req, res) => {
       }
     }
     
+    // Add poker game info
+    const pokerGame = match.games[GameSlot.B].state;
+    const pokerInfo = {
+      phase: pokerGame.phase,
+      players: pokerGame.players.size,
+      handNumber: pokerGame.handNumber,
+      dealerTeam: pokerGame.dealerTeam
+    };
+    
     res.json({
       id: match.id,
       status: match.status,
       playerCount: playerCount,
       availableSlots: availableSlots,
-      createdAt: match.createdAt
+      createdAt: match.createdAt,
+      pokerGame: pokerInfo
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -304,6 +314,119 @@ io.on('connection', (socket) => {
         });
       } else {
         socket.emit('upgrade_error', { message: result.error });
+      }
+    } catch (error) {
+      socket.emit('error', { message: error.message });
+    }
+  });
+
+  // Poker game actions
+  socket.on('poker_action', (data) => {
+    try {
+      const { action, amount } = data;
+      console.log(`Poker action received: ${action}, amount: ${amount}`);
+      
+      const result = matchManager.makePokerAction(socket.id, action, amount);
+      
+      if (result.success) {
+        // Send updated state to all players in the match
+        const playerInfo = matchManager.playerSockets.get(socket.id);
+        const matchId = playerInfo.matchId;
+        
+        for (const [socketId] of matchManager.playerSockets) {
+          if (matchManager.playerSockets.get(socketId)?.matchId === matchId) {
+            const playerMatchState = matchManager.getMatchState(matchId, socketId);
+            io.to(socketId).emit('match_state_updated', {
+              matchState: playerMatchState
+            });
+          }
+        }
+      } else {
+        socket.emit('poker_error', { message: result.error });
+      }
+    } catch (error) {
+      socket.emit('error', { message: error.message });
+    }
+  });
+
+  // Debug: Start poker game manually
+  socket.on('debug_start_poker', () => {
+    console.log('Debug start poker received from:', socket.id);
+    try {
+      const playerInfo = matchManager.playerSockets.get(socket.id);
+      if (!playerInfo) {
+        throw new Error('Player not found');
+      }
+      console.log('Player info:', playerInfo);
+      
+      const match = matchManager.matches.get(playerInfo.matchId);
+      if (!match) {
+        throw new Error('Match not found');
+      }
+      
+      const pokerGame = match.games[GameSlot.B].state;
+      console.log('Current poker game state:', {
+        phase: pokerGame.phase,
+        players: pokerGame.players.size,
+        playerKeys: Array.from(pokerGame.players.keys())
+      });
+      
+      // Start new hand if not already started
+      if (pokerGame.phase === 'waiting' && pokerGame.players.size === 2) {
+        pokerGame.startNewHand();
+        pokerGame.dealHoleCards();
+        console.log('Started poker game via debug command');
+        
+        // Send updated state to all players
+        const matchId = playerInfo.matchId;
+        for (const [socketId] of matchManager.playerSockets) {
+          if (matchManager.playerSockets.get(socketId)?.matchId === matchId) {
+            const playerMatchState = matchManager.getMatchState(matchId, socketId);
+            io.to(socketId).emit('match_state_updated', {
+              matchState: playerMatchState
+            });
+          }
+        }
+      } else {
+        socket.emit('error', { message: 'Cannot start poker game - wrong phase or missing players' });
+      }
+    } catch (error) {
+      socket.emit('error', { message: error.message });
+    }
+  });
+
+  // Deal next phase in poker
+  socket.on('poker_next_phase', () => {
+    try {
+      const playerInfo = matchManager.playerSockets.get(socket.id);
+      if (!playerInfo) {
+        throw new Error('Player not found');
+      }
+      
+      const match = matchManager.matches.get(playerInfo.matchId);
+      if (!match) {
+        throw new Error('Match not found');
+      }
+      
+      const pokerGame = match.games[GameSlot.B].state;
+      
+      // Deal community cards based on current phase
+      try {
+        pokerGame.dealCommunityCards();
+        console.log('Dealt community cards, new phase:', pokerGame.phase);
+        
+        // Send updated state to all players
+        const matchId = playerInfo.matchId;
+        for (const [socketId] of matchManager.playerSockets) {
+          if (matchManager.playerSockets.get(socketId)?.matchId === matchId) {
+            const playerMatchState = matchManager.getMatchState(matchId, socketId);
+            io.to(socketId).emit('match_state_updated', {
+              matchState: playerMatchState
+            });
+          }
+        }
+      } catch (error) {
+        socket.emit('error', { message: error.message });
       }
     } catch (error) {
       socket.emit('error', { message: error.message });

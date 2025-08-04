@@ -11,13 +11,13 @@ interface Player {
 interface MatchLobbyProps {
   matchId: string;
   socket: Socket;
+  playerName: string;
   onMatchStart: (matchState: MatchState) => void;
   onLeave: () => void;
 }
 
-const MatchLobby: React.FC<MatchLobbyProps> = ({ matchId, socket, onMatchStart, onLeave }) => {
+const MatchLobby: React.FC<MatchLobbyProps> = ({ matchId, socket, playerName, onMatchStart, onLeave }) => {
   const [matchState, setMatchState] = useState<MatchState | null>(null);
-  const [playerName, setPlayerName] = useState('');
   const [selectedRole, setSelectedRole] = useState<string | null>(null);
   const [isJoining, setIsJoining] = useState(false);
 
@@ -120,15 +120,9 @@ const MatchLobby: React.FC<MatchLobbyProps> = ({ matchId, socket, onMatchStart, 
         )}
       </div>
 
-      {!selectedRole && (
-        <div className="player-name-input">
-          <input
-            type="text"
-            placeholder="Enter your name"
-            value={playerName}
-            onChange={(e) => setPlayerName(e.target.value)}
-            disabled={isJoining}
-          />
+      {!selectedRole && playerName && (
+        <div className="player-info">
+          <p>Playing as: <strong>{playerName}</strong></p>
         </div>
       )}
 

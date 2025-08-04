@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { ChessGame } from './components/ChessGame';
 import { GameLobby } from './components/GameLobby';
 import MatchLobby from './components/MatchLobby';
 import { MultiplayerChessGame } from './components/MultiplayerChessGame';
@@ -7,10 +6,10 @@ import GameBView from './components/GameBView';
 import { socketService, MatchState } from './services/socketService';
 import './App.css';
 
-type AppMode = 'menu' | 'singleplayer' | 'lobby' | 'match-lobby' | 'multiplayer' | 'game-b';
+type AppMode = 'lobby' | 'match-lobby' | 'multiplayer' | 'game-b';
 
 function App() {
-  const [mode, setMode] = useState<AppMode>('menu');
+  const [mode, setMode] = useState<AppMode>('lobby');
   const [gameId, setGameId] = useState<string>('');
   const [matchId, setMatchId] = useState<string>('');
   const [playerName, setPlayerName] = useState<string>('');
@@ -61,54 +60,14 @@ function App() {
       socketService.disconnect();
       setSocket(null);
     }
-    setMode('menu');
+    setMode('lobby');
   };
 
-  if (mode === 'menu') {
-    return (
-      <div className="App">
-        <div className="main-menu">
-          <h1>Choker Game</h1>
-          <div className="menu-buttons">
-            <button 
-              onClick={() => handleModeSelect('singleplayer')}
-              className="menu-button"
-            >
-              Single Player
-            </button>
-            <button 
-              onClick={() => handleModeSelect('lobby')}
-              className="menu-button"
-            >
-              Multiplayer
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (mode === 'singleplayer') {
-    return (
-      <div className="App">
-        <div className="back-button-container">
-          <button onClick={() => handleModeSelect('menu')} className="back-button">
-            ← Back to Menu
-          </button>
-        </div>
-        <ChessGame />
-      </div>
-    );
-  }
+  // Menu and single player modes removed - going directly to lobby
 
   if (mode === 'lobby') {
     return (
       <div className="App">
-        <div className="back-button-container">
-          <button onClick={() => handleModeSelect('menu')} className="back-button">
-            ← Back to Menu
-          </button>
-        </div>
         <GameLobby onMatchSelect={handleMatchSelect} />
       </div>
     );
@@ -125,6 +84,7 @@ function App() {
         <MatchLobby 
           matchId={matchId}
           socket={socketService.getSocket()!}
+          playerName={playerName}
           onMatchStart={handleMatchStart}
           onLeave={() => setMode('lobby')}
         />

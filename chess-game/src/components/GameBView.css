@@ -119,6 +119,15 @@
   color: white;
 }
 
+.poker-game-section {
+  margin-top: 20px;
+}
+
+.poker-game-section h3 {
+  margin: 0 0 20px 0;
+  color: #333;
+}
+
 .game-b-placeholder {
   background-color: white;
   padding: 30px;
@@ -127,25 +136,34 @@
   text-align: center;
 }
 
-.game-b-placeholder h3 {
-  margin: 0 0 20px 0;
-  color: #333;
-}
-
 .game-b-placeholder p {
   color: #666;
   margin: 10px 0;
 }
 
-.game-b-placeholder ul {
-  list-style: none;
-  padding: 0;
-  margin: 20px 0 0 0;
+.error-message {
+  background-color: #fee;
+  border: 1px solid #fcc;
+  color: #c33;
+  padding: 10px;
+  margin: 10px 0;
+  border-radius: 4px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
-.game-b-placeholder li {
-  padding: 8px 0;
-  color: #555;
+.dismiss-error {
+  background: none;
+  border: none;
+  color: #c33;
+  cursor: pointer;
+  font-size: 18px;
+  padding: 0 5px;
+}
+
+.dismiss-error:hover {
+  color: #a00;
 }
 
 .modal-overlay {

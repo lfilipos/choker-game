@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Socket } from 'socket.io-client';
 import TeamEconomy from './TeamEconomy';
 import UpgradeStore from './UpgradeStore';
 import MiniChessBoard from './MiniChessBoard';
 import MiniControlZoneStatus from './MiniControlZoneStatus';
+import { PokerTable } from './PokerTable';
+import { PokerGameState, PokerMatchState } from '../types/poker';
 import { ChessPiece, Move, UpgradeState, TeamEconomy as TeamEconomyType, ControlZone, ControlZoneStatus } from '../types';
 import './GameBView.css';
 
@@ -25,10 +27,11 @@ interface MatchState {
   };
   currentGame: {
     type: string;
-    currentPlayer: string;
+    currentPlayer?: string;
     isPlayerTurn: boolean;
     moveHistory?: Move[];
-  };
+    pokerState?: PokerGameState;
+  } | PokerMatchState;
   chessGameInfo?: {
     moveHistory: Move[];
     currentPlayer: string;
@@ -54,6 +57,8 @@ const GameBView: React.FC<GameBViewProps> = ({ matchId, socket, playerName, onLe
   const [chessCurrentPlayer, setChessCurrentPlayer] = useState<string>('white');
   const [controlZones, setControlZones] = useState<ControlZone[]>([]);
   const [controlZoneStatuses, setControlZoneStatuses] = useState<ControlZoneStatus[]>([]);
+  const [pokerState, setPokerState] = useState<PokerGameState | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     // Get initial match state
@@ -61,7 +66,19 @@ const GameBView: React.FC<GameBViewProps> = ({ matchId, socket, playerName, onLe
 
     // Listen for match updates
     socket.on('match_state', (state: MatchState) => {
+      console.log('Received match state:', state);
+      console.log('Current game:', state.currentGame);
       setMatchState(state);
+      
+      // Extract poker state if available
+      const currentGame = state.currentGame as any;
+      console.log('Current game type:', currentGame?.type);
+      console.log('Poker state available:', !!currentGame?.pokerState);
+      if (currentGame && currentGame.pokerState) {
+        console.log('Setting poker state:', currentGame.pokerState);
+        setPokerState(currentGame.pokerState);
+      }
+      
       // Update chess move history and board from the dedicated field
       if (state.chessGameInfo) {
         if (state.chessGameInfo.moveHistory) {
@@ -83,7 +100,18 @@ const GameBView: React.FC<GameBViewProps> = ({ matchId, socket, playerName, onLe
     });
 
     socket.on('match_state_updated', (data: { matchState: MatchState }) => {
+      console.log('Match state updated:', data);
+      console.log('Updated current game:', data.matchState.currentGame);
       setMatchState(data.matchState);
+      
+      const currentGame = data.matchState.currentGame as any;
+      console.log('Updated current game type:', currentGame?.type);
+      console.log('Updated poker state available:', !!currentGame?.pokerState);
+      if (currentGame && currentGame.pokerState) {
+        console.log('Setting updated poker state:', currentGame.pokerState);
+        setPokerState(currentGame.pokerState);
+      }
+      
       // Update chess move history and board from the dedicated field
       if (data.matchState.chessGameInfo) {
         if (data.matchState.chessGameInfo.moveHistory) {
@@ -130,7 +158,12 @@ const GameBView: React.FC<GameBViewProps> = ({ matchId, socket, playerName, onLe
 
     socket.on('error', (error: { message: string }) => {
       console.error('Socket error:', error.message);
-      alert(`Error: ${error.message}`);
+      setError(error.message);
+    });
+
+    socket.on('poker_error', (error: { message: string }) => {
+      console.error('Poker error:', error.message);
+      setError(error.message);
     });
 
     // Get available upgrades
@@ -145,12 +178,21 @@ const GameBView: React.FC<GameBViewProps> = ({ matchId, socket, playerName, onLe
       socket.off('match_state_updated');
       socket.off('move_made');
       socket.off('error');
+      socket.off('poker_error');
     };
   }, [matchId, socket]);
 
   const handlePurchaseUpgrade = (upgradeId: string) => {
     socket.emit('purchase_upgrade', { upgradeId });
   };
+
+  const handlePokerAction = useCallback((action: string, amount?: number) => {
+    console.log('Poker action:', action, 'amount:', amount);
+    setError(null);
+    
+    // Send poker action to server
+    socket.emit('poker_action', { action, amount: amount || 0 });
+  }, [socket]);
 
   const getPieceSymbol = (piece: ChessPiece): string => {
     const symbols = {
@@ -238,15 +280,36 @@ const GameBView: React.FC<GameBViewProps> = ({ matchId, socket, playerName, onLe
           </div>
         </div>
 
-        <div className="game-b-placeholder">
-          <h3>Game B Play Area</h3>
-          <p>Game B mechanics will be implemented here</p>
-          <p>For now, you can:</p>
-          <ul>
-            <li>View the shared team economy</li>
-            <li>Purchase upgrades that affect both games</li>
-            <li>Watch the chess game progress</li>
-          </ul>
+        <div className="poker-game-section">
+          <h3>Poker Game</h3>
+          {error && (
+            <div className="error-message">
+              {error}
+              <button onClick={() => setError(null)} className="dismiss-error">✕</button>
+            </div>
+          )}
+          {pokerState ? (
+            <PokerTable 
+              gameState={pokerState} 
+              onAction={handlePokerAction}
+            />
+          ) : (
+            <div className="game-b-placeholder">
+              <p>Waiting for poker game to start...</p>
+              <p>Both poker players must join before the game begins.</p>
+              {process.env.NODE_ENV === 'development' && (
+                <button 
+                  onClick={() => {
+                    console.log('Sending debug_start_poker');
+                    socket.emit('debug_start_poker');
+                  }}
+                  style={{ marginTop: '20px', padding: '10px 20px' }}
+                >
+                  Debug: Start Poker Game
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
 

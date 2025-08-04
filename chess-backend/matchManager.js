@@ -12,6 +12,7 @@ const {
 const { PieceColor, CONTROL_ZONES } = require('./types');
 const { createInitialBoard, makeMove, isValidMove, calculateAllControlZoneStatuses } = require('./gameLogic');
 const UpgradeManager = require('./upgradeManager');
+const { PokerGameState } = require('./pokerGameState');
 
 class MatchManager {
   constructor() {
@@ -57,10 +58,8 @@ class MatchManager {
         },
         [GameSlot.B]: {
           type: GameType.GAME_B,
-          currentPlayer: PieceColor.WHITE,
-          gameSpecificState: {
-            // Placeholder for Game B state
-          }
+          state: new PokerGameState(),
+          currentPlayer: PieceColor.WHITE
         }
       },
       sharedState: {
@@ -120,6 +119,33 @@ class MatchManager {
     if (this._getPlayerCount(match) === 4) {
       match.status = MatchStatus.ACTIVE;
       match.lastActivity = new Date();
+      
+      // Start poker game if both poker players are present
+      const pokerGame = match.games[GameSlot.B].state;
+      if (pokerGame.players.size === 2) {
+        try {
+          // Get team economies for blind payment
+          const teamEconomies = {
+            white: { liquid: match.teams.white.economy },
+            black: { liquid: match.teams.black.economy }
+          };
+          
+          pokerGame.startNewHand(teamEconomies);
+          
+          // Deduct blinds from team economies
+          const dealerPlayer = pokerGame.getDealerPlayer();
+          const bigBlindPlayer = pokerGame.getBigBlindPlayer();
+          
+          match.teams[dealerPlayer.team].economy -= pokerGame.smallBlind;
+          match.teams[bigBlindPlayer.team].economy -= pokerGame.bigBlind;
+          
+          pokerGame.dealHoleCards();
+          console.log('Started poker game automatically with blinds paid');
+          console.log('Pot after blinds:', pokerGame.pot);
+        } catch (error) {
+          console.error('Error starting poker game:', error);
+        }
+      }
     }
     
     return { match, assignedRole };
@@ -217,6 +243,148 @@ class MatchManager {
     };
   }
 
+  // Make a poker action
+  makePokerAction(socketId, action, amount = 0) {
+    console.log('makePokerAction called:', { socketId, action, amount });
+    
+    const playerInfo = this.playerSockets.get(socketId);
+    if (!playerInfo) {
+      throw new Error('Player not found');
+    }
+
+    const { matchId, role } = playerInfo;
+    console.log('Player info:', { matchId, role });
+    
+    const match = this.matches.get(matchId);
+    
+    if (!match) {
+      throw new Error('Match not found');
+    }
+    
+    const playerTeam = getTeamFromRole(role);
+    console.log('Player team:', playerTeam);
+    
+    const playerGameSlot = getGameSlotFromRole(role);
+    console.log('Player game slot:', playerGameSlot);
+    
+    if (playerGameSlot !== GameSlot.B) {
+      throw new Error('Player is not in poker game');
+    }
+    
+    const pokerGame = match.games[GameSlot.B].state;
+    
+    // Get team economy
+    const teamEconomy = {
+      liquid: match.teams[playerTeam].economy
+    };
+    
+    try {
+      // Process the action
+      const result = pokerGame.processBettingAction(playerTeam, action, amount, teamEconomy);
+      
+      // Update team economy based on betting
+      const player = pokerGame.players.get(playerTeam);
+      const economyChange = player.totalBetThisRound - (match.teams[playerTeam].lastBetAmount || 0);
+      match.teams[playerTeam].economy -= economyChange;
+      match.teams[playerTeam].lastBetAmount = player.totalBetThisRound;
+      
+      // Check if hand is complete
+      if (pokerGame.isHandComplete()) {
+        this.completePokerHand(match);
+      }
+      
+      match.lastActivity = new Date();
+      
+      return {
+        success: true,
+        result: result,
+        match: match
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
+  completePokerHand(match) {
+    const pokerGame = match.games[GameSlot.B].state;
+    
+    let winners = [];
+    let showdownResult = null;
+    
+    // Check if we're at showdown or if only one player remains
+    const activePlayers = [];
+    pokerGame.players.forEach((player, team) => {
+      if (!player.folded) {
+        activePlayers.push(team);
+      }
+    });
+    
+    if (activePlayers.length === 1) {
+      // Only one player remains, they win by default
+      winners = activePlayers;
+      console.log(`${winners[0]} team wins by default (opponent folded)`);
+    } else if (pokerGame.phase === 'showdown') {
+      // Evaluate hands at showdown
+      try {
+        showdownResult = pokerGame.evaluateShowdown();
+        winners = showdownResult.winners;
+        console.log(`Showdown winners: ${winners.join(', ')}`);
+        if (showdownResult.winningHand) {
+          console.log(`Winning hand: ${showdownResult.winningHand.description}`);
+        }
+      } catch (error) {
+        console.error('Error evaluating showdown:', error);
+        // Fall back to giving pot to remaining players
+        winners = activePlayers;
+      }
+    }
+    
+    if (winners.length > 0) {
+      // Split pot among winners
+      const potShare = Math.floor(pokerGame.pot / winners.length);
+      winners.forEach(winner => {
+        match.teams[winner].economy += potShare;
+        console.log(`${winner} team wins ${potShare} chips`);
+      });
+      
+      // Reset last bet amounts
+      match.teams.white.lastBetAmount = 0;
+      match.teams.black.lastBetAmount = 0;
+      
+      // Store showdown result for display
+      if (showdownResult) {
+        pokerGame.lastShowdownResult = showdownResult;
+      }
+      
+      // Start new hand after a delay
+      setTimeout(() => {
+        try {
+          const teamEconomies = {
+            white: { liquid: match.teams.white.economy },
+            black: { liquid: match.teams.black.economy }
+          };
+          
+          pokerGame.startNewHand(teamEconomies);
+          
+          // Deduct blinds
+          const dealerPlayer = pokerGame.getDealerPlayer();
+          const bigBlindPlayer = pokerGame.getBigBlindPlayer();
+          
+          match.teams[dealerPlayer.team].economy -= pokerGame.smallBlind;
+          match.teams[bigBlindPlayer.team].economy -= pokerGame.bigBlind;
+          
+          pokerGame.dealHoleCards();
+          console.log('Started new poker hand');
+        } catch (error) {
+          console.error('Error starting new hand:', error);
+        }
+      }, 3000); // Slightly longer delay to show results
+    }
+  }
+
   // Purchase an upgrade for a team
   purchaseUpgrade(socketId, upgradeId) {
     const playerInfo = this.playerSockets.get(socketId);
@@ -291,12 +459,14 @@ class MatchManager {
         isPlayerTurn: playerTeam === game.currentPlayer
       };
     } else {
-      // Game B state
+      // Game B (Poker) state
+      const pokerState = game.state;
+      const pokerPlayerState = pokerState.getPlayerGameState(playerTeam);
+      
       gameState = {
         type: game.type,
-        currentPlayer: game.currentPlayer,
-        gameSpecificState: game.gameSpecificState,
-        isPlayerTurn: playerTeam === game.currentPlayer
+        pokerState: pokerPlayerState,
+        isPlayerTurn: pokerPlayerState ? pokerPlayerState.currentTurn === playerTeam : false
       };
     }
 
@@ -365,6 +535,12 @@ class MatchManager {
     const gameSlot = getGameSlotFromRole(role);
     match.teams[team].players[gameSlot] = null;
     
+    // If player was in poker game, remove them
+    if (gameSlot === GameSlot.B) {
+      const pokerGame = match.games[GameSlot.B].state;
+      pokerGame.removePlayer(team);
+    }
+    
     this.playerSockets.delete(socketId);
 
     // If no players left, delete the match
@@ -386,6 +562,9 @@ class MatchManager {
 
   // Helper methods
   _assignPlayerToMatch(match, socketId, playerName, preferredTeam, preferredGameSlot) {
+    let assignedTeam = null;
+    let assignedSlot = null;
+    
     // Try preferred slot first
     if (preferredTeam && preferredGameSlot) {
       if (!match.teams[preferredTeam].players[preferredGameSlot]) {
@@ -394,12 +573,13 @@ class MatchManager {
           name: playerName,
           ready: false
         };
-        return createPlayerRole(preferredTeam, preferredGameSlot);
+        assignedTeam = preferredTeam;
+        assignedSlot = preferredGameSlot;
       }
     }
 
     // Try any slot in preferred team
-    if (preferredTeam) {
+    if (!assignedTeam && preferredTeam) {
       for (const slot of [GameSlot.A, GameSlot.B]) {
         if (!match.teams[preferredTeam].players[slot]) {
           match.teams[preferredTeam].players[slot] = {
@@ -407,13 +587,15 @@ class MatchManager {
             name: playerName,
             ready: false
           };
-          return createPlayerRole(preferredTeam, slot);
+          assignedTeam = preferredTeam;
+          assignedSlot = slot;
+          break;
         }
       }
     }
 
     // Try preferred game slot in any team
-    if (preferredGameSlot) {
+    if (!assignedTeam && preferredGameSlot) {
       for (const team of [TeamColor.WHITE, TeamColor.BLACK]) {
         if (!match.teams[team].players[preferredGameSlot]) {
           match.teams[team].players[preferredGameSlot] = {
@@ -421,26 +603,43 @@ class MatchManager {
             name: playerName,
             ready: false
           };
-          return createPlayerRole(team, preferredGameSlot);
+          assignedTeam = team;
+          assignedSlot = preferredGameSlot;
+          break;
         }
       }
     }
 
     // Assign to first available slot
-    for (const team of [TeamColor.WHITE, TeamColor.BLACK]) {
-      for (const slot of [GameSlot.A, GameSlot.B]) {
-        if (!match.teams[team].players[slot]) {
-          match.teams[team].players[slot] = {
-            socketId,
-            name: playerName,
-            ready: false
-          };
-          return createPlayerRole(team, slot);
+    if (!assignedTeam) {
+      for (const team of [TeamColor.WHITE, TeamColor.BLACK]) {
+        for (const slot of [GameSlot.A, GameSlot.B]) {
+          if (!match.teams[team].players[slot]) {
+            match.teams[team].players[slot] = {
+              socketId,
+              name: playerName,
+              ready: false
+            };
+            assignedTeam = team;
+            assignedSlot = slot;
+            break;
+          }
         }
+        if (assignedTeam) break;
       }
     }
 
-    throw new Error('No available slots in match');
+    if (!assignedTeam || !assignedSlot) {
+      throw new Error('No available slots in match');
+    }
+
+    // If assigned to poker game (slot B), add to poker game state
+    if (assignedSlot === GameSlot.B) {
+      const pokerGame = match.games[GameSlot.B].state;
+      pokerGame.addPlayer(assignedTeam, socketId, playerName);
+    }
+
+    return createPlayerRole(assignedTeam, assignedSlot);
   }
 
   _getPlayerCount(match) {
