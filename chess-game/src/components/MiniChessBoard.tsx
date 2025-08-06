@@ -49,27 +49,34 @@ const MiniChessBoard: React.FC<MiniChessBoardProps> = ({ board, currentPlayer, c
           </span>
         )}
       </div>
-      <div className="mini-chess-board">
-        {board.map((row, rowIndex) => (
-          <div key={rowIndex} className="mini-board-row">
-            {row.map((piece, colIndex) => {
-              const isWhiteSquare = (rowIndex + colIndex) % 2 === 0;
-              const controlZone = getControlZone(rowIndex, colIndex);
-              return (
-                <div
-                  key={`${rowIndex}-${colIndex}`}
-                  className={`mini-board-square ${isWhiteSquare ? 'white' : 'black'} ${controlZone ? `control-zone zone-${controlZone.id}` : ''}`}
-                >
-                  {piece && (
-                    <span className={`mini-piece ${piece.color}`}>
-                      {getPieceSymbol(piece)}
-                    </span>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        ))}
+      <div className="mini-board-with-ranks">
+        <div className="mini-rank-labels">
+          {[10, 9, 8, 7, 6, 5, 4, 3, 2, 1].map(rank => (
+            <span key={rank} className="mini-rank-label">{rank}</span>
+          ))}
+        </div>
+        <div className="mini-chess-board">
+          {board.map((row, rowIndex) => (
+            <div key={rowIndex} className="mini-board-row">
+              {row.map((piece, colIndex) => {
+                const isWhiteSquare = (rowIndex + colIndex) % 2 === 0;
+                const controlZone = getControlZone(rowIndex, colIndex);
+                return (
+                  <div
+                    key={`${rowIndex}-${colIndex}`}
+                    className={`mini-board-square ${isWhiteSquare ? 'white' : 'black'} ${controlZone ? `control-zone zone-${controlZone.id}` : ''}`}
+                  >
+                    {piece && (
+                      <span className={`mini-piece ${piece.color}`}>
+                        {getPieceSymbol(piece)}
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+        </div>
       </div>
       <div className="mini-board-coordinates">
         <div className="mini-file-labels">

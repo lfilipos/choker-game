@@ -139,6 +139,10 @@ class MatchManager {
           match.teams[dealerPlayer.team].economy -= pokerGame.smallBlind;
           match.teams[bigBlindPlayer.team].economy -= pokerGame.bigBlind;
           
+          // Track blind payments so we don't double-deduct
+          match.teams[dealerPlayer.team].lastBetAmount = pokerGame.smallBlind;
+          match.teams[bigBlindPlayer.team].lastBetAmount = pokerGame.bigBlind;
+          
           pokerGame.dealHoleCards();
           console.log('Started poker game automatically with blinds paid');
           console.log('Pot after blinds:', pokerGame.pot);
@@ -284,12 +288,26 @@ class MatchManager {
       
       // Update team economy based on betting
       const player = pokerGame.players.get(playerTeam);
-      const economyChange = player.totalBetThisRound - (match.teams[playerTeam].lastBetAmount || 0);
-      match.teams[playerTeam].economy -= economyChange;
-      match.teams[playerTeam].lastBetAmount = player.totalBetThisRound;
+      const previousBet = match.teams[playerTeam].lastBetAmount || 0;
       
-      // Check if hand is complete
-      if (pokerGame.isHandComplete()) {
+      // Only deduct money for non-fold actions (fold doesn't cost anything)
+      let economyChange = 0;
+      if (action !== 'fold') {
+        economyChange = player.totalBetThisRound - previousBet;
+        match.teams[playerTeam].economy -= economyChange;
+        match.teams[playerTeam].lastBetAmount = player.totalBetThisRound;
+      }
+      
+      console.log(`${playerTeam} ${action}: totalBetThisRound=${player.totalBetThisRound}, previousBet=${previousBet}, economyChange=${economyChange}`);
+      
+      // Check if we just entered showdown phase
+      if (result.enteredShowdown || pokerGame.phase === 'showdown') {
+        console.log('Entered showdown phase, completing hand...');
+        this.completePokerHand(match);
+      }
+      // Also check if only one player remains (everyone else folded)
+      else if (pokerGame.isHandComplete()) {
+        console.log('Hand complete (player folded), completing hand...');
         this.completePokerHand(match);
       }
       
@@ -326,6 +344,14 @@ class MatchManager {
       // Only one player remains, they win by default
       winners = activePlayers;
       console.log(`${winners[0]} team wins by default (opponent folded)`);
+      
+      // Create a fold result similar to showdown result
+      showdownResult = {
+        winners: winners,
+        winningHand: null,
+        playerHands: {},
+        winReason: 'fold'
+      };
     } else if (pokerGame.phase === 'showdown') {
       // Evaluate hands at showdown
       try {
@@ -344,10 +370,12 @@ class MatchManager {
     
     if (winners.length > 0) {
       // Split pot among winners
+      console.log(`Pot size: ${pokerGame.pot}, Winners: ${winners.join(', ')}`);
       const potShare = Math.floor(pokerGame.pot / winners.length);
       winners.forEach(winner => {
+        const beforeEconomy = match.teams[winner].economy;
         match.teams[winner].economy += potShare;
-        console.log(`${winner} team wins ${potShare} chips`);
+        console.log(`${winner} team wins ${potShare} chips (economy: ${beforeEconomy} -> ${match.teams[winner].economy})`);
       });
       
       // Reset last bet amounts
@@ -359,30 +387,81 @@ class MatchManager {
         pokerGame.lastShowdownResult = showdownResult;
       }
       
-      // Start new hand after a delay
-      setTimeout(() => {
-        try {
-          const teamEconomies = {
-            white: { liquid: match.teams.white.economy },
-            black: { liquid: match.teams.black.economy }
-          };
-          
-          pokerGame.startNewHand(teamEconomies);
-          
-          // Deduct blinds
-          const dealerPlayer = pokerGame.getDealerPlayer();
-          const bigBlindPlayer = pokerGame.getBigBlindPlayer();
-          
-          match.teams[dealerPlayer.team].economy -= pokerGame.smallBlind;
-          match.teams[bigBlindPlayer.team].economy -= pokerGame.bigBlind;
-          
-          pokerGame.dealHoleCards();
-          console.log('Started new poker hand');
-        } catch (error) {
-          console.error('Error starting new hand:', error);
-        }
-      }, 3000); // Slightly longer delay to show results
+      // Complete the hand and wait for players to be ready
+      pokerGame.completeHand(showdownResult);
+      console.log('Poker hand completed, phase is now:', pokerGame.phase);
     }
+  }
+
+  // Handle player ready for next poker hand
+  setPokerPlayerReady(socketId, isReady = true) {
+    const playerInfo = this.playerSockets.get(socketId);
+    if (!playerInfo) {
+      throw new Error('Player not found');
+    }
+
+    const { matchId, role } = playerInfo;
+    const match = this.matches.get(matchId);
+    
+    if (!match) {
+      throw new Error('Match not found');
+    }
+    
+    const playerTeam = getTeamFromRole(role);
+    const gameSlot = getGameSlotFromRole(role);
+    
+    // Only poker players can signal ready
+    if (gameSlot !== GameSlot.B) {
+      throw new Error('Only poker players can signal ready for next hand');
+    }
+    
+    const pokerGame = match.games[GameSlot.B].state;
+    
+    // Check if we're in the right phase
+    if (pokerGame.phase !== 'waiting_for_ready') {
+      throw new Error('Not waiting for players to be ready');
+    }
+    
+    // Set the player's ready state
+    const allReady = pokerGame.setPlayerReady(playerTeam, isReady);
+    
+    // If all players are ready, start the new hand
+    if (allReady) {
+      console.log('Both players ready, starting new hand');
+      
+      // Clear ready states first
+      pokerGame.resetReadyStates();
+      
+      // Start the new hand (this will rotate positions once)
+      const teamEconomies = {
+        white: { liquid: match.teams.white.economy },
+        black: { liquid: match.teams.black.economy }
+      };
+      
+      pokerGame.startNewHand(teamEconomies);
+      
+      // Deduct blinds from team economies (payBlinds only adds to pot)
+      const dealerPlayer = pokerGame.getDealerPlayer();
+      const bigBlindPlayer = pokerGame.getBigBlindPlayer();
+      
+      match.teams[dealerPlayer.team].economy -= pokerGame.smallBlind;
+      match.teams[bigBlindPlayer.team].economy -= pokerGame.bigBlind;
+      
+      // Track blind payments so we don't double-deduct
+      match.teams[dealerPlayer.team].lastBetAmount = pokerGame.smallBlind;
+      match.teams[bigBlindPlayer.team].lastBetAmount = pokerGame.bigBlind;
+      
+      pokerGame.dealHoleCards();
+      
+      console.log(`All players ready - started new poker hand with dealer: ${dealerPlayer.team}`);
+      console.log(`Blinds paid - ${dealerPlayer.team}: -${pokerGame.smallBlind}, ${bigBlindPlayer.team}: -${pokerGame.bigBlind}`);
+    }
+    
+    return {
+      success: true,
+      allReady,
+      playersReady: Array.from(pokerGame.playersReady.entries())
+    };
   }
 
   // Purchase an upgrade for a team
@@ -463,10 +542,16 @@ class MatchManager {
       const pokerState = game.state;
       const pokerPlayerState = pokerState.getPlayerGameState(playerTeam);
       
+      // Include ready state if in waiting_for_ready phase
+      const playersReady = pokerState.phase === 'waiting_for_ready' 
+        ? Array.from(pokerState.playersReady.entries())
+        : null;
+      
       gameState = {
         type: game.type,
         pokerState: pokerPlayerState,
-        isPlayerTurn: pokerPlayerState ? pokerPlayerState.currentTurn === playerTeam : false
+        isPlayerTurn: pokerPlayerState ? pokerPlayerState.currentTurn === playerTeam : false,
+        playersReady: playersReady
       };
     }
 

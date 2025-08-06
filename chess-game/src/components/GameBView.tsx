@@ -1,13 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Socket } from 'socket.io-client';
-import TeamEconomy from './TeamEconomy';
 import UpgradeStore from './UpgradeStore';
 import MiniChessBoard from './MiniChessBoard';
 import MiniControlZoneStatus from './MiniControlZoneStatus';
 import { PokerTable } from './PokerTable';
 import { PokerGameState, PokerMatchState } from '../types/poker';
 import { ChessPiece, Move, UpgradeState, TeamEconomy as TeamEconomyType, ControlZone, ControlZoneStatus } from '../types';
-import './GameBView.css';
+import './GameBView2.css';
 
 interface MatchState {
   id: string;
@@ -76,6 +75,12 @@ const GameBView: React.FC<GameBViewProps> = ({ matchId, socket, playerName, onLe
       console.log('Poker state available:', !!currentGame?.pokerState);
       if (currentGame && currentGame.pokerState) {
         console.log('Setting poker state:', currentGame.pokerState);
+        console.log('Poker phase:', currentGame.pokerState.phase);
+        // Include playersReady if available
+        if (currentGame.playersReady) {
+          currentGame.pokerState.playersReady = currentGame.playersReady;
+          console.log('Players ready status:', currentGame.playersReady);
+        }
         setPokerState(currentGame.pokerState);
       }
       
@@ -109,6 +114,12 @@ const GameBView: React.FC<GameBViewProps> = ({ matchId, socket, playerName, onLe
       console.log('Updated poker state available:', !!currentGame?.pokerState);
       if (currentGame && currentGame.pokerState) {
         console.log('Setting updated poker state:', currentGame.pokerState);
+        console.log('Updated poker phase:', currentGame.pokerState.phase);
+        // Include playersReady if available
+        if (currentGame.playersReady) {
+          currentGame.pokerState.playersReady = currentGame.playersReady;
+          console.log('Updated players ready status:', currentGame.playersReady);
+        }
         setPokerState(currentGame.pokerState);
       }
       
@@ -194,6 +205,12 @@ const GameBView: React.FC<GameBViewProps> = ({ matchId, socket, playerName, onLe
     socket.emit('poker_action', { action, amount: amount || 0 });
   }, [socket]);
 
+  const handlePokerReady = useCallback(() => {
+    console.log('Sending ready signal');
+    setError(null);
+    socket.emit('poker_ready', { ready: true });
+  }, [socket]);
+
   const getPieceSymbol = (piece: ChessPiece): string => {
     const symbols = {
       white: { king: '♔', queen: '♕', rook: '♖', bishop: '♗', knight: '♘', pawn: '♙' },
@@ -244,35 +261,73 @@ const GameBView: React.FC<GameBViewProps> = ({ matchId, socket, playerName, onLe
       </div>
 
       <div className="game-b-content">
-        <div className="game-info">
-          <h2>Game B - {matchState.playerTeam} Team</h2>
-          <p>You are playing Game B as the {matchState.playerTeam} team</p>
-        </div>
-
-        <TeamEconomy economy={economy} playerColor={matchState.playerTeam as 'white' | 'black'} />
-
-        <div className="chess-game-section">
-          {chessBoard && (
-            <MiniChessBoard 
-              board={chessBoard} 
-              currentPlayer={chessCurrentPlayer}
-              controlZones={controlZones}
-            />
-          )}
+        <div className="info-sidebar">
+          <div className="team-economy-box">
+            <h3>Team Economy</h3>
+            <div className="treasury-item">
+              <span className="treasury-label">Your treasury</span>
+              <span className="treasury-value">
+                <span className="currency-symbol">₿</span>
+                {economy[matchState.playerTeam as 'white' | 'black']}
+              </span>
+            </div>
+            <div className="treasury-item">
+              <span className="treasury-label">Opponent's</span>
+              <span className="treasury-value">
+                <span className="currency-symbol">₿</span>
+                {economy[matchState.playerTeam === 'white' ? 'black' : 'white']}
+              </span>
+            </div>
+          </div>
           
-          {controlZoneStatuses.length > 0 && (
-            <MiniControlZoneStatus controlZoneStatuses={controlZoneStatuses} />
-          )}
+          <div className="control-zones-box">
+            <h3>Control zones</h3>
+            {controlZoneStatuses.length > 0 ? (
+              <div className="zone-list">
+                {controlZoneStatuses.map((status, index) => (
+                  <div key={index} className="zone-item">
+                    <span className="zone-label">Zone {String.fromCharCode(65 + index)}</span>
+                    <span className="zone-value">{status.controlledBy || 'Neutral'}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="zone-list">
+                <div className="zone-item">
+                  <span className="zone-label">Zone A</span>
+                  <span className="zone-value">-</span>
+                </div>
+                <div className="zone-item">
+                  <span className="zone-label">Zone B</span>
+                  <span className="zone-value">-</span>
+                </div>
+                <div className="zone-item">
+                  <span className="zone-label">Zone C</span>
+                  <span className="zone-value">-</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="chess-board-box">
+            {chessBoard && (
+              <MiniChessBoard 
+                board={chessBoard} 
+                currentPlayer={chessCurrentPlayer}
+                controlZones={controlZones}
+              />
+            )}
+          </div>
           
-          <div className="chess-move-history">
-            <h3>Chess Game (Game A) Move History</h3>
+          <div className="chess-moves-box">
+            <h3>Chess Moves</h3>
             <div className="move-list">
               {chessMoveHistory.length === 0 ? (
-                <p>No moves yet in the chess game</p>
+                <p className="no-moves">No moves yet</p>
               ) : (
-                chessMoveHistory.map((move, index) => (
-                  <div key={index} className={`move-item ${move.piece.color}`}>
-                    {formatMove(move, index)}
+                chessMoveHistory.slice(-10).map((move, index) => (
+                  <div key={chessMoveHistory.length - 10 + index} className={`move-entry ${move.piece.color}`}>
+                    {formatMove(move, chessMoveHistory.length - 10 + index)}
                   </div>
                 ))
               )}
@@ -281,7 +336,6 @@ const GameBView: React.FC<GameBViewProps> = ({ matchId, socket, playerName, onLe
         </div>
 
         <div className="poker-game-section">
-          <h3>Poker Game</h3>
           {error && (
             <div className="error-message">
               {error}
@@ -292,6 +346,7 @@ const GameBView: React.FC<GameBViewProps> = ({ matchId, socket, playerName, onLe
             <PokerTable 
               gameState={pokerState} 
               onAction={handlePokerAction}
+              onReady={handlePokerReady}
             />
           ) : (
             <div className="game-b-placeholder">

@@ -8,25 +8,37 @@
   margin: 4px;
   cursor: default;
   transition: all 0.2s ease;
+  animation: dealCard 0.3s ease-out;
+}
+
+@keyframes dealCard {
+  from {
+    transform: translateY(-20px) scale(0.8);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
 }
 
 /* Size variants */
 .poker-card.small {
-  width: 50px;
-  height: 70px;
-  font-size: 14px;
+  width: 45px;
+  height: 65px;
+  font-size: 13px;
 }
 
 .poker-card.medium {
-  width: 70px;
-  height: 100px;
-  font-size: 18px;
+  width: 60px;
+  height: 85px;
+  font-size: 16px;
 }
 
 .poker-card.large {
-  width: 90px;
-  height: 130px;
-  font-size: 24px;
+  width: 80px;
+  height: 115px;
+  font-size: 20px;
 }
 
 /* Selectable cards */

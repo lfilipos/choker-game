@@ -11,7 +11,8 @@ const PokerPhase = {
   TURN: 'turn',
   RIVER: 'river',
   SHOWDOWN: 'showdown',
-  HAND_COMPLETE: 'hand_complete'
+  HAND_COMPLETE: 'hand_complete',
+  WAITING_FOR_READY: 'waiting_for_ready'
 };
 
 // Betting actions
@@ -102,6 +103,7 @@ class PokerGameState {
     this.lastAction = null;
     this.bettingHistory = [];
     this.lastShowdownResult = null;
+    this.playersReady = new Map(); // Map of team -> boolean for ready state
     
     // Game settings that can be modified
     this.settings = {
@@ -240,6 +242,8 @@ class PokerGameState {
   }
 
   rotatePositions() {
+    console.log('Rotating positions - current dealer:', this.dealerTeam);
+    
     // In heads-up, positions alternate
     this.players.forEach(player => {
       if (player.position === Position.DEALER) {
@@ -251,6 +255,7 @@ class PokerGameState {
     
     // Update dealer team
     this.dealerTeam = this.getDealerPlayer().team;
+    console.log('New dealer after rotation:', this.dealerTeam);
   }
 
   getDealerPlayer() {
@@ -547,8 +552,9 @@ class PokerGameState {
     this.bettingHistory.push(this.lastAction);
 
     // Check if betting round is complete
+    let enteredShowdown = false;
     if (this.isBettingRoundComplete()) {
-      this.completeBettingRound();
+      enteredShowdown = this.completeBettingRound();
     } else {
       // Move to next player
       this.advanceTurn();
@@ -560,7 +566,8 @@ class PokerGameState {
       pot: this.pot,
       currentBet: this.currentBet,
       nextTurn: this.currentTurn,
-      roundComplete: this.isBettingRoundComplete()
+      roundComplete: this.isBettingRoundComplete(),
+      enteredShowdown: enteredShowdown
     };
   }
 
@@ -686,9 +693,12 @@ class PokerGameState {
     } else if (this.phase === PokerPhase.TURN) {
       this.dealCommunityCards(); // This will advance to RIVER
     } else if (this.phase === PokerPhase.RIVER) {
+      console.log('River betting complete, moving to SHOWDOWN phase');
       this.phase = PokerPhase.SHOWDOWN;
-      // Showdown will be handled by match manager
+      // Return true to signal showdown needs handling
+      return true;
     }
+    return false;
   }
 
   // Evaluate hands at showdown
@@ -751,6 +761,77 @@ class PokerGameState {
       winningHand: playerHands[winners[0]],
       playerHands
     };
+  }
+
+  // Set player ready status for next hand
+  setPlayerReady(team, isReady = true) {
+    if (!this.players.has(team)) {
+      throw new Error(`Team ${team} not found`);
+    }
+    
+    this.playersReady.set(team, isReady);
+    
+    // Check if all players are ready
+    if (this.areAllPlayersReady()) {
+      return true; // Signal that we can start new hand
+    }
+    return false;
+  }
+
+  // Check if all players are ready
+  areAllPlayersReady() {
+    if (this.players.size !== 2) {
+      return false;
+    }
+    
+    let allReady = true;
+    this.players.forEach((player, team) => {
+      if (!this.playersReady.get(team)) {
+        allReady = false;
+      }
+    });
+    
+    return allReady;
+  }
+
+  // Reset ready states for new hand
+  resetReadyStates() {
+    this.playersReady.clear();
+  }
+
+  // Complete the current hand and prepare for next
+  completeHand(showdownResult = null) {
+    console.log('Completing hand, transitioning from', this.phase, 'to WAITING_FOR_READY');
+    this.phase = PokerPhase.WAITING_FOR_READY;
+    this.lastShowdownResult = showdownResult;
+    this.resetReadyStates();
+    
+    // Store the result but don't reset game state yet
+    // Wait for players to be ready for next hand
+  }
+
+  // Reset for completely new hand when players are ready
+  prepareForNewHand() {
+    // Reset all players for new hand
+    this.players.forEach(player => {
+      player.resetForNewHand();
+    });
+    
+    // Clear community cards and reset betting
+    this.communityCards = [];
+    this.pot = 0;
+    this.sidePots = [];
+    this.currentBet = 0;
+    this.currentTurn = null;
+    this.bettingHistory = [];
+    this.lastAction = null;
+    this.lastShowdownResult = null;  // Clear the showdown result
+    
+    // Rotate positions for next hand
+    this.rotatePositions();
+    
+    // Clear ready states for the new hand
+    this.resetReadyStates();
   }
 }
 

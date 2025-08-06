@@ -349,6 +349,35 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Poker ready signal for next hand
+  socket.on('poker_ready', (data = {}) => {
+    try {
+      const { ready = true } = data;
+      console.log(`Poker ready signal from ${socket.id}: ${ready}`);
+      
+      const result = matchManager.setPokerPlayerReady(socket.id, ready);
+      
+      if (result.success) {
+        // Send updated state to all players in the match
+        const playerInfo = matchManager.playerSockets.get(socket.id);
+        const matchId = playerInfo.matchId;
+        
+        // Notify all players in the match about ready status
+        for (const [socketId] of matchManager.playerSockets) {
+          if (matchManager.playerSockets.get(socketId)?.matchId === matchId) {
+            const playerMatchState = matchManager.getMatchState(matchId, socketId);
+            io.to(socketId).emit('match_state_updated', {
+              matchState: playerMatchState
+            });
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error handling poker ready:', error);
+      socket.emit('error', { message: error.message });
+    }
+  });
+
   // Debug: Start poker game manually
   socket.on('debug_start_poker', () => {
     console.log('Debug start poker received from:', socket.id);

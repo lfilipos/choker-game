@@ -16,7 +16,8 @@ export enum PokerPhase {
   TURN = 'turn',
   RIVER = 'river',
   SHOWDOWN = 'showdown',
-  HAND_COMPLETE = 'hand_complete'
+  HAND_COMPLETE = 'hand_complete',
+  WAITING_FOR_READY = 'waiting_for_ready'
 }
 
 export enum BettingAction {
@@ -71,6 +72,7 @@ export interface ShowdownResult {
   winners: string[];
   winningHand: HandResult | null;
   playerHands: Record<string, HandResult>;
+  winReason?: 'fold' | 'showdown';
 }
 
 export interface PokerGameState {
@@ -92,6 +94,7 @@ export interface PokerGameState {
   lastAction: any;
   lastShowdownResult?: ShowdownResult | null;
   bettingHistory?: any[];
+  playersReady?: Array<[string, boolean]> | null;
 }
 
 export interface PokerMatchState {

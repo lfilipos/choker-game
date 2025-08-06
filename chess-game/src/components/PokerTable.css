@@ -2,20 +2,24 @@
   width: 100%;
   max-width: 1000px;
   margin: 0 auto;
-  padding: 20px;
+  padding: 15px;
   background: #0d5c0d;
   border-radius: 20px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
   position: relative;
+  height: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Table info */
 .table-info {
   display: flex;
   justify-content: space-between;
-  margin-bottom: 20px;
+  margin-bottom: 10px;
   color: white;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .phase-indicator {
@@ -35,15 +39,15 @@
 .player-area {
   display: flex;
   justify-content: center;
-  margin: 20px 0;
+  margin: 10px 0;
 }
 
 .player-box {
   background: rgba(255, 255, 255, 0.1);
   border: 2px solid rgba(255, 255, 255, 0.2);
   border-radius: 10px;
-  padding: 15px;
-  min-width: 300px;
+  padding: 10px;
+  min-width: 280px;
   text-align: center;
   transition: all 0.3s ease;
 }
@@ -112,8 +116,8 @@
 .player-cards {
   display: flex;
   justify-content: center;
-  margin: 10px 0;
-  min-height: 100px;
+  margin: 8px 0;
+  min-height: 80px;
   align-items: center;
 }
 
@@ -132,22 +136,23 @@
   background: radial-gradient(ellipse at center, #0d7a0d 0%, #0d5c0d 70%);
   border: 3px solid rgba(255, 255, 255, 0.1);
   border-radius: 200px 100px;
-  padding: 40px;
-  margin: 30px auto;
-  max-width: 600px;
-  min-height: 200px;
+  padding: 20px;
+  margin: 15px auto;
+  max-width: 550px;
+  min-height: 150px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  flex: 1;
 }
 
 .pot-display {
   background: rgba(0, 0, 0, 0.4);
   border: 2px solid #FFD700;
   border-radius: 20px;
-  padding: 10px 25px;
-  margin-bottom: 20px;
+  padding: 8px 20px;
+  margin-bottom: 15px;
   text-align: center;
 }
 
@@ -160,7 +165,7 @@
 
 .pot-amount {
   color: white;
-  font-size: 24px;
+  font-size: 20px;
   font-weight: bold;
 }
 
@@ -168,7 +173,7 @@
   display: flex;
   justify-content: center;
   gap: 5px;
-  min-height: 100px;
+  min-height: 80px;
   align-items: center;
 }
 
@@ -192,19 +197,19 @@
   display: flex;
   gap: 10px;
   justify-content: center;
-  margin-top: 20px;
+  margin-top: 10px;
 }
 
 .action-button {
-  padding: 10px 20px;
+  padding: 8px 16px;
   border: none;
   border-radius: 5px;
   font-weight: bold;
-  font-size: 14px;
+  font-size: 13px;
   cursor: pointer;
   transition: all 0.2s ease;
   text-transform: uppercase;
-  min-width: 80px;
+  min-width: 75px;
 }
 
 .action-button:hover {
@@ -293,21 +298,21 @@
 /* Action history */
 .poker-action-history {
   position: absolute;
-  right: 20px;
-  top: 80px;
-  width: 250px;
+  right: 15px;
+  top: 60px;
+  width: 200px;
   background: rgba(0, 0, 0, 0.8);
   border: 2px solid rgba(255, 255, 255, 0.2);
   border-radius: 10px;
-  padding: 15px;
-  max-height: 400px;
+  padding: 10px;
+  max-height: 250px;
   overflow-y: auto;
 }
 
 .poker-action-history h3 {
   color: #FFD700;
-  margin: 0 0 10px 0;
-  font-size: 18px;
+  margin: 0 0 8px 0;
+  font-size: 14px;
   text-align: center;
 }
 
@@ -319,10 +324,10 @@
 }
 
 .action-item {
-  padding: 5px 10px;
+  padding: 4px 8px;
   background: rgba(255, 255, 255, 0.1);
   border-radius: 5px;
-  font-size: 14px;
+  font-size: 12px;
   color: white;
 }
 
