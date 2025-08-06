@@ -160,6 +160,13 @@ export const PokerTable: React.FC<PokerTableProps> = ({ gameState, onAction, onR
         <div className="phase-indicator">
           Phase: <strong>{getPhaseDisplay(gameState.phase)}</strong>
         </div>
+        <div className="deck-info">
+          <div className="deck-stats">
+            Cards: {gameState.deckState.cardsRemaining} | 
+            Burn: {gameState.deckState.burnCount} | 
+            Discard: {gameState.deckState.discardCount}
+          </div>
+        </div>
         <div className="hand-number">
           Hand #{gameState.handNumber}
         </div>
@@ -198,13 +205,45 @@ export const PokerTable: React.FC<PokerTableProps> = ({ gameState, onAction, onR
           <div className="pot-amount">${gameState.pot}</div>
         </div>
 
-        <div className="community-cards">
-          {gameState.communityCards.length === 0 && gameState.phase !== PokerPhase.WAITING && (
-            <div className="cards-placeholder">Community cards will appear here</div>
-          )}
-          {gameState.communityCards.slice(0, dealtCommunityCards).map((card, index) => (
-            <PokerCard key={card.id} card={card} size="medium" />
-          ))}
+        <div className="card-area">
+          {/* Deck and burn pile */}
+          <div className="deck-section">
+            <div className="deck-stack">
+              {/* Multiple cards to create stack effect */}
+              <div className="deck-card deck-card-bottom"></div>
+              <div className="deck-card deck-card-middle"></div>
+              <div className="deck-card deck-card-top">
+                <div className="card-back">
+                  <div className="card-pattern"></div>
+                </div>
+              </div>
+              <div className="deck-label">{gameState.deckState.cardsRemaining}</div>
+            </div>
+            
+            {/* Burn pile */}
+            {gameState.deckState.burnCount > 0 && (
+              <div className="burn-pile">
+                {[...Array(Math.min(gameState.deckState.burnCount, 3))].map((_, i) => (
+                  <div key={i} className={`burn-card burn-card-${i}`}>
+                    <div className="card-back burn">
+                      <div className="card-pattern"></div>
+                    </div>
+                  </div>
+                ))}
+                <div className="burn-label">Burn ({gameState.deckState.burnCount})</div>
+              </div>
+            )}
+          </div>
+
+          {/* Community cards */}
+          <div className="community-cards">
+            {gameState.communityCards.length === 0 && gameState.phase !== PokerPhase.WAITING && (
+              <div className="cards-placeholder">Community cards will appear here</div>
+            )}
+            {gameState.communityCards.slice(0, dealtCommunityCards).map((card, index) => (
+              <PokerCard key={card.id} card={card} size="medium" />
+            ))}
+          </div>
         </div>
 
         {gameState.currentBet > 0 && (
@@ -299,15 +338,6 @@ export const PokerTable: React.FC<PokerTableProps> = ({ gameState, onAction, onR
             )}
           </div>
         )}
-      </div>
-
-      {/* Deck info */}
-      <div className="deck-info">
-        <div className="deck-stats">
-          Cards: {gameState.deckState.cardsRemaining} | 
-          Burn: {gameState.deckState.burnCount} | 
-          Discard: {gameState.deckState.discardCount}
-        </div>
       </div>
 
       {/* Action history */}

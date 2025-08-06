@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { PieceColor, PieceType } from '../types';
+import { PieceColor, PieceType, PurchasablePiece } from '../types';
 import { UpgradeDefinition, UpgradeState, TeamEconomy } from '../types/upgrades';
 import './UpgradeStore.css';
 
@@ -8,7 +8,9 @@ interface UpgradeStoreProps {
   upgrades: UpgradeState;
   economy: TeamEconomy;
   onPurchaseUpgrade: (upgradeId: string) => void;
+  onPurchasePiece?: (pieceType: PieceType) => void;
   availableUpgrades: UpgradeDefinition[];
+  purchasablePieces?: PurchasablePiece[];
 }
 
 const pieceEmojis: Record<PieceType, string> = {
@@ -25,8 +27,11 @@ const UpgradeStore: React.FC<UpgradeStoreProps> = ({
   upgrades,
   economy,
   onPurchaseUpgrade,
-  availableUpgrades
+  onPurchasePiece,
+  availableUpgrades,
+  purchasablePieces = []
 }) => {
+  const [activeTab, setActiveTab] = useState<'upgrades' | 'pieces'>('upgrades');
   const [selectedPiece, setSelectedPiece] = useState<PieceType | 'all'>('all');
   const [showingUpgrade, setShowingUpgrade] = useState<string | null>(null);
 
@@ -51,36 +56,59 @@ const UpgradeStore: React.FC<UpgradeStoreProps> = ({
     }
   };
 
+  const handlePurchasePiece = (pieceType: PieceType) => {
+    if (onPurchasePiece) {
+      onPurchasePiece(pieceType);
+    }
+  };
+
   return (
     <div className="upgrade-store">
       <div className="store-header">
-        <h2>Upgrade Store</h2>
+        <h2>Store</h2>
         <div className="store-balance">
           <span className="currency-symbol">💰</span>
           <span className="amount">{playerBalance}</span>
         </div>
       </div>
 
-      <div className="piece-filter">
+      <div className="store-tabs">
         <button 
-          className={selectedPiece === 'all' ? 'active' : ''}
-          onClick={() => setSelectedPiece('all')}
+          className={`tab ${activeTab === 'upgrades' ? 'active' : ''}`}
+          onClick={() => setActiveTab('upgrades')}
         >
-          All Pieces
+          Upgrades
         </button>
-        {Object.entries(pieceEmojis).map(([piece, emoji]) => (
-          <button
-            key={piece}
-            className={selectedPiece === piece ? 'active' : ''}
-            onClick={() => setSelectedPiece(piece as PieceType)}
-          >
-            {emoji} {piece}
-          </button>
-        ))}
+        <button 
+          className={`tab ${activeTab === 'pieces' ? 'active' : ''}`}
+          onClick={() => setActiveTab('pieces')}
+        >
+          Buy Pieces
+        </button>
       </div>
 
-      <div className="upgrades-grid">
-        {filteredUpgrades.map(upgrade => {
+      {activeTab === 'upgrades' && (
+        <>
+          <div className="piece-filter">
+            <button 
+              className={selectedPiece === 'all' ? 'active' : ''}
+              onClick={() => setSelectedPiece('all')}
+            >
+              All Pieces
+            </button>
+            {Object.entries(pieceEmojis).map(([piece, emoji]) => (
+              <button
+                key={piece}
+                className={selectedPiece === piece ? 'active' : ''}
+                onClick={() => setSelectedPiece(piece as PieceType)}
+              >
+                {emoji} {piece}
+              </button>
+            ))}
+          </div>
+
+          <div className="upgrades-grid">
+            {filteredUpgrades.map(upgrade => {
           const owned = isOwned(upgrade.id, upgrade.pieceType);
           return (
             <div 
@@ -134,11 +162,54 @@ const UpgradeStore: React.FC<UpgradeStoreProps> = ({
             </div>
           );
         })}
-      </div>
+          </div>
 
-      {filteredUpgrades.length === 0 && (
-        <div className="no-upgrades">
-          <p>No upgrades available for {selectedPiece === 'all' ? 'any piece' : selectedPiece}</p>
+          {filteredUpgrades.length === 0 && (
+            <div className="no-upgrades">
+              <p>No upgrades available for {selectedPiece === 'all' ? 'any piece' : selectedPiece}</p>
+            </div>
+          )}
+        </>
+      )}
+
+      {activeTab === 'pieces' && (
+        <div className="pieces-grid">
+          {purchasablePieces.map(piece => {
+            const canAfford = playerBalance >= piece.price;
+            return (
+              <div 
+                key={piece.type} 
+                className={`piece-card ${!canAfford ? 'unaffordable' : ''}`}
+              >
+                <div className="piece-header">
+                  <span className="piece-icon large">{pieceEmojis[piece.type]}</span>
+                  <h3>{piece.name}</h3>
+                </div>
+                
+                <p className="piece-description">{piece.description}</p>
+                
+                <div className="piece-footer">
+                  <div className="piece-cost">
+                    <span className="currency-symbol">💰</span>
+                    <span className="cost-amount">{piece.price}</span>
+                  </div>
+                  
+                  <button 
+                    className="purchase-btn"
+                    disabled={!canAfford}
+                    onClick={() => handlePurchasePiece(piece.type)}
+                  >
+                    {canAfford ? 'Purchase' : 'Insufficient Funds'}
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+          {purchasablePieces.length === 0 && (
+            <div className="no-pieces">
+              <p>Loading pieces...</p>
+            </div>
+          )}
         </div>
       )}
     </div>

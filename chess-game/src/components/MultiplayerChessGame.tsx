@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { Position, PieceColor } from '../types';
+import { Position, PieceColor, BarracksPiece, PurchasablePiece, PieceType } from '../types';
 import { ChessBoard } from './ChessBoard';
 import { ControlZoneStatusComponent } from './ControlZoneStatus';
 import { socketService, MultiplayerGameState, MatchState } from '../services/socketService';
@@ -7,6 +7,8 @@ import { UpgradeDefinition } from '../types/upgrades';
 import TeamEconomy from './TeamEconomy';
 import UpgradeStore from './UpgradeStore';
 import AdminPanel from './AdminPanel';
+import Barracks from './Barracks';
+import GameOverlay from './GameOverlay';
 import './ChessGame.css';
 
 interface MultiplayerChessGameProps {
@@ -31,7 +33,13 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [isAdminMode, setIsAdminMode] = useState(false);
   const [availableUpgrades, setAvailableUpgrades] = useState<UpgradeDefinition[]>([]);
+  const [purchasablePieces, setPurchasablePieces] = useState<PurchasablePiece[]>([]);
   const [matchState, setMatchState] = useState<MatchState | null>(null);
+  const [barracks, setBarracks] = useState<{ white: BarracksPiece[], black: BarracksPiece[] }>({ white: [], black: [] });
+  const [selectedBarracksPiece, setSelectedBarracksPiece] = useState<number | null>(null);
+  const [placementMode, setPlacementMode] = useState(false);
+  const [gameWinner, setGameWinner] = useState<'white' | 'black' | null>(null);
+  const [winReason, setWinReason] = useState<string | undefined>(undefined);
 
   // Convert match state to game state format
   const convertMatchStateToGameState = useCallback((matchState: MatchState): MultiplayerGameState | null => {
@@ -86,6 +94,18 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
         setGameState(gameState);
         setError(null);
       }
+      // Update barracks from match state
+      if (state.teams) {
+        setBarracks({
+          white: state.teams.white.barracks || [],
+          black: state.teams.black.barracks || []
+        });
+      }
+      // Check for game end
+      if (state.winCondition) {
+        setGameWinner(state.winCondition as 'white' | 'black');
+        setWinReason(state.winReason || undefined);
+      }
     });
 
     // Listen for moves
@@ -100,6 +120,18 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
           setPossibleMoves([]);
           setError(null);
         }
+        // Update barracks from match state
+        if (data.matchState.teams) {
+          setBarracks({
+            white: data.matchState.teams.white.barracks || [],
+            black: data.matchState.teams.black.barracks || []
+          });
+        }
+        // Check for game end
+        if (data.matchState.winCondition) {
+          setGameWinner(data.matchState.winCondition as 'white' | 'black');
+          setWinReason(data.matchState.winReason || undefined);
+        }
       }
     });
 
@@ -110,6 +142,18 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
       const gameState = convertMatchStateToGameState(data.matchState);
       if (gameState) {
         setGameState(gameState);
+      }
+      // Update barracks from match state
+      if (data.matchState.teams) {
+        setBarracks({
+          white: data.matchState.teams.white.barracks || [],
+          black: data.matchState.teams.black.barracks || []
+        });
+      }
+      // Check for game end
+      if (data.matchState.winCondition) {
+        setGameWinner(data.matchState.winCondition as 'white' | 'black');
+        setWinReason(data.matchState.winReason || undefined);
       }
     });
 
@@ -143,8 +187,72 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
       setError(error.message);
     });
 
-    // Request available upgrades
+    // Request available upgrades and purchasable pieces
     socket.emit('get_available_upgrades');
+    socket.emit('get_purchasable_pieces');
+
+    // Listen for purchasable pieces
+    socket.on('purchasable_pieces', (data: { pieces: PurchasablePiece[] }) => {
+      setPurchasablePieces(data.pieces);
+    });
+
+    // Listen for piece purchases
+    socket.on('piece_purchased', (data: any) => {
+      console.log('Piece purchased:', data);
+      if (data.matchState) {
+        setMatchState(data.matchState);
+        const gameState = convertMatchStateToGameState(data.matchState);
+        if (gameState) {
+          setGameState(gameState);
+        }
+        // Update barracks
+        if (data.matchState.teams) {
+          const newBarracks = {
+            white: data.matchState.teams.white.barracks || [],
+            black: data.matchState.teams.black.barracks || []
+          };
+          console.log('Setting barracks to:', newBarracks);
+          setBarracks(newBarracks);
+        }
+      }
+      if (data.team === gameState?.playerColor) {
+        setError(`Successfully purchased ${data.pieceType}!`);
+        setTimeout(() => setError(null), 3000);
+      }
+    });
+
+    // Listen for piece placement from barracks
+    socket.on('piece_placed_from_barracks', (data: any) => {
+      console.log('Piece placed from barracks:', data);
+      if (data.matchState) {
+        setMatchState(data.matchState);
+        const gameState = convertMatchStateToGameState(data.matchState);
+        if (gameState) {
+          setGameState(gameState);
+        }
+        // Update barracks
+        if (data.matchState.teams) {
+          setBarracks({
+            white: data.matchState.teams.white.barracks || [],
+            black: data.matchState.teams.black.barracks || []
+          });
+        }
+      }
+      // Show notification
+      const message = data.team === gameState?.playerColor 
+        ? `You placed a ${data.piece.type} at ${String.fromCharCode(97 + data.position.col)}${10 - data.position.row}`
+        : `Opponent placed a ${data.piece.type}`;
+      setError(message);
+      setTimeout(() => setError(null), 3000);
+    });
+
+    socket.on('purchase_error', (error: { message: string }) => {
+      setError(error.message);
+    });
+
+    socket.on('placement_error', (error: { message: string }) => {
+      setError(error.message);
+    });
 
     return () => {
       socket.off('match_state');
@@ -155,11 +263,38 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
       socket.off('upgrade_error');
       socket.off('possible_moves');
       socket.off('error');
+      socket.off('purchasable_pieces');
+      socket.off('piece_purchased');
+      socket.off('piece_placed_from_barracks');
+      socket.off('purchase_error');
+      socket.off('placement_error');
     };
   }, [gameId, convertMatchStateToGameState]);
 
   const handleSquareClick = useCallback((position: Position) => {
     console.log('handleSquareClick called:', { position, gameState: gameState?.status, isPlayerTurn: gameState?.isPlayerTurn, playerColor: gameState?.playerColor });
+    
+    // Handle barracks placement mode
+    if (placementMode && selectedBarracksPiece !== null) {
+      const backRow = gameState?.playerColor === 'white' ? 9 : 0;
+      if (position.row === backRow && !gameState?.board[position.row][position.col]) {
+        // Place piece from barracks
+        const socket = socketService.getSocket();
+        if (socket) {
+          socket.emit('place_from_barracks', {
+            matchId: gameId,
+            pieceIndex: selectedBarracksPiece,
+            targetPosition: position
+          });
+        }
+        setSelectedBarracksPiece(null);
+        setPlacementMode(false);
+        return;
+      } else {
+        setError("Pieces can only be placed on empty squares in your back row");
+        return;
+      }
+    }
     
     if (!gameState || !gameState.isPlayerTurn) {
       setError("It's not your turn!");
@@ -223,7 +358,7 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
       setPossibleMoves([]);
       setError("Invalid move!");
     }
-  }, [gameState, selectedSquare, possibleMoves]);
+  }, [gameState, selectedSquare, possibleMoves, placementMode, selectedBarracksPiece, gameId]);
 
   const handleLeaveGame = () => {
     socketService.disconnect();
@@ -232,6 +367,22 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
 
   const handlePurchaseUpgrade = (upgradeId: string) => {
     socketService.purchaseUpgrade(upgradeId);
+  };
+
+  const handlePurchasePiece = (pieceType: PieceType) => {
+    const socket = socketService.getSocket();
+    if (socket) {
+      socket.emit('purchase_piece', {
+        matchId: gameId,
+        pieceType: pieceType
+      });
+    }
+  };
+
+  const handleBarracksPieceSelect = (index: number | null) => {
+    console.log('Barracks piece selected:', index, 'Current barracks:', barracks[gameState?.playerColor || 'white']);
+    setSelectedBarracksPiece(index);
+    setPlacementMode(index !== null);
   };
 
   const handleUpdateEconomy = (color: PieceColor, amount: number) => {
@@ -346,6 +497,26 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
           playerColor={gameState.playerColor as PieceColor | null}
         />
       )}
+
+      {gameState.status === 'active' && gameState.playerColor && (
+        <Barracks
+          pieces={barracks[gameState.playerColor] || []}
+          playerColor={gameState.playerColor}
+          onPlacePiece={(pieceIndex, position) => {
+            const socket = socketService.getSocket();
+            if (socket) {
+              socket.emit('place_from_barracks', {
+                matchId: gameId,
+                pieceIndex: pieceIndex,
+                targetPosition: position
+              });
+            }
+          }}
+          placementMode={placementMode}
+          selectedPieceIndex={selectedBarracksPiece}
+          onSelectPiece={handleBarracksPieceSelect}
+        />
+      )}
       
       <div className="game-main">
         <div className="game-left">
@@ -360,6 +531,12 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
             controlZones={gameState.controlZones}
             onSquareClick={handleSquareClick}
             upgrades={gameState.upgrades}
+            highlightedSquares={placementMode ? 
+              Array.from({length: 16}, (_, col) => ({
+                row: gameState.playerColor === 'white' ? 9 : 0,
+                col
+              })).filter(pos => !gameState.board[pos.row][pos.col]) : []
+            }
           />
         </div>
         
@@ -395,7 +572,9 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
               upgrades={gameState.upgrades}
               economy={gameState.economy}
               onPurchaseUpgrade={handlePurchaseUpgrade}
+              onPurchasePiece={handlePurchasePiece}
               availableUpgrades={availableUpgrades}
+              purchasablePieces={purchasablePieces}
             />
           </div>
         </div>
@@ -417,6 +596,13 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
           </div>
         </div>
       )}
+
+      <GameOverlay 
+        winner={gameWinner}
+        reason={winReason}
+        playerTeam={matchState?.playerTeam}
+        onClose={handleLeaveGame}
+      />
     </div>
   );
 };

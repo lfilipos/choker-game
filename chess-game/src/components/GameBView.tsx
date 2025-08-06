@@ -4,8 +4,9 @@ import UpgradeStore from './UpgradeStore';
 import MiniChessBoard from './MiniChessBoard';
 import MiniControlZoneStatus from './MiniControlZoneStatus';
 import { PokerTable } from './PokerTable';
+import GameOverlay from './GameOverlay';
 import { PokerGameState, PokerMatchState } from '../types/poker';
-import { ChessPiece, Move, UpgradeState, TeamEconomy as TeamEconomyType, ControlZone, ControlZoneStatus } from '../types';
+import { ChessPiece, Move, UpgradeState, TeamEconomy as TeamEconomyType, ControlZone, ControlZoneStatus, PurchasablePiece, PieceType } from '../types';
 import './GameBView2.css';
 
 interface MatchState {
@@ -38,6 +39,8 @@ interface MatchState {
     controlZones?: ControlZone[];
     controlZoneStatuses?: ControlZoneStatus[];
   };
+  winCondition?: string | null;
+  winReason?: string | null;
 }
 
 interface GameBViewProps {
@@ -52,12 +55,15 @@ const GameBView: React.FC<GameBViewProps> = ({ matchId, socket, playerName, onLe
   const [showUpgradeStore, setShowUpgradeStore] = useState(false);
   const [chessMoveHistory, setChessMoveHistory] = useState<Move[]>([]);
   const [availableUpgrades, setAvailableUpgrades] = useState<any[]>([]);
+  const [purchasablePieces, setPurchasablePieces] = useState<PurchasablePiece[]>([]);
   const [chessBoard, setChessBoard] = useState<(ChessPiece | null)[][] | null>(null);
   const [chessCurrentPlayer, setChessCurrentPlayer] = useState<string>('white');
   const [controlZones, setControlZones] = useState<ControlZone[]>([]);
   const [controlZoneStatuses, setControlZoneStatuses] = useState<ControlZoneStatus[]>([]);
   const [pokerState, setPokerState] = useState<PokerGameState | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [gameWinner, setGameWinner] = useState<'white' | 'black' | null>(null);
+  const [winReason, setWinReason] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     // Get initial match state
@@ -68,6 +74,12 @@ const GameBView: React.FC<GameBViewProps> = ({ matchId, socket, playerName, onLe
       console.log('Received match state:', state);
       console.log('Current game:', state.currentGame);
       setMatchState(state);
+      
+      // Check for game end
+      if (state.winCondition) {
+        setGameWinner(state.winCondition as 'white' | 'black');
+        setWinReason(state.winReason || undefined);
+      }
       
       // Extract poker state if available
       const currentGame = state.currentGame as any;
@@ -109,6 +121,12 @@ const GameBView: React.FC<GameBViewProps> = ({ matchId, socket, playerName, onLe
       console.log('Updated current game:', data.matchState.currentGame);
       setMatchState(data.matchState);
       
+      // Check for game end
+      if (data.matchState.winCondition) {
+        setGameWinner(data.matchState.winCondition as 'white' | 'black');
+        setWinReason(data.matchState.winReason || undefined);
+      }
+      
       const currentGame = data.matchState.currentGame as any;
       console.log('Updated current game type:', currentGame?.type);
       console.log('Updated poker state available:', !!currentGame?.pokerState);
@@ -147,6 +165,12 @@ const GameBView: React.FC<GameBViewProps> = ({ matchId, socket, playerName, onLe
       // Update match state
       setMatchState(data.matchState);
       
+      // Check for game end
+      if (data.matchState.winCondition) {
+        setGameWinner(data.matchState.winCondition as 'white' | 'black');
+        setWinReason(data.matchState.winReason || undefined);
+      }
+      
       // If the move was from Game A (chess), update our move history and board
       if (data.gameSlot === 'A' && data.matchState.chessGameInfo) {
         if (data.matchState.chessGameInfo.moveHistory) {
@@ -177,11 +201,35 @@ const GameBView: React.FC<GameBViewProps> = ({ matchId, socket, playerName, onLe
       setError(error.message);
     });
 
-    // Get available upgrades
+    // Get available upgrades and purchasable pieces
+    console.log('GameBView: Requesting upgrades and purchasable pieces');
     socket.emit('get_available_upgrades');
+    socket.emit('get_purchasable_pieces');
     
     socket.on('available_upgrades', (data: { upgrades: any[] }) => {
       setAvailableUpgrades(data.upgrades);
+    });
+
+    socket.on('purchasable_pieces', (data: { pieces: PurchasablePiece[] }) => {
+      console.log('Received purchasable pieces:', data.pieces);
+      setPurchasablePieces(data.pieces);
+    });
+
+    socket.on('piece_purchased', (data: any) => {
+      console.log('Piece purchased:', data);
+      // Update match state if provided
+      if (data.matchState) {
+        setMatchState(data.matchState);
+        // Show success message using the team from the data
+        if (data.team === data.matchState.playerTeam) {
+          setError(`Successfully purchased ${data.pieceType}!`);
+          setTimeout(() => setError(null), 3000);
+        }
+      }
+    });
+
+    socket.on('purchase_error', (error: { message: string }) => {
+      setError(error.message);
     });
 
     return () => {
@@ -190,11 +238,23 @@ const GameBView: React.FC<GameBViewProps> = ({ matchId, socket, playerName, onLe
       socket.off('move_made');
       socket.off('error');
       socket.off('poker_error');
+      socket.off('available_upgrades');
+      socket.off('purchasable_pieces');
+      socket.off('piece_purchased');
+      socket.off('purchase_error');
     };
   }, [matchId, socket]);
 
   const handlePurchaseUpgrade = (upgradeId: string) => {
     socket.emit('purchase_upgrade', { upgradeId });
+  };
+
+  const handlePurchasePiece = (pieceType: PieceType) => {
+    console.log('Purchasing piece:', pieceType);
+    socket.emit('purchase_piece', {
+      matchId: matchId,
+      pieceType: pieceType
+    });
   };
 
   const handlePokerAction = useCallback((action: string, amount?: number) => {
@@ -285,7 +345,7 @@ const GameBView: React.FC<GameBViewProps> = ({ matchId, socket, playerName, onLe
             {controlZoneStatuses.length > 0 ? (
               <div className="zone-list">
                 {controlZoneStatuses.map((status, index) => (
-                  <div key={index} className="zone-item">
+                  <div key={index} className={`zone-item ${status.controlledBy === 'neutral' ? 'neutral' : status.controlledBy}`}>
                     <span className="zone-label">Zone {String.fromCharCode(65 + index)}</span>
                     <span className="zone-value">{status.controlledBy || 'Neutral'}</span>
                   </div>
@@ -376,7 +436,9 @@ const GameBView: React.FC<GameBViewProps> = ({ matchId, socket, playerName, onLe
               upgrades={upgrades}
               playerColor={matchState.playerTeam as 'white' | 'black'}
               onPurchaseUpgrade={handlePurchaseUpgrade}
+              onPurchasePiece={handlePurchasePiece}
               availableUpgrades={availableUpgrades}
+              purchasablePieces={purchasablePieces}
             />
             <button 
               className="close-modal"
@@ -389,6 +451,13 @@ const GameBView: React.FC<GameBViewProps> = ({ matchId, socket, playerName, onLe
       )}
 
       {/* Admin panel not available in Game B */}
+      
+      <GameOverlay 
+        winner={gameWinner}
+        reason={winReason}
+        playerTeam={matchState?.playerTeam}
+        onClose={onLeaveGame}
+      />
     </div>
   );
 };

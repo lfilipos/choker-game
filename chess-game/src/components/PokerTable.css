@@ -1,6 +1,5 @@
 .poker-table {
   width: 100%;
-  max-width: 1000px;
   margin: 0 auto;
   padding: 15px;
   background: #0d5c0d;
@@ -138,7 +137,7 @@
   border-radius: 200px 100px;
   padding: 20px;
   margin: 15px auto;
-  max-width: 550px;
+  max-width: 700px;
   min-height: 150px;
   display: flex;
   flex-direction: column;
@@ -169,6 +168,187 @@
   font-weight: bold;
 }
 
+/* Card area layout */
+.card-area {
+  display: flex;
+  align-items: center;
+  gap: 30px;
+  width: 100%;
+  justify-content: center;
+}
+
+.deck-section {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+
+/* Deck stack styling */
+.deck-stack {
+  position: relative;
+  width: 60px;
+  height: 85px;
+}
+
+.deck-card {
+  position: absolute;
+  width: 60px;
+  height: 85px;
+  background: white;
+  border: 2px solid #333;
+  border-radius: 6px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.deck-card-bottom {
+  top: 4px;
+  left: 4px;
+  z-index: 1;
+}
+
+.deck-card-middle {
+  top: 2px;
+  left: 2px;
+  z-index: 2;
+}
+
+.deck-card-top {
+  top: 0;
+  left: 0;
+  z-index: 3;
+  background: linear-gradient(45deg, #1e3c72, #2a5298);
+}
+
+.deck-card-top .card-back {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+}
+
+.deck-card-top .card-pattern {
+  width: 85%;
+  height: 85%;
+  background-image: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 8px,
+    rgba(255, 255, 255, 0.1) 8px,
+    rgba(255, 255, 255, 0.1) 16px
+  );
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+
+.deck-label {
+  position: absolute;
+  bottom: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 12px;
+  font-weight: bold;
+  background: rgba(0, 0, 0, 0.5);
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+/* Burn pile styling */
+.burn-pile {
+  position: relative;
+  width: 60px;
+  height: 85px;
+}
+
+/* Burn card animation */
+@keyframes burnCard {
+  0% {
+    opacity: 0;
+    transform: rotate(-90deg) translateX(30px) scale(0.8);
+  }
+  50% {
+    opacity: 0.5;
+    transform: rotate(-90deg) translateX(10px) scale(0.9);
+  }
+  100% {
+    opacity: 0.7;
+    transform: rotate(-90deg) translateX(0) scale(1);
+  }
+}
+
+.burn-card {
+  position: absolute;
+  width: 60px;
+  height: 85px;
+  transform: rotate(-90deg);
+  opacity: 0.7;
+  animation: burnCard 0.4s ease-out;
+}
+
+.burn-card-0 {
+  top: 0;
+  left: 0;
+  z-index: 3;
+  animation-delay: 0ms;
+}
+
+.burn-card-1 {
+  top: -3px;
+  left: -3px;
+  z-index: 2;
+  animation-delay: 100ms;
+}
+
+.burn-card-2 {
+  top: -6px;
+  left: -6px;
+  z-index: 1;
+  animation-delay: 200ms;
+}
+
+.burn-card .card-back {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(45deg, #4a0000, #8b0000);
+  border: 2px solid #333;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.burn-card .card-pattern {
+  width: 85%;
+  height: 85%;
+  background-image: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 8px,
+    rgba(255, 255, 255, 0.05) 8px,
+    rgba(255, 255, 255, 0.05) 16px
+  );
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+.burn-label {
+  position: absolute;
+  bottom: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: rgba(255, 100, 100, 0.8);
+  font-size: 11px;
+  font-weight: bold;
+  background: rgba(0, 0, 0, 0.5);
+  padding: 2px 6px;
+  border-radius: 8px;
+  white-space: nowrap;
+}
+
+/* Community cards */
 .community-cards {
   display: flex;
   justify-content: center;
@@ -283,16 +463,13 @@
   color: white;
 }
 
-/* Deck info */
+/* Deck info - now part of table-info bar */
 .deck-info {
-  position: absolute;
-  top: 20px;
-  right: 20px;
-  color: rgba(255, 255, 255, 0.5);
-  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 13px;
   background: rgba(0, 0, 0, 0.3);
-  padding: 5px 10px;
-  border-radius: 10px;
+  padding: 5px 15px;
+  border-radius: 20px;
 }
 
 /* Action history */

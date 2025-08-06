@@ -124,7 +124,7 @@
 }
 
 .zone-item {
-  background: #1a1a1a;
+  background: #7D7D7D;
   color: white;
   padding: 10px 12px;
   border-radius: 4px;
@@ -132,6 +132,29 @@
   justify-content: space-between;
   align-items: center;
   font-size: 14px;
+  transition: all 0.3s ease;
+  border: 2px solid transparent;
+}
+
+/* Neutral zone (default grey) */
+.zone-item.neutral {
+  background: #7D7D7D;
+  color: white;
+  border: 2px solid transparent;
+}
+
+/* Black controlled zone */
+.zone-item.black {
+  background: black;
+  color: white;
+  border: 2px solid transparent;
+}
+
+/* White controlled zone */
+.zone-item.white {
+  background: white;
+  color: black;
+  border: 2px solid black;
 }
 
 .zone-label {

@@ -66,3 +66,26 @@
   border-color: #27ae60;
   background-color: rgba(39, 174, 96, 0.3) !important;
 }
+
+.chess-square.highlighted {
+  box-shadow: inset 0 0 0 3px #9c27b0;
+  background-color: rgba(156, 39, 176, 0.2) !important;
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: inset 0 0 0 3px #9c27b0;
+  }
+  50% {
+    box-shadow: inset 0 0 0 5px #9c27b0;
+  }
+  100% {
+    box-shadow: inset 0 0 0 3px #9c27b0;
+  }
+}
+
+.chess-square.highlighted:hover {
+  background-color: rgba(156, 39, 176, 0.4) !important;
+  cursor: pointer;
+}

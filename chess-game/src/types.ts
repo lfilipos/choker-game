@@ -70,6 +70,20 @@ export interface TeamEconomy {
   black: number;
 }
 
+export interface BarracksPiece {
+  type: PieceType;
+  color: PieceColor;
+  purchasedAt?: Date;
+  purchasedBy?: string;
+}
+
+export interface PurchasablePiece {
+  type: PieceType;
+  price: number;
+  name: string;
+  description: string;
+}
+
 export interface GameState {
   board: Board;
   currentPlayer: PieceColor;
@@ -80,4 +94,8 @@ export interface GameState {
   controlZones: ControlZone[];
   upgrades: UpgradeState;
   economy: TeamEconomy;
+  barracks?: {
+    white: BarracksPiece[];
+    black: BarracksPiece[];
+  };
 }

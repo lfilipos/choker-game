@@ -13,6 +13,8 @@ const { PieceColor, CONTROL_ZONES } = require('./types');
 const { createInitialBoard, makeMove, isValidMove, calculateAllControlZoneStatuses } = require('./gameLogic');
 const UpgradeManager = require('./upgradeManager');
 const { PokerGameState } = require('./pokerGameState');
+const { canAffordPiece, getPiecePrice } = require('./pieceDefinitions');
+const { checkGameStatus } = require('./winConditions');
 
 class MatchManager {
   constructor() {
@@ -33,6 +35,7 @@ class MatchManager {
         [TeamColor.WHITE]: {
           economy: upgradeState.economy.white,
           upgrades: upgradeState.upgrades.white,
+          barracks: [], // Array of pieces waiting to be placed
           players: {
             [GameSlot.A]: null,
             [GameSlot.B]: null
@@ -41,6 +44,7 @@ class MatchManager {
         [TeamColor.BLACK]: {
           economy: upgradeState.economy.black,
           upgrades: upgradeState.upgrades.black,
+          barracks: [], // Array of pieces waiting to be placed
           players: {
             [GameSlot.A]: null,
             [GameSlot.B]: null
@@ -234,16 +238,35 @@ class MatchManager {
     match.teams[TeamColor.BLACK].upgrades = upgradeState.upgrades.black;
     match.teams[TeamColor.BLACK].economy = upgradeState.economy.black;
 
-    // Check for win conditions (checkmate, etc.)
-    // TODO: Implement win condition checking
+    // Check for win conditions after the move
+    const gameStatus = checkGameStatus(game.board);
+    if (gameStatus !== 'playing') {
+      // Game has ended
+      match.status = MatchStatus.COMPLETED;
+      if (gameStatus === 'white_wins') {
+        match.sharedState.winCondition = TeamColor.WHITE;
+        match.sharedState.winReason = 'all_kings_captured';
+        console.log('White team wins - all black kings captured!');
+      } else if (gameStatus === 'black_wins') {
+        match.sharedState.winCondition = TeamColor.BLACK;
+        match.sharedState.winReason = 'all_kings_captured';
+        console.log('Black team wins - all white kings captured!');
+      }
+    }
 
-    // Switch turns
-    game.currentPlayer = game.currentPlayer === PieceColor.WHITE ? PieceColor.BLACK : PieceColor.WHITE;
+    // Switch turns (only if game is still active)
+    if (match.status === MatchStatus.ACTIVE) {
+      game.currentPlayer = game.currentPlayer === PieceColor.WHITE ? PieceColor.BLACK : PieceColor.WHITE;
+    }
+    
     match.lastActivity = new Date();
 
     return {
       match,
-      move
+      move,
+      gameStatus: gameStatus,
+      winCondition: match.sharedState.winCondition,
+      winReason: match.sharedState.winReason
     };
   }
 
@@ -578,11 +601,13 @@ class MatchManager {
         [TeamColor.WHITE]: {
           economy: match.teams[TeamColor.WHITE].economy,
           upgrades: match.teams[TeamColor.WHITE].upgrades,
+          barracks: match.teams[TeamColor.WHITE].barracks || [],
           players: this._getTeamPlayers(match, TeamColor.WHITE)
         },
         [TeamColor.BLACK]: {
           economy: match.teams[TeamColor.BLACK].economy,
           upgrades: match.teams[TeamColor.BLACK].upgrades,
+          barracks: match.teams[TeamColor.BLACK].barracks || [],
           players: this._getTeamPlayers(match, TeamColor.BLACK)
         }
       },
@@ -604,6 +629,122 @@ class MatchManager {
         createdAt: match.createdAt,
         availableSlots: this._getAvailableSlots(match)
       }));
+  }
+
+  // Purchase a piece for the barracks
+  purchasePiece(matchId, socketId, pieceType) {
+    const match = this.matches.get(matchId);
+    if (!match) {
+      throw new Error('Match not found');
+    }
+
+    const playerInfo = this.playerSockets.get(socketId);
+    if (!playerInfo || playerInfo.matchId !== matchId) {
+      throw new Error('Player not in this match');
+    }
+
+    const team = getTeamFromRole(playerInfo.role);
+    const teamData = match.teams[team];
+    
+    // Check if team can afford the piece
+    if (!canAffordPiece(pieceType, teamData.economy)) {
+      throw new Error(`Cannot afford ${pieceType}. Price: ${getPiecePrice(pieceType)}, Balance: ${teamData.economy}`);
+    }
+
+    // Deduct the cost
+    const price = getPiecePrice(pieceType);
+    teamData.economy -= price;
+
+    // Add piece to barracks
+    teamData.barracks.push({
+      type: pieceType,
+      color: team === TeamColor.WHITE ? PieceColor.WHITE : PieceColor.BLACK,
+      purchasedAt: new Date(),
+      purchasedBy: socketId
+    });
+
+    match.lastActivity = new Date();
+    
+    return {
+      success: true,
+      piece: pieceType,
+      price: price,
+      newBalance: teamData.economy,
+      barracks: teamData.barracks
+    };
+  }
+
+  // Place a piece from barracks onto the board
+  placePieceFromBarracks(matchId, socketId, pieceIndex, targetPosition) {
+    const match = this.matches.get(matchId);
+    if (!match) {
+      throw new Error('Match not found');
+    }
+
+    const playerInfo = this.playerSockets.get(socketId);
+    if (!playerInfo || playerInfo.matchId !== matchId) {
+      throw new Error('Player not in this match');
+    }
+
+    const team = getTeamFromRole(playerInfo.role);
+    const teamData = match.teams[team];
+    const chessGame = match.games[GameSlot.A];
+
+    // Check if piece exists in barracks
+    if (pieceIndex < 0 || pieceIndex >= teamData.barracks.length) {
+      throw new Error('Invalid piece index in barracks');
+    }
+
+    const piece = teamData.barracks[pieceIndex];
+    
+    // Validate target position is on back row
+    const backRow = team === TeamColor.WHITE ? 9 : 0;
+    if (targetPosition.row !== backRow) {
+      throw new Error(`Pieces can only be placed on your back row (row ${backRow})`);
+    }
+
+    // Check if target square is empty
+    if (chessGame.board[targetPosition.row][targetPosition.col]) {
+      throw new Error('Target square is occupied');
+    }
+
+    // Place the piece on the board
+    chessGame.board[targetPosition.row][targetPosition.col] = {
+      type: piece.type,
+      color: piece.color
+    };
+
+    // Remove piece from barracks
+    teamData.barracks.splice(pieceIndex, 1);
+
+    // Check for win conditions after placing the piece (in case it's a king that changes the game)
+    const gameStatus = checkGameStatus(chessGame.board);
+    if (gameStatus !== 'playing') {
+      // Game has ended
+      match.status = MatchStatus.COMPLETED;
+      if (gameStatus === 'white_wins') {
+        match.sharedState.winCondition = TeamColor.WHITE;
+        match.sharedState.winReason = 'all_kings_captured';
+        console.log('White team wins - all black kings captured!');
+      } else if (gameStatus === 'black_wins') {
+        match.sharedState.winCondition = TeamColor.BLACK;
+        match.sharedState.winReason = 'all_kings_captured';
+        console.log('Black team wins - all white kings captured!');
+      }
+    }
+
+    match.lastActivity = new Date();
+
+    return {
+      success: true,
+      piece: piece,
+      position: targetPosition,
+      barracks: teamData.barracks,
+      board: chessGame.board,
+      gameStatus: gameStatus,
+      winCondition: match.sharedState.winCondition,
+      winReason: match.sharedState.winReason
+    };
   }
 
   // Remove player from match

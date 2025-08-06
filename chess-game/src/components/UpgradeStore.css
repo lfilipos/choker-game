@@ -30,6 +30,34 @@
   color: #2e7d32;
 }
 
+.store-tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  border-bottom: 2px solid #eee;
+}
+
+.store-tabs .tab {
+  padding: 10px 20px;
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 500;
+  color: #666;
+  transition: all 0.3s;
+}
+
+.store-tabs .tab:hover {
+  color: #333;
+}
+
+.store-tabs .tab.active {
+  color: #1976d2;
+  border-bottom-color: #1976d2;
+}
+
 .piece-filter {
   display: flex;
   gap: 10px;
@@ -208,6 +236,84 @@
   padding: 40px;
   color: #666;
   font-style: italic;
+}
+
+/* Piece purchase cards */
+.pieces-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 20px;
+}
+
+.piece-card {
+  background: #fff;
+  border: 2px solid #e0e0e0;
+  border-radius: 10px;
+  padding: 20px;
+  text-align: center;
+  transition: all 0.3s;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.piece-card:hover {
+  border-color: #1976d2;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.piece-card.unaffordable {
+  opacity: 0.6;
+  border-color: #ccc;
+}
+
+.piece-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.piece-icon.large {
+  font-size: 48px;
+  color: #333;
+}
+
+.piece-header h3 {
+  margin: 0;
+  font-size: 18px;
+  color: #333;
+}
+
+.piece-description {
+  color: #666;
+  font-size: 14px;
+  margin: 0;
+  flex-grow: 1;
+}
+
+.piece-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.piece-cost {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+  font-size: 18px;
+  font-weight: bold;
+  color: #2e7d32;
+}
+
+.no-pieces {
+  text-align: center;
+  padding: 40px;
+  color: #666;
+  font-size: 16px;
 }
 
 @media (max-width: 768px) {

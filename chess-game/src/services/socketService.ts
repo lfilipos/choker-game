@@ -1,12 +1,12 @@
 import { io, Socket } from 'socket.io-client';
-import { GameState, Position, Move, ControlZoneStatus } from '../types';
+import { GameState, Position, Move, ControlZoneStatus, PieceColor, BarracksPiece } from '../types';
 import { UpgradeDefinition, UpgradeState, TeamEconomy } from '../types/upgrades';
 
 export interface MultiplayerGameState extends Omit<GameState, 'selectedSquare' | 'possibleMoves'> {
   id: string;
   status: string;
   players: Record<string, { name: string; color: string; ready: boolean }>;
-  playerColor: string | null;
+  playerColor: PieceColor | null;
   isPlayerTurn: boolean;
   controlZoneStatuses: ControlZoneStatus[];
   upgrades: UpgradeState;
@@ -31,6 +31,7 @@ export interface MatchState {
     white: {
       economy: number;
       upgrades: any;
+      barracks?: BarracksPiece[];
       players: {
         A?: { name: string; ready: boolean };
         B?: { name: string; ready: boolean };
@@ -39,6 +40,7 @@ export interface MatchState {
     black: {
       economy: number;
       upgrades: any;
+      barracks?: BarracksPiece[];
       players: {
         A?: { name: string; ready: boolean };
         B?: { name: string; ready: boolean };

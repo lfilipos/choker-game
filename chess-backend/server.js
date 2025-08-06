@@ -7,6 +7,7 @@ require('dotenv').config();
 const MatchManager = require('./matchManager');
 const { getPossibleMoves } = require('./gameLogic');
 const { GameSlot, getTeamFromRole, getGameSlotFromRole } = require('./matchTypes');
+const { getPurchasablePieces } = require('./pieceDefinitions');
 
 const app = express();
 const server = http.createServer(app);
@@ -457,6 +458,67 @@ io.on('connection', (socket) => {
       } catch (error) {
         socket.emit('error', { message: error.message });
       }
+    } catch (error) {
+      socket.emit('error', { message: error.message });
+    }
+  });
+
+  // Purchase a piece for barracks
+  socket.on('purchase_piece', (data) => {
+    try {
+      const { matchId, pieceType } = data;
+      const result = matchManager.purchasePiece(matchId, socket.id, pieceType);
+      
+      // Notify all players in the match
+      for (const [socketId] of matchManager.playerSockets) {
+        if (matchManager.playerSockets.get(socketId)?.matchId === matchId) {
+          const playerMatchState = matchManager.getMatchState(matchId, socketId);
+          io.to(socketId).emit('piece_purchased', {
+            purchaser: socket.id,
+            pieceType: pieceType,
+            team: getTeamFromRole(matchManager.playerSockets.get(socket.id).role),
+            result: result,
+            matchState: playerMatchState
+          });
+        }
+      }
+    } catch (error) {
+      socket.emit('purchase_error', { message: error.message });
+    }
+  });
+
+  // Place piece from barracks
+  socket.on('place_from_barracks', (data) => {
+    try {
+      const { matchId, pieceIndex, targetPosition } = data;
+      const result = matchManager.placePieceFromBarracks(matchId, socket.id, pieceIndex, targetPosition);
+      
+      const playerInfo = matchManager.playerSockets.get(socket.id);
+      const team = getTeamFromRole(playerInfo.role);
+      
+      // Notify all players in the match
+      for (const [socketId] of matchManager.playerSockets) {
+        if (matchManager.playerSockets.get(socketId)?.matchId === matchId) {
+          const playerMatchState = matchManager.getMatchState(matchId, socketId);
+          io.to(socketId).emit('piece_placed_from_barracks', {
+            placer: socket.id,
+            team: team,
+            piece: result.piece,
+            position: result.position,
+            matchState: playerMatchState
+          });
+        }
+      }
+    } catch (error) {
+      socket.emit('placement_error', { message: error.message });
+    }
+  });
+
+  // Get purchasable pieces
+  socket.on('get_purchasable_pieces', () => {
+    try {
+      const pieces = getPurchasablePieces();
+      socket.emit('purchasable_pieces', { pieces });
     } catch (error) {
       socket.emit('error', { message: error.message });
     }

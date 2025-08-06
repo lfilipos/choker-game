@@ -12,6 +12,7 @@ interface ChessBoardProps {
   controlZones: ControlZone[];
   onSquareClick: (position: Position) => void;
   upgrades?: UpgradeState;
+  highlightedSquares?: Position[];
 }
 
 export const ChessBoard: React.FC<ChessBoardProps> = ({
@@ -21,6 +22,7 @@ export const ChessBoard: React.FC<ChessBoardProps> = ({
   controlZones,
   onSquareClick,
   upgrades,
+  highlightedSquares = [],
 }) => {
   const isSquareSelected = (row: number, col: number): boolean => {
     return selectedSquare !== null && selectedSquare.row === row && selectedSquare.col === col;
@@ -28,6 +30,10 @@ export const ChessBoard: React.FC<ChessBoardProps> = ({
 
   const isSquarePossibleMove = (row: number, col: number): boolean => {
     return possibleMoves.some(move => move.row === row && move.col === col);
+  };
+
+  const isSquareHighlighted = (row: number, col: number): boolean => {
+    return highlightedSquares.some(square => square.row === row && square.col === col);
   };
 
   const isLightSquare = (row: number, col: number): boolean => {
@@ -71,6 +77,7 @@ export const ChessBoard: React.FC<ChessBoardProps> = ({
                   isLight={isLightSquare(rowIndex, colIndex)}
                   isSelected={isSquareSelected(rowIndex, colIndex)}
                   isPossibleMove={isSquarePossibleMove(rowIndex, colIndex)}
+                  isHighlighted={isSquareHighlighted(rowIndex, colIndex)}
                   controlZone={controlZone}
                   onClick={onSquareClick}
                   upgrades={upgrades}
