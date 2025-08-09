@@ -15,6 +15,15 @@ interface AdminPanelProps {
 
 const pieceTypes: PieceType[] = ['pawn', 'knight', 'bishop', 'rook', 'queen', 'king'];
 
+const availableUpgradeIds: Record<PieceType, string[]> = {
+  pawn: ['pawn_speed_boost', 'pawn_diagonal_range', 'pawn_en_passant_plus'],
+  knight: ['knight_extended_leap', 'knight_double_jump'],
+  bishop: ['bishop_color_break', 'bishop_piercing'],
+  rook: ['rook_castle_anywhere', 'rook_siege_mode'],
+  queen: ['queen_teleport', 'queen_aura'],
+  king: ['king_double_step', 'king_swap']
+};
+
 const AdminPanel: React.FC<AdminPanelProps> = ({
   economy,
   upgrades,
@@ -26,6 +35,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 }) => {
   const [selectedTeam, setSelectedTeam] = useState<PieceColor>('white');
   const [moneyAmount, setMoneyAmount] = useState<string>('100');
+  const [selectedPieceType, setSelectedPieceType] = useState<PieceType>('pawn');
+  const [selectedUpgradeId, setSelectedUpgradeId] = useState<string>('');
 
   const handleAddMoney = () => {
     const amount = parseInt(moneyAmount) || 0;
@@ -105,6 +116,53 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
           <div className="admin-section">
             <h3>Upgrade Management</h3>
+            
+            <div className="upgrade-adder" style={{ marginBottom: '20px', padding: '15px', backgroundColor: '#f5f5f5', borderRadius: '8px' }}>
+              <h4>Add Upgrade</h4>
+              <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                <select 
+                  value={selectedPieceType}
+                  onChange={(e) => {
+                    setSelectedPieceType(e.target.value as PieceType);
+                    setSelectedUpgradeId('');
+                  }}
+                  style={{ padding: '5px', borderRadius: '4px', border: '1px solid #ccc' }}
+                >
+                  {pieceTypes.map(pt => (
+                    <option key={pt} value={pt}>
+                      {pt.charAt(0).toUpperCase() + pt.slice(1)}
+                    </option>
+                  ))}
+                </select>
+                
+                <select 
+                  value={selectedUpgradeId}
+                  onChange={(e) => setSelectedUpgradeId(e.target.value)}
+                  style={{ padding: '5px', borderRadius: '4px', border: '1px solid #ccc', flex: 1 }}
+                >
+                  <option value="">Select upgrade...</option>
+                  {availableUpgradeIds[selectedPieceType].map(upgradeId => (
+                    <option key={upgradeId} value={upgradeId}>
+                      {upgradeId.replace(/_/g, ' ')}
+                    </option>
+                  ))}
+                </select>
+                
+                <button 
+                  onClick={() => {
+                    if (selectedUpgradeId) {
+                      onToggleUpgrade(selectedTeam, selectedPieceType, selectedUpgradeId);
+                    }
+                  }}
+                  disabled={!selectedUpgradeId}
+                  className="btn-add"
+                  style={{ padding: '5px 15px' }}
+                >
+                  Add
+                </button>
+              </div>
+            </div>
+            
             <div className="upgrades-control">
               {pieceTypes.map(pieceType => (
                 <div key={pieceType} className="piece-upgrades">

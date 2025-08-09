@@ -49,9 +49,8 @@ class UpgradeManager {
       throw new Error('Invalid upgrade ID');
     }
     
-    if (upgrade.activationMethod !== ActivationMethod.PURCHASE) {
-      throw new Error('This upgrade cannot be purchased');
-    }
+    // Allow all upgrades to be purchased now
+    // (Previously restricted to PURCHASE activation method only)
     
     if (!this.canAfford(color, upgrade.cost)) {
       throw new Error('Insufficient funds');
@@ -192,8 +191,8 @@ class UpgradeManager {
     const available = [];
     
     Object.entries(UPGRADE_DEFINITIONS).forEach(([id, upgrade]) => {
-      if (upgrade.activationMethod === ActivationMethod.PURCHASE && 
-          !this.hasUpgrade(color, upgrade.pieceType, id)) {
+      // Show all upgrades that the player doesn't already have
+      if (!this.hasUpgrade(color, upgrade.pieceType, id)) {
         available.push({
           ...upgrade,
           canAfford: this.canAfford(color, upgrade.cost)

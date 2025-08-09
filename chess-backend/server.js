@@ -330,6 +330,153 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Admin panel actions
+  socket.on('admin_update_economy', (data) => {
+    try {
+      const { team, amount } = data;
+      const playerInfo = matchManager.playerSockets.get(socket.id);
+      if (!playerInfo) {
+        throw new Error('Player not found');
+      }
+      
+      const match = matchManager.matches.get(playerInfo.matchId);
+      if (!match) {
+        throw new Error('Match not found');
+      }
+      
+      // Update the economy
+      match.teams[team].economy = amount;
+      
+      // Send updated match state to all players in the match
+      for (const [socketId] of matchManager.playerSockets) {
+        if (matchManager.playerSockets.get(socketId)?.matchId === playerInfo.matchId) {
+          const playerMatchState = matchManager.getMatchState(playerInfo.matchId, socketId);
+          io.to(socketId).emit('match_state_updated', {
+            matchState: playerMatchState
+          });
+        }
+      }
+      
+      socket.emit('admin_success', { message: `Economy updated for ${team}` });
+    } catch (error) {
+      socket.emit('error', { message: error.message });
+    }
+  });
+
+  socket.on('admin_toggle_upgrade', (data) => {
+    try {
+      const { team, pieceType, upgradeId } = data;
+      const playerInfo = matchManager.playerSockets.get(socket.id);
+      if (!playerInfo) {
+        throw new Error('Player not found');
+      }
+      
+      const match = matchManager.matches.get(playerInfo.matchId);
+      if (!match) {
+        throw new Error('Match not found');
+      }
+      
+      const upgrades = match.teams[team].upgrades[pieceType];
+      const index = upgrades.indexOf(upgradeId);
+      
+      if (index > -1) {
+        // Remove the upgrade
+        upgrades.splice(index, 1);
+      } else {
+        // Add the upgrade
+        upgrades.push(upgradeId);
+      }
+      
+      // Send updated match state to all players in the match
+      for (const [socketId] of matchManager.playerSockets) {
+        if (matchManager.playerSockets.get(socketId)?.matchId === playerInfo.matchId) {
+          const playerMatchState = matchManager.getMatchState(playerInfo.matchId, socketId);
+          io.to(socketId).emit('match_state_updated', {
+            matchState: playerMatchState
+          });
+        }
+      }
+      
+      socket.emit('admin_success', { message: `Upgrade toggled for ${team} ${pieceType}` });
+    } catch (error) {
+      socket.emit('error', { message: error.message });
+    }
+  });
+
+  socket.on('admin_reset_upgrades', (data) => {
+    try {
+      const { team } = data;
+      const playerInfo = matchManager.playerSockets.get(socket.id);
+      if (!playerInfo) {
+        throw new Error('Player not found');
+      }
+      
+      const match = matchManager.matches.get(playerInfo.matchId);
+      if (!match) {
+        throw new Error('Match not found');
+      }
+      
+      // Reset all upgrades for the team
+      const { PieceType } = require('./types');
+      match.teams[team].upgrades = {
+        [PieceType.PAWN]: [],
+        [PieceType.KNIGHT]: [],
+        [PieceType.BISHOP]: [],
+        [PieceType.ROOK]: [],
+        [PieceType.QUEEN]: [],
+        [PieceType.KING]: []
+      };
+      
+      // Send updated match state to all players in the match
+      for (const [socketId] of matchManager.playerSockets) {
+        if (matchManager.playerSockets.get(socketId)?.matchId === playerInfo.matchId) {
+          const playerMatchState = matchManager.getMatchState(playerInfo.matchId, socketId);
+          io.to(socketId).emit('match_state_updated', {
+            matchState: playerMatchState
+          });
+        }
+      }
+      
+      socket.emit('admin_success', { message: `Upgrades reset for ${team}` });
+    } catch (error) {
+      socket.emit('error', { message: error.message });
+    }
+  });
+
+  socket.on('admin_add_upgrade', (data) => {
+    try {
+      const { team, pieceType, upgradeId } = data;
+      const playerInfo = matchManager.playerSockets.get(socket.id);
+      if (!playerInfo) {
+        throw new Error('Player not found');
+      }
+      
+      const match = matchManager.matches.get(playerInfo.matchId);
+      if (!match) {
+        throw new Error('Match not found');
+      }
+      
+      const upgrades = match.teams[team].upgrades[pieceType];
+      if (!upgrades.includes(upgradeId)) {
+        upgrades.push(upgradeId);
+      }
+      
+      // Send updated match state to all players in the match
+      for (const [socketId] of matchManager.playerSockets) {
+        if (matchManager.playerSockets.get(socketId)?.matchId === playerInfo.matchId) {
+          const playerMatchState = matchManager.getMatchState(playerInfo.matchId, socketId);
+          io.to(socketId).emit('match_state_updated', {
+            matchState: playerMatchState
+          });
+        }
+      }
+      
+      socket.emit('admin_success', { message: `Upgrade added for ${team} ${pieceType}` });
+    } catch (error) {
+      socket.emit('error', { message: error.message });
+    }
+  });
+
   // Poker game actions
   socket.on('poker_action', (data) => {
     try {

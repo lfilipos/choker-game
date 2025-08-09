@@ -269,6 +269,11 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
       setError(error.message);
     });
 
+    socket.on('admin_success', (data: { message: string }) => {
+      setError(data.message);
+      setTimeout(() => setError(null), 3000);
+    });
+
     return () => {
       socket.off('match_state');
       socket.off('move_made');
@@ -283,6 +288,7 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
       socket.off('piece_placed_from_barracks');
       socket.off('purchase_error');
       socket.off('placement_error');
+      socket.off('admin_success');
     };
   }, [gameId, convertMatchStateToGameState]);
 
@@ -401,18 +407,24 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
   };
 
   const handleUpdateEconomy = (color: PieceColor, amount: number) => {
-    // Admin function - would need backend support
-    console.log('Update economy:', color, amount);
+    const socket = socketService.getSocket();
+    if (socket) {
+      socket.emit('admin_update_economy', { team: color, amount });
+    }
   };
 
   const handleToggleUpgrade = (color: PieceColor, pieceType: string, upgradeId: string) => {
-    // Admin function - would need backend support
-    console.log('Toggle upgrade:', color, pieceType, upgradeId);
+    const socket = socketService.getSocket();
+    if (socket) {
+      socket.emit('admin_toggle_upgrade', { team: color, pieceType, upgradeId });
+    }
   };
 
   const handleResetUpgrades = (color: PieceColor) => {
-    // Admin function - would need backend support
-    console.log('Reset upgrades:', color);
+    const socket = socketService.getSocket();
+    if (socket) {
+      socket.emit('admin_reset_upgrades', { team: color });
+    }
   };
 
   if (!gameState) {
