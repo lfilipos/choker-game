@@ -1,5 +1,6 @@
 const { Deck, Card } = require('./pokerTypes');
 const { HandEvaluator } = require('./pokerHandEvaluator');
+const { POKER_EFFECT_TYPES, applyPokerEffects } = require('./pokerEffects');
 
 // Poker game phases
 const PokerPhase = {
@@ -55,6 +56,7 @@ class PokerPlayer {
     this.folded = false;
     this.allIn = false;
     this.hasActedThisRound = false;
+    this.hasThirdHoleCard = false; // Reset third card flag
   }
 
   resetForNewBettingRound() {
@@ -277,16 +279,35 @@ class PokerGameState {
   }
 
   // Deal hole cards to players
-  dealHoleCards() {
+  dealHoleCards(activePokerEffects = null, controlZoneOwnership = null) {
     if (this.phase !== PokerPhase.PRE_HAND) {
       throw new Error('Can only deal hole cards in PRE_HAND phase');
     }
     
     this.phase = PokerPhase.DEALING;
     
+    // Store initial control zone ownership for this round
+    // This determines who gets the third card and keeps it
+    this.roundControlZoneOwnership = controlZoneOwnership || {};
+    
     // Deal cards to each player
     this.players.forEach(player => {
-      const cards = this.deck.deal(this.settings.cardsPerHand);
+      let cardsToDeaclass = this.settings.cardsPerHand;
+      
+      // Apply DEAL type effects if available
+      if (activePokerEffects && activePokerEffects[player.team]) {
+        const dealEffects = activePokerEffects[player.team].filter(e => e.type === POKER_EFFECT_TYPES.DEAL);
+        if (dealEffects.length > 0) {
+          // Check for third hole card effect
+          const hasThirdCardEffect = dealEffects.some(e => e.id === 'effect_third_hole_card');
+          if (hasThirdCardEffect) {
+            cardsToDeaclass = 3; // Deal 3 cards instead of 2
+            player.hasThirdHoleCard = true; // Mark that this player has the third card
+          }
+        }
+      }
+      
+      const cards = this.deck.deal(cardsToDeaclass);
       player.receiveCards(cards);
     });
     
@@ -296,6 +317,42 @@ class PokerGameState {
       phase: this.phase,
       playersDealt: this.players.size
     };
+  }
+
+  // Handle control zone changes during a round
+  // If a team loses control of Zone A, they lose their third hole card
+  updateControlZoneEffects(currentControlZoneOwnership, activePokerEffects) {
+    if (!this.roundControlZoneOwnership) {
+      return false; // No initial ownership to compare against
+    }
+    
+    let cardsRemoved = false;
+    
+    // Check each player to see if they should lose their third card
+    this.players.forEach((player, team) => {
+      if (player.hasThirdHoleCard) {
+        // Check if this team still controls Zone A
+        const hadZoneA = this.roundControlZoneOwnership.A === team;
+        const hasZoneA = currentControlZoneOwnership.A === team;
+        
+        if (hadZoneA && !hasZoneA) {
+          // Lost control of Zone A - remove third hole card
+          if (player.hand.length === 3) {
+            // Remove the third card (last dealt card)
+            const removedCard = player.hand.pop();
+            console.log(`Team ${team} lost Zone A control - removed third hole card`);
+            player.hasThirdHoleCard = false;
+            cardsRemoved = true;
+            
+            // Update the round control zone ownership to reflect the loss
+            // This prevents the card from being removed multiple times
+            this.roundControlZoneOwnership.A = currentControlZoneOwnership.A;
+          }
+        }
+      }
+    });
+    
+    return cardsRemoved;
   }
 
   // Deal community cards based on current phase
@@ -826,6 +883,7 @@ class PokerGameState {
     this.bettingHistory = [];
     this.lastAction = null;
     this.lastShowdownResult = null;  // Clear the showdown result
+    this.roundControlZoneOwnership = null; // Clear control zone ownership from previous round
     
     // Rotate positions for next hand
     this.rotatePositions();

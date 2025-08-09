@@ -12,9 +12,10 @@ const {
 const { PieceColor, CONTROL_ZONES } = require('./types');
 const { createInitialBoard, makeMove, isValidMove, calculateAllControlZoneStatuses } = require('./gameLogic');
 const UpgradeManager = require('./upgradeManager');
-const { PokerGameState } = require('./pokerGameState');
+const { PokerGameState, PokerPhase } = require('./pokerGameState');
 const { canAffordPiece, getPiecePrice } = require('./pieceDefinitions');
 const { checkGameStatus } = require('./winConditions');
+const { getPokerEffectForZone, getActivePokerEffects, POKER_EFFECT_TYPES, applyPokerEffects, CONTROL_ZONE_POKER_EFFECTS, POKER_EFFECTS } = require('./pokerEffects');
 
 class MatchManager {
   constructor() {
@@ -68,6 +69,11 @@ class MatchManager {
       },
       sharedState: {
         upgradeManager: upgradeManager,
+        controlZoneOwnership: { A: null, B: null, C: null }, // null | TeamColor.WHITE | TeamColor.BLACK
+        activePokerEffects: {
+          [TeamColor.WHITE]: [],
+          [TeamColor.BLACK]: []
+        },
         winCondition: null, // null | TeamColor.WHITE | TeamColor.BLACK
         winReason: null
       },
@@ -83,6 +89,10 @@ class MatchManager {
       preferredTeam, 
       preferredGameSlot
     );
+
+    // Initialize control zone effects
+    const chessGame = match.games[GameSlot.A];
+    this._updateControlZoneEffects(match, chessGame);
 
     this.matches.set(matchId, match);
     this.playerSockets.set(creatorSocketId, { matchId, role: assignedRole });
@@ -147,8 +157,10 @@ class MatchManager {
           match.teams[dealerPlayer.team].lastBetAmount = pokerGame.smallBlind;
           match.teams[bigBlindPlayer.team].lastBetAmount = pokerGame.bigBlind;
           
-          pokerGame.dealHoleCards();
+          // Apply poker effects when dealing
+          pokerGame.dealHoleCards(match.sharedState.activePokerEffects, match.sharedState.controlZoneOwnership);
           console.log('Started poker game automatically with blinds paid');
+          console.log('Active poker effects:', match.sharedState.activePokerEffects);
           console.log('Pot after blinds:', pokerGame.pot);
         } catch (error) {
           console.error('Error starting poker game:', error);
@@ -228,8 +240,8 @@ class MatchManager {
     const controlledZones = this._countControlledZones(game, playerTeam);
     match.sharedState.upgradeManager.processTurnEnd(playerTeam, controlledZones);
     
-    // Update control zone upgrades
-    match.sharedState.upgradeManager.activateControlZoneUpgrades(game.controlZones, game.board);
+    // Update control zone ownership and poker effects
+    const cardsRemoved = this._updateControlZoneEffects(match, game);
     
     // Update match state with latest upgrade/economy info
     const upgradeState = match.sharedState.upgradeManager.getUpgradeState();
@@ -266,7 +278,8 @@ class MatchManager {
       move,
       gameStatus: gameStatus,
       winCondition: match.sharedState.winCondition,
-      winReason: match.sharedState.winReason
+      winReason: match.sharedState.winReason,
+      pokerCardsRemoved: cardsRemoved
     };
   }
 
@@ -394,8 +407,27 @@ class MatchManager {
     if (winners.length > 0) {
       // Split pot among winners
       console.log(`Pot size: ${pokerGame.pot}, Winners: ${winners.join(', ')}`);
-      const potShare = Math.floor(pokerGame.pot / winners.length);
+      let basePotShare = Math.floor(pokerGame.pot / winners.length);
+      
       winners.forEach(winner => {
+        let potShare = basePotShare;
+        
+        // Apply POT type effects for the winning team
+        const teamEffects = match.sharedState.activePokerEffects[winner] || [];
+        const potEffects = teamEffects.filter(e => e.type === POKER_EFFECT_TYPES.POT);
+        
+        if (potEffects.length > 0) {
+          console.log(`Applying ${potEffects.length} POT effects for team ${winner}`);
+          potEffects.forEach(effect => {
+            // For now, just apply a simple percentage bonus
+            if (effect.value) {
+              const bonus = Math.floor(potShare * effect.value);
+              potShare += bonus;
+              console.log(`${effect.name}: Adding ${bonus} (${effect.value * 100}%) bonus to pot`);
+            }
+          });
+        }
+        
         const beforeEconomy = match.teams[winner].economy;
         match.teams[winner].economy += potShare;
         console.log(`${winner} team wins ${potShare} chips (economy: ${beforeEconomy} -> ${match.teams[winner].economy})`);
@@ -474,9 +506,11 @@ class MatchManager {
       match.teams[dealerPlayer.team].lastBetAmount = pokerGame.smallBlind;
       match.teams[bigBlindPlayer.team].lastBetAmount = pokerGame.bigBlind;
       
-      pokerGame.dealHoleCards();
+      // Apply poker effects when dealing
+      pokerGame.dealHoleCards(match.sharedState.activePokerEffects, match.sharedState.controlZoneOwnership);
       
       console.log(`All players ready - started new poker hand with dealer: ${dealerPlayer.team}`);
+      console.log('Active poker effects:', match.sharedState.activePokerEffects);
       console.log(`Blinds paid - ${dealerPlayer.team}: -${pokerGame.smallBlind}, ${bigBlindPlayer.team}: -${pokerGame.bigBlind}`);
     }
     
@@ -614,7 +648,23 @@ class MatchManager {
       currentGame: gameState,
       chessGameInfo: chessGameInfo,
       winCondition: match.sharedState.winCondition,
-      winReason: match.sharedState.winReason
+      winReason: match.sharedState.winReason,
+      controlZoneOwnership: match.sharedState.controlZoneOwnership,
+      activePokerEffects: match.sharedState.activePokerEffects,
+      // Include poker effect definitions for each zone
+      controlZonePokerEffects: Object.entries(CONTROL_ZONE_POKER_EFFECTS).reduce((acc, [zoneId, effectId]) => {
+        const effect = POKER_EFFECTS[effectId];
+        if (effect) {
+          acc[zoneId] = {
+            id: effect.id,
+            name: effect.name,
+            description: effect.description,
+            type: effect.type,
+            icon: effect.icon
+          };
+        }
+        return acc;
+      }, {})
     };
   }
 
@@ -646,13 +696,22 @@ class MatchManager {
     const team = getTeamFromRole(playerInfo.role);
     const teamData = match.teams[team];
     
-    // Check if team can afford the piece
-    if (!canAffordPiece(pieceType, teamData.economy)) {
-      throw new Error(`Cannot afford ${pieceType}. Price: ${getPiecePrice(pieceType)}, Balance: ${teamData.economy}`);
+    // Get base price
+    let price = getPiecePrice(pieceType);
+    
+    // Check if team controls Zone C for discount
+    if (match.sharedState.controlZoneOwnership && match.sharedState.controlZoneOwnership.C === team) {
+      // Apply 50% discount for controlling Zone C
+      price = Math.ceil(price * 0.5);
+      console.log(`Zone C discount applied for ${team}: ${getPiecePrice(pieceType)} → ${price}`);
+    }
+    
+    // Check if team can afford the piece (with potential discount)
+    if (teamData.economy < price) {
+      throw new Error(`Cannot afford ${pieceType}. Price: ${price}, Balance: ${teamData.economy}`);
     }
 
     // Deduct the cost
-    const price = getPiecePrice(pieceType);
     teamData.economy -= price;
 
     // Add piece to barracks
@@ -906,6 +965,45 @@ class MatchManager {
     return players;
   }
 
+  _updateControlZoneEffects(match, game) {
+    // Calculate control zone ownership
+    const controlZoneStatuses = calculateAllControlZoneStatuses(game.board, game.controlZones);
+    game.controlZoneStatuses = controlZoneStatuses;
+    
+    // Update ownership tracking and poker effects
+    const newOwnership = {};
+    controlZoneStatuses.forEach(status => {
+      const zoneId = status.zone.id;
+      const controller = status.controlledBy === 'neutral' ? null : status.controlledBy;
+      newOwnership[zoneId] = controller;
+      
+      // Log control zone changes (only if ownership actually changed)
+      if (match.sharedState.controlZoneOwnership[zoneId] !== controller) {
+        const oldOwner = match.sharedState.controlZoneOwnership[zoneId] || 'neutral';
+        const newOwner = controller || 'neutral';
+        console.log(`Zone ${zoneId}: ${oldOwner} → ${newOwner}`);
+      }
+    });
+    
+    // Update ownership
+    match.sharedState.controlZoneOwnership = newOwnership;
+    
+    // Update active poker effects for each team
+    match.sharedState.activePokerEffects[TeamColor.WHITE] = getActivePokerEffects(newOwnership, TeamColor.WHITE);
+    match.sharedState.activePokerEffects[TeamColor.BLACK] = getActivePokerEffects(newOwnership, TeamColor.BLACK);
+    
+    // If there's an active poker game, update control zone effects (for third hole card removal)
+    const pokerGameWrapper = match.games[GameSlot.B];
+    const pokerGame = pokerGameWrapper?.state; // Get the actual PokerGameState instance
+    
+    let cardsRemoved = false;
+    if (pokerGame && pokerGame.phase && pokerGame.phase !== 'waiting' && pokerGame.phase !== 'waiting_for_ready') {
+      cardsRemoved = pokerGame.updateControlZoneEffects(newOwnership, match.sharedState.activePokerEffects);
+    }
+    
+    return cardsRemoved;
+  }
+  
   _countControlledZones(game, team) {
     if (game.type !== GameType.CHESS) {
       return 0;

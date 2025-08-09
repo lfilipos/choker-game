@@ -87,6 +87,9 @@ export const PokerTable: React.FC<PokerTableProps> = ({ gameState, onAction, onR
       
       // Animate dealing hole cards
       if (gameState.phase === PokerPhase.PRE_FLOP && gameState.player.hand.length > 0) {
+        const playerCardCount = gameState.player.hand.length;
+        const opponentCardCount = gameState.opponent?.handSize || 2;
+        
         // Deal player's first card
         setTimeout(() => setDealtPlayerCards(1), 200);
         // Deal opponent's first card
@@ -95,6 +98,14 @@ export const PokerTable: React.FC<PokerTableProps> = ({ gameState, onAction, onR
         setTimeout(() => setDealtPlayerCards(2), 600);
         // Deal opponent's second card
         setTimeout(() => setDealtOpponentCards(2), 800);
+        
+        // Deal third cards if either player has them
+        if (playerCardCount > 2) {
+          setTimeout(() => setDealtPlayerCards(3), 1000);
+        }
+        if (opponentCardCount > 2) {
+          setTimeout(() => setDealtOpponentCards(3), 1200);
+        }
       }
     }
     
@@ -183,6 +194,7 @@ export const PokerTable: React.FC<PokerTableProps> = ({ gameState, onAction, onR
             <div className="player-status">
               {gameState.opponent.folded && <span className="folded-text">FOLDED</span>}
               {gameState.opponent.allIn && <span className="all-in-text">ALL IN</span>}
+              {gameState.opponent.handSize > 2 && <span className="effect-badge">🎴 +1</span>}
             </div>
           </div>
           <div className="player-cards">
@@ -264,6 +276,7 @@ export const PokerTable: React.FC<PokerTableProps> = ({ gameState, onAction, onR
             <div className="player-status">
               {gameState.player.folded && <span className="folded-text">FOLDED</span>}
               {gameState.player.allIn && <span className="all-in-text">ALL IN</span>}
+              {gameState.player.hand.length > 2 && <span className="effect-badge">🎴 +1</span>}
             </div>
           </div>
           <div className="player-cards">

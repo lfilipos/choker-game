@@ -40,6 +40,7 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
   const [placementMode, setPlacementMode] = useState(false);
   const [gameWinner, setGameWinner] = useState<'white' | 'black' | null>(null);
   const [winReason, setWinReason] = useState<string | undefined>(undefined);
+  const [controlZonePokerEffects, setControlZonePokerEffects] = useState<Record<string, any>>({});
 
   // Convert match state to game state format
   const convertMatchStateToGameState = useCallback((matchState: MatchState): MultiplayerGameState | null => {
@@ -106,6 +107,10 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
         setGameWinner(state.winCondition as 'white' | 'black');
         setWinReason(state.winReason || undefined);
       }
+      // Update control zone poker effects
+      if (state.controlZonePokerEffects) {
+        setControlZonePokerEffects(state.controlZonePokerEffects);
+      }
     });
 
     // Listen for moves
@@ -132,6 +137,12 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
           setGameWinner(data.matchState.winCondition as 'white' | 'black');
           setWinReason(data.matchState.winReason || undefined);
         }
+        // Update control zone poker effects
+        if (data.matchState.controlZonePokerEffects) {
+          setControlZonePokerEffects(data.matchState.controlZonePokerEffects);
+          // Request updated purchasable pieces (prices may have changed due to Zone C)
+          socket.emit('get_purchasable_pieces');
+        }
       }
     });
 
@@ -154,6 +165,10 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
       if (data.matchState.winCondition) {
         setGameWinner(data.matchState.winCondition as 'white' | 'black');
         setWinReason(data.matchState.winReason || undefined);
+      }
+      // Update control zone poker effects
+      if (data.matchState.controlZonePokerEffects) {
+        setControlZonePokerEffects(data.matchState.controlZonePokerEffects);
       }
     });
 
@@ -542,7 +557,10 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
           <div className="game-board-section">
             {/* Control Zones Bar */}
             {gameState.status === 'active' && (
-              <EnhancedControlZones controlZoneStatuses={gameState.controlZoneStatuses} />
+              <EnhancedControlZones 
+                controlZoneStatuses={gameState.controlZoneStatuses}
+                pokerEffects={controlZonePokerEffects}
+              />
             )}
             
             {/* Chess Board */}

@@ -41,6 +41,7 @@ interface MatchState {
   };
   winCondition?: string | null;
   winReason?: string | null;
+  controlZonePokerEffects?: Record<string, any>;
 }
 
 interface GameBViewProps {
@@ -64,6 +65,7 @@ const GameBView: React.FC<GameBViewProps> = ({ matchId, socket, playerName, onLe
   const [error, setError] = useState<string | null>(null);
   const [gameWinner, setGameWinner] = useState<'white' | 'black' | null>(null);
   const [winReason, setWinReason] = useState<string | undefined>(undefined);
+  const [controlZonePokerEffects, setControlZonePokerEffects] = useState<Record<string, any>>({});
 
   useEffect(() => {
     // Get initial match state
@@ -79,6 +81,10 @@ const GameBView: React.FC<GameBViewProps> = ({ matchId, socket, playerName, onLe
       if (state.winCondition) {
         setGameWinner(state.winCondition as 'white' | 'black');
         setWinReason(state.winReason || undefined);
+      }
+      // Update control zone poker effects
+      if (state.controlZonePokerEffects) {
+        setControlZonePokerEffects(state.controlZonePokerEffects);
       }
       
       // Extract poker state if available
@@ -157,6 +163,8 @@ const GameBView: React.FC<GameBViewProps> = ({ matchId, socket, playerName, onLe
         }
         if (data.matchState.chessGameInfo.controlZoneStatuses) {
           setControlZoneStatuses(data.matchState.chessGameInfo.controlZoneStatuses);
+          // Request updated purchasable pieces (prices may have changed due to Zone C)
+          socket.emit('get_purchasable_pieces');
         }
       }
     });
@@ -187,6 +195,8 @@ const GameBView: React.FC<GameBViewProps> = ({ matchId, socket, playerName, onLe
         }
         if (data.matchState.chessGameInfo.controlZoneStatuses) {
           setControlZoneStatuses(data.matchState.chessGameInfo.controlZoneStatuses);
+          // Request updated purchasable pieces (prices may have changed due to Zone C)
+          socket.emit('get_purchasable_pieces');
         }
       }
     });
@@ -344,12 +354,24 @@ const GameBView: React.FC<GameBViewProps> = ({ matchId, socket, playerName, onLe
             <h3>Control zones</h3>
             {controlZoneStatuses.length > 0 ? (
               <div className="zone-list">
-                {controlZoneStatuses.map((status, index) => (
-                  <div key={index} className={`zone-item ${status.controlledBy === 'neutral' ? 'neutral' : status.controlledBy}`}>
-                    <span className="zone-label">Zone {String.fromCharCode(65 + index)}</span>
-                    <span className="zone-value">{status.controlledBy || 'Neutral'}</span>
-                  </div>
-                ))}
+                {controlZoneStatuses.map((status, index) => {
+                  const zoneId = String.fromCharCode(65 + index);
+                  const effect = controlZonePokerEffects[zoneId];
+                  return (
+                    <div key={index} className={`zone-item ${status.controlledBy === 'neutral' ? 'neutral' : status.controlledBy}`}>
+                      <div className="zone-header">
+                        <span className="zone-label">Zone {zoneId}</span>
+                        <span className="zone-value">{status.controlledBy === 'neutral' ? 'Neutral' : status.controlledBy.charAt(0).toUpperCase() + status.controlledBy.slice(1)}</span>
+                      </div>
+                      {effect && (
+                        <div className="zone-effect-text">
+                          {effect.icon && <span className="effect-icon">{effect.icon}</span>}
+                          <span className="effect-desc">{effect.description}</span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             ) : (
               <div className="zone-list">

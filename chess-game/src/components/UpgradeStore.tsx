@@ -191,7 +191,21 @@ const UpgradeStore: React.FC<UpgradeStoreProps> = ({
                 <div className="piece-footer">
                   <div className="piece-cost">
                     <span className="currency-symbol">💰</span>
-                    <span className="cost-amount">{piece.price}</span>
+                    {piece.hasDiscount ? (
+                      <>
+                        <span className="original-price" style={{textDecoration: 'line-through', opacity: 0.5, marginRight: '5px'}}>
+                          {piece.originalPrice}
+                        </span>
+                        <span className="cost-amount discounted" style={{color: '#4CAF50'}}>
+                          {piece.price}
+                        </span>
+                        <span style={{marginLeft: '5px', fontSize: '0.8em', color: '#4CAF50'}}>
+                          (Zone C)
+                        </span>
+                      </>
+                    ) : (
+                      <span className="cost-amount">{piece.price}</span>
+                    )}
                   </div>
                   
                   <button 

@@ -65,6 +65,9 @@ export interface MatchState {
   };
   winCondition?: string | null;
   winReason?: string | null;
+  controlZoneOwnership?: Record<string, string | null>;
+  activePokerEffects?: Record<string, any[]>;
+  controlZonePokerEffects?: Record<string, any>;
 }
 
 class SocketService {

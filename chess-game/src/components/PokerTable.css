@@ -112,6 +112,19 @@
   font-weight: bold;
 }
 
+.effect-badge {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.85em;
+  font-weight: bold;
+  margin-left: 5px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
 .player-cards {
   display: flex;
   justify-content: center;

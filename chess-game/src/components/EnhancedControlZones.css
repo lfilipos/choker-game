@@ -53,4 +53,18 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.effect-icon {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.effect-text {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }

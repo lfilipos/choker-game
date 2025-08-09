@@ -82,6 +82,8 @@ export interface PurchasablePiece {
   price: number;
   name: string;
   description: string;
+  originalPrice?: number;
+  hasDiscount?: boolean;
 }
 
 export interface GameState {

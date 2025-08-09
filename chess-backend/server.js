@@ -177,7 +177,8 @@ io.on('connection', (socket) => {
       const result = matchManager.makeGameMove(socket.id, gameSlot, from, to);
       
       // Send updated match state to all players in the match
-      const { match } = result;
+      const { match, pokerCardsRemoved } = result;
+      
       for (const [socketId] of matchManager.playerSockets) {
         if (matchManager.playerSockets.get(socketId)?.matchId === match.id) {
           const playerMatchState = matchManager.getMatchState(match.id, socketId);
@@ -186,6 +187,14 @@ io.on('connection', (socket) => {
             gameSlot: gameSlot,
             matchState: playerMatchState
           });
+          
+          // If poker cards were removed, also send a specific update
+          if (pokerCardsRemoved) {
+            io.to(socketId).emit('match_state_updated', {
+              matchState: playerMatchState,
+              reason: 'poker_cards_removed'
+            });
+          }
         }
       }
       
@@ -518,7 +527,34 @@ io.on('connection', (socket) => {
   socket.on('get_purchasable_pieces', () => {
     try {
       const pieces = getPurchasablePieces();
-      socket.emit('purchasable_pieces', { pieces });
+      
+      // Check if player has Zone C discount
+      const playerInfo = matchManager.playerSockets.get(socket.id);
+      let hasDiscount = false;
+      let discountedPieces = pieces;
+      
+      if (playerInfo) {
+        const match = matchManager.matches.get(playerInfo.matchId);
+        if (match) {
+          const team = getTeamFromRole(playerInfo.role);
+          hasDiscount = match.sharedState.controlZoneOwnership?.C === team;
+          
+          if (hasDiscount) {
+            // Apply discount to all pieces
+            discountedPieces = pieces.map(piece => ({
+              ...piece,
+              originalPrice: piece.price,
+              price: Math.ceil(piece.price * 0.5),
+              hasDiscount: true
+            }));
+          }
+        }
+      }
+      
+      socket.emit('purchasable_pieces', { 
+        pieces: discountedPieces,
+        hasZoneCDiscount: hasDiscount 
+      });
     } catch (error) {
       socket.emit('error', { message: error.message });
     }
