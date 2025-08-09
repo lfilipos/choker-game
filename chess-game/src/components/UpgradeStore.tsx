@@ -16,7 +16,7 @@ interface UpgradeStoreProps {
 const pieceEmojis: Record<PieceType, string> = {
   pawn: '♟',
   knight: '♞',
-  bishop: '♗',
+  bishop: '♝',
   rook: '♜',
   queen: '♛',
   king: '♚'

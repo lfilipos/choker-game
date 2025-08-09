@@ -1,14 +1,14 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { Position, PieceColor, BarracksPiece, PurchasablePiece, PieceType } from '../types';
 import { ChessBoard } from './ChessBoard';
-import { ControlZoneStatusComponent } from './ControlZoneStatus';
 import { socketService, MultiplayerGameState, MatchState } from '../services/socketService';
 import { UpgradeDefinition } from '../types/upgrades';
-import TeamEconomy from './TeamEconomy';
 import UpgradeStore from './UpgradeStore';
 import AdminPanel from './AdminPanel';
-import Barracks from './Barracks';
 import GameOverlay from './GameOverlay';
+import DualBarracks from './DualBarracks';
+import SidebarTreasury from './SidebarTreasury';
+import { EnhancedControlZones } from './EnhancedControlZones';
 import './ChessGame.css';
 
 interface MultiplayerChessGameProps {
@@ -491,68 +491,75 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
         </div>
       </div>
 
-      {gameState.status === 'active' && gameState.economy && (
-        <TeamEconomy 
-          economy={gameState.economy} 
-          playerColor={gameState.playerColor as PieceColor | null}
-        />
-      )}
-
-      {gameState.status === 'active' && gameState.playerColor && (
-        <Barracks
-          pieces={barracks[gameState.playerColor] || []}
-          playerColor={gameState.playerColor}
-          onPlacePiece={(pieceIndex, position) => {
-            const socket = socketService.getSocket();
-            if (socket) {
-              socket.emit('place_from_barracks', {
-                matchId: gameId,
-                pieceIndex: pieceIndex,
-                targetPosition: position
-              });
-            }
-          }}
-          placementMode={placementMode}
-          selectedPieceIndex={selectedBarracksPiece}
-          onSelectPiece={handleBarracksPieceSelect}
-        />
-      )}
-      
-      <div className="game-main">
-        <div className="game-left">
-          <ControlZoneStatusComponent controlZoneStatuses={gameState.controlZoneStatuses} />
-        </div>
-        
-        <div className="game-center">
-          <ChessBoard 
-            board={gameState.board}
-            selectedSquare={selectedSquare}
-            possibleMoves={possibleMoves}
-            controlZones={gameState.controlZones}
-            onSquareClick={handleSquareClick}
-            upgrades={gameState.upgrades}
-            highlightedSquares={placementMode ? 
-              Array.from({length: 16}, (_, col) => ({
-                row: gameState.playerColor === 'white' ? 9 : 0,
-                col
-              })).filter(pos => !gameState.board[pos.row][pos.col]) : []
-            }
-          />
-        </div>
-        
-        <div className="game-right">
-          <div className="move-history">
-            <h3>Move History</h3>
-            <div className="moves-list">
-              {gameState.moveHistory.map((move, index) => (
-                <div key={index} className="move-item">
-                  {index + 1}. {move.piece.color} {move.piece.type} 
-                  {String.fromCharCode(97 + move.from.col)}{10 - move.from.row} → 
-                  {String.fromCharCode(97 + move.to.col)}{10 - move.to.row}
-                  {move.capturedPiece && ` (captured ${move.capturedPiece.type})`}
+      <div className="game-main-container">
+        {/* Left Sidebar */}
+        <div className="game-sidebar-left">
+          {gameState.status === 'active' && gameState.economy && gameState.playerColor && (
+            <>
+              <SidebarTreasury 
+                economy={gameState.economy} 
+                playerColor={gameState.playerColor}
+              />
+              
+              <DualBarracks
+                playerBarracks={barracks[gameState.playerColor] || []}
+                enemyBarracks={barracks[gameState.playerColor === 'white' ? 'black' : 'white'] || []}
+                playerColor={gameState.playerColor}
+                selectedPieceIndex={selectedBarracksPiece}
+                onSelectPiece={handleBarracksPieceSelect}
+                placementMode={placementMode}
+              />
+              
+              {/* Move History */}
+              <div className="sidebar-move-history">
+                <h3>Move History</h3>
+                <div className="moves-list">
+                  {gameState.moveHistory.length === 0 ? (
+                    <div className="no-moves">No moves yet</div>
+                  ) : (
+                    gameState.moveHistory.slice(-10).map((move, index) => (
+                      <div key={gameState.moveHistory.length - 10 + index} className="move-item">
+                        <span className="move-number">{gameState.moveHistory.length - 9 + index}.</span>
+                        <span className={`move-piece ${move.piece.color}`}>
+                          {move.piece.color === 'white' ? 'W' : 'B'} {move.piece.type.charAt(0).toUpperCase()}
+                        </span>
+                        <span className="move-notation">
+                          {String.fromCharCode(97 + move.from.col)}{10 - move.from.row}
+                          {move.capturedPiece ? 'x' : '-'}
+                          {String.fromCharCode(97 + move.to.col)}{10 - move.to.row}
+                        </span>
+                      </div>
+                    ))
+                  )}
                 </div>
-              ))}
-            </div>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Main Game Area */}
+        <div className="game-main-area">
+          <div className="game-board-section">
+            {/* Control Zones Bar */}
+            {gameState.status === 'active' && (
+              <EnhancedControlZones controlZoneStatuses={gameState.controlZoneStatuses} />
+            )}
+            
+            {/* Chess Board */}
+            <ChessBoard 
+              board={gameState.board}
+              selectedSquare={selectedSquare}
+              possibleMoves={possibleMoves}
+              controlZones={gameState.controlZones}
+              onSquareClick={handleSquareClick}
+              upgrades={gameState.upgrades}
+              highlightedSquares={placementMode ? 
+                Array.from({length: 16}, (_, col) => ({
+                  row: gameState.playerColor === 'white' ? 9 : 0,
+                  col
+                })).filter(pos => !gameState.board[pos.row][pos.col]) : []
+              }
+            />
           </div>
         </div>
       </div>

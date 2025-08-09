@@ -1,0 +1,158 @@
+.dual-barracks {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: white;
+  border-radius: 8px;
+  padding: 15px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  min-height: 0;
+}
+
+.enemy-barracks-section {
+  flex: 0 0 35%;
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 10px;
+  min-height: 80px;
+  overflow: hidden;
+}
+
+.enemy-barracks-section h3 {
+  margin: 0 0 10px 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #d32f2f;
+  flex: 0 0 auto;
+}
+
+.team-barracks-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 100px;
+  overflow: hidden;
+}
+
+.team-barracks-section h3 {
+  margin: 0 0 10px 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #1976d2;
+  flex: 0 0 auto;
+}
+
+.divider {
+  height: 1px;
+  background: #e0e0e0;
+  margin: 10px 0;
+}
+
+.barracks-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  align-content: start;
+  overflow-y: auto;
+  overflow-x: hidden;
+  flex: 1;
+  padding-right: 5px;
+  min-height: 50px;
+}
+
+.barracks-piece {
+  width: 42px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f5f5f5;
+  border-radius: 4px;
+  border: 2px solid #e0e0e0;
+  transition: all 0.2s ease;
+}
+
+.barracks-piece.enemy-piece {
+  opacity: 0.7;
+  cursor: default;
+}
+
+.barracks-piece.team-piece {
+  cursor: pointer;
+}
+
+.barracks-piece.team-piece:hover {
+  background: #e8f4fd;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  border-color: #1976d2;
+}
+
+.barracks-piece.selected {
+  border-color: #1976d2;
+  background: #e3f2fd;
+  box-shadow: 0 0 12px rgba(25, 118, 210, 0.3);
+}
+
+.barracks-piece.placement-mode {
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+.piece-symbol {
+  font-size: 26px;
+  line-height: 1;
+  font-weight: bold;
+}
+
+.barracks-piece.white .piece-symbol {
+  color: #f0f0f0;
+  text-shadow: 
+    0 0 2px #000,
+    1px 1px 1px #000,
+    -1px -1px 1px #000;
+  filter: drop-shadow(0 1px 1px rgba(0,0,0,0.5));
+}
+
+.barracks-piece.black .piece-symbol {
+  color: #1a1a1a;
+  text-shadow: 0 0 1px rgba(255,255,255,0.3);
+}
+
+.empty-barracks {
+  grid-column: 1 / -1;
+  text-align: center;
+  color: #999;
+  font-size: 12px;
+  padding: 20px;
+  min-height: 60px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.barracks-hint {
+  margin-top: 5px;
+  font-size: 10px;
+  opacity: 0.7;
+}
+
+.placement-hint {
+  margin-top: 10px;
+  padding: 8px;
+  background: #e3f2fd;
+  border: 1px solid #1976d2;
+  border-radius: 4px;
+  text-align: center;
+  font-size: 11px;
+  color: #1976d2;
+}

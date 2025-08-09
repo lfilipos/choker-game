@@ -13,12 +13,12 @@ export const ChessPieceComponent: React.FC<ChessPieceComponentProps> = ({ piece,
   const getPieceSymbol = (): string => {
     const symbols = {
       white: {
-        king: '♔',
-        queen: '♕',
-        rook: '♖',
-        bishop: '♗',
-        knight: '♘',
-        pawn: '♙'
+        king: '♚',
+        queen: '♛',
+        rook: '♜',
+        bishop: '♝',
+        knight: '♞',
+        pawn: '♟'
       },
       black: {
         king: '♚',

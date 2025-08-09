@@ -12,12 +12,12 @@ const MiniChessBoard: React.FC<MiniChessBoardProps> = ({ board, currentPlayer, c
   const getPieceSymbol = (piece: ChessPiece): string => {
     const symbols = {
       white: { 
-        king: '♔', 
-        queen: '♕', 
-        rook: '♖', 
-        bishop: '♗', 
-        knight: '♘', 
-        pawn: '♙' 
+        king: '♚', 
+        queen: '♛', 
+        rook: '♜', 
+        bishop: '♝', 
+        knight: '♞', 
+        pawn: '♟' 
       },
       black: { 
         king: '♚', 

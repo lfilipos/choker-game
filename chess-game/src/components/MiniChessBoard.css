@@ -72,20 +72,31 @@
   justify-content: center;
   width: 100%;
   height: 100%;
-  font-size: 14px;
+  font-size: 16px;
+  font-weight: bold;
   line-height: 1;
   cursor: default;
   user-select: none;
 }
 
 .mini-piece.white {
-  color: #fff;
-  text-shadow: 0 0 2px #000, 0 0 3px #000;
+  color: #e8e8e8;
+  text-shadow: 
+    0 0 3px #000,
+    0 0 4px #000,
+    1px 1px 1px #000,
+    -1px -1px 1px #000,
+    1px -1px 1px #000,
+    -1px 1px 1px #000;
+  filter: drop-shadow(0 0.5px 1px rgba(0,0,0,0.8));
 }
 
 .mini-piece.black {
-  color: #000;
-  text-shadow: 0 0 2px #fff, 0 0 3px #fff;
+  color: #1a1a1a;
+  text-shadow: 
+    0 0 1px rgba(255,255,255,0.6),
+    0 1px 0 rgba(255,255,255,0.4);
+  filter: drop-shadow(0 0.5px 1px rgba(0,0,0,0.5));
 }
 
 /* Control zones */

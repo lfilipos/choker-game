@@ -1,0 +1,52 @@
+.sidebar-treasury {
+  background: white;
+  border-radius: 8px;
+  padding: 15px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-treasury h3 {
+  margin: 0 0 12px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+}
+
+.treasury-item {
+  margin-bottom: 12px;
+}
+
+.treasury-item:last-child {
+  margin-bottom: 0;
+}
+
+.treasury-label {
+  display: block;
+  font-size: 13px;
+  margin-bottom: 4px;
+  color: #666;
+}
+
+.treasury-value {
+  font-size: 18px;
+  font-weight: bold;
+  color: #2e7d32;
+  display: flex;
+  align-items: center;
+}
+
+.currency-symbol {
+  font-size: 20px;
+  margin-right: 4px;
+}
+
+.your-treasury .treasury-label {
+  color: #1976d2;
+}
+
+.opponent-treasury .treasury-label {
+  color: #d32f2f;
+}

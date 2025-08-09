@@ -13,12 +13,12 @@ interface BarracksProps {
 }
 
 const pieceEmojis: Record<PieceType, { white: string; black: string }> = {
-  pawn: { white: '♙', black: '♟' },
-  knight: { white: '♘', black: '♞' },
-  bishop: { white: '♗', black: '♝' },
-  rook: { white: '♖', black: '♜' },
-  queen: { white: '♕', black: '♛' },
-  king: { white: '♔', black: '♚' }
+  pawn: { white: '♟', black: '♟' },
+  knight: { white: '♞', black: '♞' },
+  bishop: { white: '♝', black: '♝' },
+  rook: { white: '♜', black: '♜' },
+  queen: { white: '♛', black: '♛' },
+  king: { white: '♚', black: '♚' }
 };
 
 const Barracks: React.FC<BarracksProps> = ({
