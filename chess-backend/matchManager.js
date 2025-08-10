@@ -1048,18 +1048,23 @@ class MatchManager {
     teamData.barracks.splice(pieceIndex, 1);
 
     // Check for win conditions after placing the piece (in case it's a king that changes the game)
-    const gameStatus = checkGameStatus(chessGame.board);
-    if (gameStatus !== 'playing') {
+    const economy = {
+      white: match.teams.white.economy,
+      black: match.teams.black.economy
+    };
+    const isPokerActive = match.games.B && match.games.B.status === 'in_hand';
+    const gameStatusResult = checkGameStatus(chessGame.board, economy, isPokerActive);
+    if (gameStatusResult.status !== 'playing') {
       // Game has ended
       match.status = MatchStatus.COMPLETED;
-      if (gameStatus === 'white_wins') {
+      if (gameStatusResult.status === 'white_wins') {
         match.sharedState.winCondition = TeamColor.WHITE;
-        match.sharedState.winReason = 'all_kings_captured';
-        console.log('White team wins - all black kings captured!');
-      } else if (gameStatus === 'black_wins') {
+        match.sharedState.winReason = gameStatusResult.reason;
+        console.log(`White team wins - ${gameStatusResult.reason}!`);
+      } else if (gameStatusResult.status === 'black_wins') {
         match.sharedState.winCondition = TeamColor.BLACK;
-        match.sharedState.winReason = 'all_kings_captured';
-        console.log('Black team wins - all white kings captured!');
+        match.sharedState.winReason = gameStatusResult.reason;
+        console.log(`Black team wins - ${gameStatusResult.reason}!`);
       }
     }
 
@@ -1071,7 +1076,7 @@ class MatchManager {
       position: targetPosition,
       barracks: teamData.barracks,
       board: chessGame.board,
-      gameStatus: gameStatus,
+      gameStatus: gameStatusResult.status,
       winCondition: match.sharedState.winCondition,
       winReason: match.sharedState.winReason
     };
