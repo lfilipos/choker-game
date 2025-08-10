@@ -613,7 +613,7 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
               <div className="sidebar-move-history">
                 <h3>Move History</h3>
                 <div className="moves-list">
-                  {gameState.moveHistory.length === 0 ? (
+                  {!gameState.moveHistory || gameState.moveHistory.length === 0 ? (
                     <div className="no-moves">No moves yet</div>
                   ) : (
                     gameState.moveHistory.slice(-10).map((move, index) => (
@@ -661,7 +661,7 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
                   col
                 })).filter(pos => !gameState.board[pos.row][pos.col]) : []
               }
-              lastMove={gameState.moveHistory.length > 0 ? 
+              lastMove={gameState.moveHistory && gameState.moveHistory.length > 0 ? 
                 gameState.moveHistory[gameState.moveHistory.length - 1] : null
               }
             />
