@@ -21,6 +21,17 @@ export const PokerTable: React.FC<PokerTableProps> = ({ gameState, onAction, onR
   const [dealtOpponentCards, setDealtOpponentCards] = useState<number>(0);
   const [dealtCommunityCards, setDealtCommunityCards] = useState<number>(0);
   const [lastHandNumber, setLastHandNumber] = useState<number>(0);
+  
+  // Check if game is auto-progressing
+  const isAutoProgressing = () => {
+    const playerAllIn = gameState.player?.allIn || false;
+    const opponentAllIn = gameState.opponent?.allIn || false;
+    const playerFolded = gameState.player?.folded || false;
+    const opponentFolded = gameState.opponent?.folded || false;
+    
+    // Auto-progress if at least one player is all-in and can't act
+    return (playerAllIn || opponentAllIn) && !playerFolded && !opponentFolded;
+  };
 
 
   useEffect(() => {
@@ -216,6 +227,13 @@ export const PokerTable: React.FC<PokerTableProps> = ({ gameState, onAction, onR
           <div className="pot-label">POT</div>
           <div className="pot-amount">${gameState.pot}</div>
         </div>
+        
+        {/* Auto-progress indicator */}
+        {isAutoProgressing() && gameState.phase !== PokerPhase.WAITING_FOR_READY && (
+          <div className="auto-progress-indicator">
+            <span className="auto-progress-text">⏱️ Auto-progressing (All-in)</span>
+          </div>
+        )}
 
         <div className="card-area">
           {/* Deck and burn pile */}
@@ -292,7 +310,7 @@ export const PokerTable: React.FC<PokerTableProps> = ({ gameState, onAction, onR
         </div>
 
         {/* Action buttons */}
-        {isCurrentTurn(gameState.player.team) && !gameState.player.folded && gameState.phase !== PokerPhase.WAITING_FOR_READY && (
+        {isCurrentTurn(gameState.player.team) && !gameState.player.folded && !gameState.player.allIn && gameState.phase !== PokerPhase.WAITING_FOR_READY && (
           <div className="action-buttons">
             {!showBetInput ? (
               gameState.validActions.map((action) => (

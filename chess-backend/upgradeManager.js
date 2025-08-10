@@ -38,7 +38,9 @@ class UpgradeManager {
 
   // Check if a team can afford an upgrade
   canAfford(color, cost) {
-    return this.economy[color] >= cost;
+    // Prevent purchases that would reduce bank to 0 or below
+    // Must have at least 1 money remaining after purchase
+    return this.economy[color] > cost;
   }
 
   // Purchase an upgrade

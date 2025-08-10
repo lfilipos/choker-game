@@ -417,7 +417,7 @@ class PokerGameState {
   }
 
   // Get valid actions for current player
-  getValidActions(team) {
+  getValidActions(team, teamEconomy = null) {
     const player = this.players.get(team);
     if (!player || player.folded || player.allIn) {
       return [];
@@ -428,6 +428,7 @@ class PokerGameState {
     }
     
     const actions = [];
+    const hasMoneyLeft = !teamEconomy || teamEconomy.liquid > 0;
     
     // Can always fold (unless all-in)
     actions.push(BettingAction.FOLD);
@@ -435,21 +436,35 @@ class PokerGameState {
     if (this.currentBet === 0) {
       // No bet to call
       actions.push(BettingAction.CHECK);
-      actions.push(BettingAction.BET);
+      if (hasMoneyLeft) {
+        actions.push(BettingAction.BET);
+      }
     } else {
       // There's a bet to match
       if (player.currentBet < this.currentBet) {
-        actions.push(BettingAction.CALL);
-        actions.push(BettingAction.RAISE);
+        if (hasMoneyLeft) {
+          const amountToCall = this.currentBet - player.currentBet;
+          if (!teamEconomy || teamEconomy.liquid >= amountToCall) {
+            actions.push(BettingAction.CALL);
+            actions.push(BettingAction.RAISE);
+          } else {
+            // Can only go all-in if can't afford to call
+            // All-in will be added below
+          }
+        }
       } else if (player.currentBet === this.currentBet) {
         // Player has matched the current bet
         actions.push(BettingAction.CHECK);
-        actions.push(BettingAction.RAISE);
+        if (hasMoneyLeft) {
+          actions.push(BettingAction.RAISE);
+        }
       }
     }
     
-    // Always can go all-in
-    actions.push(BettingAction.ALL_IN);
+    // Can go all-in only if have money left
+    if (hasMoneyLeft) {
+      actions.push(BettingAction.ALL_IN);
+    }
     
     return actions;
   }
@@ -461,7 +476,7 @@ class PokerGameState {
   }
 
   // Get game state for a specific player
-  getPlayerGameState(team) {
+  getPlayerGameState(team, teamEconomy = null) {
     const player = this.players.get(team);
     if (!player) {
       return null;
@@ -481,7 +496,7 @@ class PokerGameState {
         hand: player.hand.map(card => card.toJSON())
       },
       opponent: opponent ? opponent.toJSON() : null,
-      validActions: this.getValidActions(team),
+      validActions: this.getValidActions(team, teamEconomy),
       minimumRaise: this.getMinimumRaise(),
       deckState: this.deck.getState(),
       lastAction: this.lastAction,
@@ -577,9 +592,9 @@ class PokerGameState {
     }
 
     // Validate action is allowed
-    const validActions = this.getValidActions(team);
+    const validActions = this.getValidActions(team, teamEconomy);
     if (!validActions.includes(action)) {
-      throw new Error(`Invalid action: ${action}`);
+      throw new Error(`Invalid action: ${action}. Valid actions: ${validActions.join(', ')}`);
     }
 
     // Process the action
@@ -733,6 +748,36 @@ class PokerGameState {
     // TODO: Handle side pot creation for all-in situations
   }
 
+  // Check if betting should auto-progress (when at least one player is all-in and can't act)
+  shouldAutoProgress() {
+    let activeCount = 0;
+    let allInCount = 0;
+    let foldedCount = 0;
+    
+    this.players.forEach(player => {
+      if (player.folded) {
+        foldedCount++;
+      } else if (player.allIn) {
+        allInCount++;
+      } else {
+        activeCount++;
+      }
+    });
+    
+    // Auto-progress if:
+    // 1. At least one player is all-in
+    // 2. Only one or zero players can still act (the rest are all-in or folded)
+    return allInCount > 0 && activeCount <= 1;
+  }
+  
+  // Get delay for auto-progression
+  getAutoProgressDelay() {
+    if (this.phase === PokerPhase.SHOWDOWN || this.phase === PokerPhase.RIVER) {
+      return 5000; // 5 seconds for showdown/final round
+    }
+    return 3000; // 3 seconds for other rounds
+  }
+  
   advanceTurn() {
     const teams = Array.from(this.players.keys());
     const currentIndex = teams.indexOf(this.currentTurn);

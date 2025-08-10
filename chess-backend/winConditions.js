@@ -26,20 +26,33 @@ function hasTeamLost(board, color) {
 /**
  * Check game status after a move
  * Returns: 'playing', 'white_wins', 'black_wins'
+ * Also includes win reason if there is a winner
  */
-function checkGameStatus(board) {
+function checkGameStatus(board, economy = null, isPokerRoundActive = false) {
   const whiteKings = countKings(board, PieceColor.WHITE);
   const blackKings = countKings(board, PieceColor.BLACK);
   
+  // Military victory - all kings captured
   if (blackKings === 0) {
-    return 'white_wins';
+    return { status: 'white_wins', reason: 'All black kings captured' };
   }
   
   if (whiteKings === 0) {
-    return 'black_wins';
+    return { status: 'black_wins', reason: 'All white kings captured' };
   }
   
-  return 'playing';
+  // Economic victory - team bankrupt
+  // Only check if not in the middle of a poker round (all-in protection)
+  if (economy && !isPokerRoundActive) {
+    if (economy.white <= 0) {
+      return { status: 'black_wins', reason: 'White team bankrupt' };
+    }
+    if (economy.black <= 0) {
+      return { status: 'white_wins', reason: 'Black team bankrupt' };
+    }
+  }
+  
+  return { status: 'playing', reason: null };
 }
 
 /**

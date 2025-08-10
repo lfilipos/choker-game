@@ -309,18 +309,23 @@ class MatchManager {
     match.teams[TeamColor.BLACK].upgrades = upgradeState.upgrades.black;
 
     // Check for win conditions after the move
-    const gameStatus = checkGameStatus(game.board);
-    if (gameStatus !== 'playing') {
+    const isPokerActive = match.games.B && match.games.B.status === 'in_hand';
+    const economy = {
+      white: match.teams.white.economy,
+      black: match.teams.black.economy
+    };
+    const gameStatusResult = checkGameStatus(game.board, economy, isPokerActive);
+    if (gameStatusResult.status !== 'playing') {
       // Game has ended
       match.status = MatchStatus.COMPLETED;
-      if (gameStatus === 'white_wins') {
+      if (gameStatusResult.status === 'white_wins') {
         match.sharedState.winCondition = TeamColor.WHITE;
-        match.sharedState.winReason = 'all_kings_captured';
-        console.log('White team wins - all black kings captured!');
-      } else if (gameStatus === 'black_wins') {
+        match.sharedState.winReason = gameStatusResult.reason;
+        console.log(`White team wins - ${gameStatusResult.reason}!`);
+      } else if (gameStatusResult.status === 'black_wins') {
         match.sharedState.winCondition = TeamColor.BLACK;
-        match.sharedState.winReason = 'all_kings_captured';
-        console.log('Black team wins - all white kings captured!');
+        match.sharedState.winReason = gameStatusResult.reason;
+        console.log(`Black team wins - ${gameStatusResult.reason}!`);
       }
     }
 
@@ -406,6 +411,16 @@ class MatchManager {
         console.log('Hand complete (player folded), completing hand...');
         this.completePokerHand(match);
       }
+      // Check if we should auto-progress due to all-in
+      else if (pokerGame.shouldAutoProgress()) {
+        console.log('Auto-progressing due to all-in situation');
+        const delay = pokerGame.getAutoProgressDelay();
+        
+        // Schedule auto-progression
+        setTimeout(() => {
+          this.autoProgressPokerRound(matchId);
+        }, delay);
+      }
       
       match.lastActivity = new Date();
       
@@ -419,6 +434,46 @@ class MatchManager {
         success: false,
         error: error.message
       };
+    }
+  }
+
+  // Auto-progress poker round when players are all-in
+  autoProgressPokerRound(matchId) {
+    const match = this.matches.get(matchId);
+    if (!match || match.status !== MatchStatus.ACTIVE) {
+      return;
+    }
+    
+    const pokerGame = match.games[GameSlot.B]?.state;
+    if (!pokerGame) {
+      return;
+    }
+    
+    // Check if we still need to auto-progress
+    if (!pokerGame.shouldAutoProgress()) {
+      return;
+    }
+    
+    console.log(`Auto-progressing poker round for match ${matchId}, current phase: ${pokerGame.phase}`);
+    
+    // Check if betting round is complete
+    if (pokerGame.isBettingRoundComplete()) {
+      const enteredShowdown = pokerGame.completeBettingRound();
+      
+      if (enteredShowdown || pokerGame.phase === 'showdown') {
+        // Give a delay before showdown
+        setTimeout(() => {
+          this.completePokerHand(match);
+        }, pokerGame.getAutoProgressDelay());
+      } else {
+        // Continue auto-progressing through rounds
+        setTimeout(() => {
+          this.autoProgressPokerRound(matchId);
+        }, pokerGame.getAutoProgressDelay());
+      }
+      
+      // Broadcast the updated state
+      this.broadcastMatchState(match);
     }
   }
 
@@ -507,6 +562,27 @@ class MatchManager {
       // Complete the hand and wait for players to be ready
       pokerGame.completeHand(showdownResult);
       console.log('Poker hand completed, phase is now:', pokerGame.phase);
+      
+      // Check for economic victory now that poker round is complete
+      const economy = {
+        white: match.teams.white.economy,
+        black: match.teams.black.economy
+      };
+      const gameStatusResult = checkGameStatus(match.games[GameSlot.A].board, economy, false);
+      
+      if (gameStatusResult.status !== 'playing') {
+        // Game has ended due to economic victory
+        match.status = MatchStatus.COMPLETED;
+        if (gameStatusResult.status === 'white_wins') {
+          match.sharedState.winCondition = TeamColor.WHITE;
+          match.sharedState.winReason = gameStatusResult.reason;
+          console.log(`White team wins - ${gameStatusResult.reason}!`);
+        } else if (gameStatusResult.status === 'black_wins') {
+          match.sharedState.winCondition = TeamColor.BLACK;
+          match.sharedState.winReason = gameStatusResult.reason;
+          console.log(`Black team wins - ${gameStatusResult.reason}!`);
+        }
+      }
     }
   }
 
@@ -673,10 +749,11 @@ class MatchManager {
     const cost = modifier.getCost(stateForModifiers);
     const teamEconomy = match.teams[playerTeam].economy;
     
-    if (teamEconomy < cost) {
+    // Must have at least 1 money remaining after purchase
+    if (teamEconomy <= cost) {
       return {
         success: false,
-        error: 'Insufficient funds'
+        error: 'Insufficient funds. Must retain at least 1 money.'
       };
     }
     
@@ -786,7 +863,8 @@ class MatchManager {
     } else {
       // Game B (Poker) state
       const pokerState = game.state;
-      const pokerPlayerState = pokerState.getPlayerGameState(playerTeam);
+      const teamEconomy = { liquid: match.teams[playerTeam].economy };
+      const pokerPlayerState = pokerState.getPlayerGameState(playerTeam, teamEconomy);
       
       // Include ready state if in waiting_for_ready phase
       const playersReady = pokerState.phase === 'waiting_for_ready' 
@@ -898,8 +976,9 @@ class MatchManager {
     }
     
     // Check if team can afford the piece (with potential discount)
-    if (teamData.economy < price) {
-      throw new Error(`Cannot afford ${pieceType}. Price: ${price}, Balance: ${teamData.economy}`);
+    // Must have at least 1 money remaining after purchase
+    if (teamData.economy <= price) {
+      throw new Error(`Cannot afford ${pieceType}. Price: ${price}, Balance: ${teamData.economy}. Must retain at least 1 money.`);
     }
 
     // Deduct the cost from both places

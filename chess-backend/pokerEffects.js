@@ -25,14 +25,14 @@ const POKER_EFFECTS = {
   
   effect_placeholder_b: {
     id: 'effect_placeholder_b',
-    name: 'Zone B Effect',
-    description: 'Placeholder for Zone B poker effect',
+    name: 'Pot Bonus',
+    description: '25% pot bonus on poker hands won',
     type: POKER_EFFECT_TYPES.POT,
     icon: '💰',
-    value: 0.25, // Example: 25% bonus
+    value: 0.25, // 25% bonus
     apply: (winnings, team) => {
-      // To be implemented
-      return winnings;
+      // Apply 25% bonus to pot winnings
+      return Math.floor(winnings * 1.25);
     }
   },
   

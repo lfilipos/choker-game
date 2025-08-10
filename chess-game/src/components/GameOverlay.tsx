@@ -15,6 +15,14 @@ const GameOverlay: React.FC<GameOverlayProps> = ({ winner, reason, playerTeam, o
   const winnerText = winner.charAt(0).toUpperCase() + winner.slice(1);
   
   const getReasonText = () => {
+    // Handle both old format and new format reasons
+    if (reason?.includes('kings captured')) {
+      return 'All enemy kings have been captured!';
+    }
+    if (reason?.includes('bankrupt')) {
+      const bankruptTeam = reason.includes('White') ? 'White' : 'Black';
+      return `${bankruptTeam} team has gone bankrupt!`;
+    }
     switch (reason) {
       case 'all_kings_captured':
         return 'All enemy kings have been captured!';
@@ -23,7 +31,7 @@ const GameOverlay: React.FC<GameOverlayProps> = ({ winner, reason, playerTeam, o
       case 'forfeit':
         return 'Opponent forfeited';
       default:
-        return '';
+        return reason || '';
     }
   };
 

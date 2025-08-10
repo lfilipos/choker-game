@@ -11,6 +11,7 @@ interface ChessSquareProps {
   isSelected: boolean;
   isPossibleMove: boolean;
   isHighlighted?: boolean;
+  isLastMove?: boolean;
   controlZone: ControlZone | null;
   onClick: (position: Position) => void;
   upgrades?: UpgradeState;
@@ -23,6 +24,7 @@ export const ChessSquare: React.FC<ChessSquareProps> = ({
   isSelected,
   isPossibleMove,
   isHighlighted = false,
+  isLastMove = false,
   controlZone,
   onClick,
   upgrades,
@@ -50,6 +52,10 @@ export const ChessSquare: React.FC<ChessSquareProps> = ({
     
     if (isHighlighted) {
       classes.push('highlighted');
+    }
+    
+    if (isLastMove) {
+      classes.push('last-move');
     }
     
     if (controlZone) {

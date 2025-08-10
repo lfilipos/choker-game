@@ -2,6 +2,7 @@ import React from 'react';
 import { Board, Position, ControlZone } from '../types';
 import { UpgradeState } from '../types/upgrades';
 import { ChessSquare } from './ChessSquare';
+import { MoveArrow } from './MoveArrow';
 import { isSquareInControlZone } from '../utils/controlZones';
 import './ChessBoard.css';
 
@@ -13,6 +14,7 @@ interface ChessBoardProps {
   onSquareClick: (position: Position) => void;
   upgrades?: UpgradeState;
   highlightedSquares?: Position[];
+  lastMove?: { from: Position; to: Position; piece: { type: string; color: string } } | null;
 }
 
 export const ChessBoard: React.FC<ChessBoardProps> = ({
@@ -23,6 +25,7 @@ export const ChessBoard: React.FC<ChessBoardProps> = ({
   onSquareClick,
   upgrades,
   highlightedSquares = [],
+  lastMove,
 }) => {
   const isSquareSelected = (row: number, col: number): boolean => {
     return selectedSquare !== null && selectedSquare.row === row && selectedSquare.col === col;
@@ -38,6 +41,11 @@ export const ChessBoard: React.FC<ChessBoardProps> = ({
 
   const isLightSquare = (row: number, col: number): boolean => {
     return (row + col) % 2 === 0;
+  };
+
+  const isLastMoveSquare = (row: number, col: number): boolean => {
+    if (!lastMove) return false;
+    return (lastMove.to.row === row && lastMove.to.col === col);
   };
 
   const columnLabels = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p'];
@@ -64,6 +72,14 @@ export const ChessBoard: React.FC<ChessBoardProps> = ({
 
         {/* Chess board */}
         <div className="chess-board">
+          {/* Move arrow overlay */}
+          {lastMove && (
+            <MoveArrow
+              from={lastMove.from}
+              to={lastMove.to}
+              pieceType={lastMove.piece.type}
+            />
+          )}
           {board.map((row, rowIndex) =>
             row.map((piece, colIndex) => {
               const position = { row: rowIndex, col: colIndex };
@@ -78,6 +94,7 @@ export const ChessBoard: React.FC<ChessBoardProps> = ({
                   isSelected={isSquareSelected(rowIndex, colIndex)}
                   isPossibleMove={isSquarePossibleMove(rowIndex, colIndex)}
                   isHighlighted={isSquareHighlighted(rowIndex, colIndex)}
+                  isLastMove={isLastMoveSquare(rowIndex, colIndex)}
                   controlZone={controlZone}
                   onClick={onSquareClick}
                   upgrades={upgrades}
