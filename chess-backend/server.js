@@ -306,6 +306,7 @@ io.on('connection', (socket) => {
       if (result.success) {
         const playerInfo = matchManager.playerSockets.get(socket.id);
         const matchId = playerInfo.matchId;
+        const match = matchManager.matches.get(matchId);
         
         // Send updated match state to all players in the match
         for (const [socketId] of matchManager.playerSockets) {
@@ -314,6 +315,14 @@ io.on('connection', (socket) => {
             io.to(socketId).emit('match_state_updated', {
               matchState: playerMatchState
             });
+            
+            // Also send updated available upgrades to reflect new economy
+            const playerRole = matchManager.playerSockets.get(socketId)?.role;
+            if (playerRole) {
+              const playerTeam = getTeamFromRole(playerRole);
+              const upgrades = match.sharedState.upgradeManager.getAvailableUpgrades(playerTeam);
+              io.to(socketId).emit('available_upgrades', { upgrades });
+            }
           }
         }
         
@@ -326,6 +335,72 @@ io.on('connection', (socket) => {
         socket.emit('upgrade_error', { message: result.error });
       }
     } catch (error) {
+      socket.emit('error', { message: error.message });
+    }
+  });
+
+  // Purchase a modifier
+  socket.on('purchase_modifier', (data) => {
+    try {
+      const { modifierId } = data;
+      const result = matchManager.purchaseModifier(socket.id, modifierId);
+      
+      if (result.success) {
+        const playerInfo = matchManager.playerSockets.get(socket.id);
+        const matchId = playerInfo.matchId;
+        const match = matchManager.matches.get(matchId);
+        
+        // Send updated match state to all players in the match
+        for (const [socketId] of matchManager.playerSockets) {
+          if (matchManager.playerSockets.get(socketId)?.matchId === matchId) {
+            const playerMatchState = matchManager.getMatchState(matchId, socketId);
+            io.to(socketId).emit('match_state_updated', {
+              matchState: playerMatchState
+            });
+            
+            // Also send updated available modifiers to reflect new costs
+            const playerRole = matchManager.playerSockets.get(socketId)?.role;
+            if (playerRole) {
+              const modifiers = matchManager.getAvailableModifiers(socketId);
+              io.to(socketId).emit('available_modifiers', { modifiers });
+            }
+          }
+        }
+        
+        // Send success message with blind level info
+        socket.emit('modifier_purchased', {
+          modifierId,
+          message: result.message,
+          blindLevel: result.blindLevel,
+          blindAmounts: result.blindAmounts,
+          economy: result.economy
+        });
+        
+        // Broadcast blind level change to all players
+        io.to(matchId).emit('blind_level_changed', {
+          blindLevel: result.blindLevel,
+          blindAmounts: result.blindAmounts
+        });
+      } else {
+        socket.emit('modifier_error', { message: result.error });
+      }
+    } catch (error) {
+      socket.emit('error', { message: error.message });
+    }
+  });
+
+  // Get available modifiers
+  socket.on('get_modifiers', () => {
+    console.log('get_modifiers request from socket:', socket.id);
+    try {
+      const modifiers = matchManager.getAvailableModifiers(socket.id);
+      console.log('Sending modifiers count:', modifiers.length);
+      if (modifiers.length > 0) {
+        console.log('First modifier being sent:', JSON.stringify(modifiers[0], null, 2));
+      }
+      socket.emit('available_modifiers', { modifiers });
+    } catch (error) {
+      console.error('Error getting modifiers:', error.message);
       socket.emit('error', { message: error.message });
     }
   });
@@ -344,8 +419,9 @@ io.on('connection', (socket) => {
         throw new Error('Match not found');
       }
       
-      // Update the economy
+      // Update the economy in both places
       match.teams[team].economy = amount;
+      match.sharedState.upgradeManager.economy[team] = amount;
       
       // Send updated match state to all players in the match
       for (const [socketId] of matchManager.playerSockets) {
@@ -354,6 +430,14 @@ io.on('connection', (socket) => {
           io.to(socketId).emit('match_state_updated', {
             matchState: playerMatchState
           });
+          
+          // Also send updated available upgrades to reflect new economy
+          const playerRole = matchManager.playerSockets.get(socketId)?.role;
+          if (playerRole) {
+            const playerTeam = getTeamFromRole(playerRole);
+            const upgrades = match.sharedState.upgradeManager.getAvailableUpgrades(playerTeam);
+            io.to(socketId).emit('available_upgrades', { upgrades });
+          }
         }
       }
       
@@ -626,6 +710,7 @@ io.on('connection', (socket) => {
       const result = matchManager.purchasePiece(matchId, socket.id, pieceType);
       
       // Notify all players in the match
+      const match = matchManager.matches.get(matchId);
       for (const [socketId] of matchManager.playerSockets) {
         if (matchManager.playerSockets.get(socketId)?.matchId === matchId) {
           const playerMatchState = matchManager.getMatchState(matchId, socketId);
@@ -636,6 +721,14 @@ io.on('connection', (socket) => {
             result: result,
             matchState: playerMatchState
           });
+          
+          // Also send updated available upgrades to reflect new economy
+          const playerRole = matchManager.playerSockets.get(socketId)?.role;
+          if (playerRole && match) {
+            const playerTeam = getTeamFromRole(playerRole);
+            const upgrades = match.sharedState.upgradeManager.getAvailableUpgrades(playerTeam);
+            io.to(socketId).emit('available_upgrades', { upgrades });
+          }
         }
       }
     } catch (error) {

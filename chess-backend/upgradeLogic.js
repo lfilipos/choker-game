@@ -164,8 +164,54 @@ function getUpgradedRookMoves(board, position, color, upgrades, standardMoves) {
   const moves = [...standardMoves];
   const pieceUpgrades = upgrades[color][PieceType.ROOK] || [];
   
-  // Siege mode is handled differently - it allows multiple captures in one move
-  // This would be implemented in the move execution logic, not in possible moves
+  // Siege mode - can pass through one enemy piece to capture another
+  if (pieceUpgrades.includes('rook_siege_mode')) {
+    console.log('Rook has siege mode upgrade!');
+    const directions = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+    
+    directions.forEach(([dRow, dCol]) => {
+      let encounteredEnemy = null;
+      let encounteredEnemyPos = null;
+      
+      for (let i = 1; i < 16; i++) {
+        const newPos = { row: position.row + i * dRow, col: position.col + i * dCol };
+        
+        // Check if position is valid
+        if (newPos.row < 0 || newPos.row >= 10 || newPos.col < 0 || newPos.col >= 16) break;
+        
+        const targetPiece = board[newPos.row][newPos.col];
+        
+        if (!targetPiece) {
+          // Empty square - can move here even after passing through one enemy
+          if (encounteredEnemy) {
+            // This is a siege move through an enemy piece
+            console.log(`Adding siege move through enemy at (${encounteredEnemyPos.row},${encounteredEnemyPos.col}) to (${newPos.row},${newPos.col})`);
+            moves.push(newPos);
+          }
+          // Standard moves are already included
+        } else {
+          // There's a piece here
+          if (targetPiece.color !== color) {
+            // Enemy piece
+            if (!encounteredEnemy) {
+              // First enemy piece - can pass through it
+              encounteredEnemy = targetPiece;
+              encounteredEnemyPos = newPos;
+              // The capture of this first piece is already in standard moves
+            } else {
+              // Second enemy piece - can capture it (siege capture)
+              console.log(`Adding siege capture at (${newPos.row},${newPos.col})`);
+              moves.push(newPos);
+              break; // Can't go further after capturing second piece
+            }
+          } else {
+            // Friendly piece - can't pass through
+            break;
+          }
+        }
+      }
+    });
+  }
   
   return moves;
 }

@@ -9,7 +9,7 @@ const {
   getGameSlotFromRole,
   createPlayerRole
 } = require('./matchTypes');
-const { PieceColor, CONTROL_ZONES } = require('./types');
+const { PieceColor, PieceType, CONTROL_ZONES } = require('./types');
 const { createInitialBoard, makeMove, isValidMove, calculateAllControlZoneStatuses } = require('./gameLogic');
 const UpgradeManager = require('./upgradeManager');
 const { PokerGameState, PokerPhase } = require('./pokerGameState');
@@ -63,7 +63,7 @@ class MatchManager {
         },
         [GameSlot.B]: {
           type: GameType.GAME_B,
-          state: new PokerGameState(),
+          state: new PokerGameState(1), // Initialize with blind level 1
           currentPlayer: PieceColor.WHITE
         }
       },
@@ -75,7 +75,11 @@ class MatchManager {
           [TeamColor.BLACK]: []
         },
         winCondition: null, // null | TeamColor.WHITE | TeamColor.BLACK
-        winReason: null
+        winReason: null,
+        turnNumber: 0, // Track total turns (increments when switching to white)
+        incomeGivenThisTurn: false, // Track if income was given for current turn
+        blindLevel: 1, // Track blind level across the match
+        lastBlindIncreaseCost: 100 // Track cost for decrease calculation
       },
       createdAt: new Date(),
       lastActivity: new Date()
@@ -151,7 +155,9 @@ class MatchManager {
           const bigBlindPlayer = pokerGame.getBigBlindPlayer();
           
           match.teams[dealerPlayer.team].economy -= pokerGame.smallBlind;
+          match.sharedState.upgradeManager.economy[dealerPlayer.team] -= pokerGame.smallBlind;
           match.teams[bigBlindPlayer.team].economy -= pokerGame.bigBlind;
+          match.sharedState.upgradeManager.economy[bigBlindPlayer.team] -= pokerGame.bigBlind;
           
           // Track blind payments so we don't double-deduct
           match.teams[dealerPlayer.team].lastBetAmount = pokerGame.smallBlind;
@@ -207,7 +213,13 @@ class MatchManager {
       throw new Error('Not your turn');
     }
 
-    if (!isValidMove(game.board, from, to, playerTeam, match.teams[playerTeam].upgrades, match.sharedState.upgradeManager)) {
+    // Create upgrades object in the format the upgrade logic expects
+    const upgradesForValidation = {
+      [TeamColor.WHITE]: match.teams[TeamColor.WHITE].upgrades,
+      [TeamColor.BLACK]: match.teams[TeamColor.BLACK].upgrades
+    };
+    
+    if (!isValidMove(game.board, from, to, playerTeam, upgradesForValidation, match.sharedState.upgradeManager)) {
       throw new Error('Invalid move');
     }
 
@@ -215,10 +227,46 @@ class MatchManager {
     const piece = game.board[from.row][from.col];
     const capturedPiece = game.board[to.row][to.col];
     
+    // Check for siege mode capture (rook passing through enemy piece)
+    let siegeCapture = null;
+    if (piece.type === PieceType.ROOK && 
+        match.teams[playerTeam].upgrades[PieceType.ROOK] && 
+        match.teams[playerTeam].upgrades[PieceType.ROOK].includes('rook_siege_mode')) {
+      
+      // Check if this is a siege move (passing through an enemy piece)
+      const direction = {
+        row: to.row > from.row ? 1 : (to.row < from.row ? -1 : 0),
+        col: to.col > from.col ? 1 : (to.col < from.col ? -1 : 0)
+      };
+      
+      // Check all squares between from and to
+      let currentPos = { row: from.row + direction.row, col: from.col + direction.col };
+      while (currentPos.row !== to.row || currentPos.col !== to.col) {
+        const pieceInPath = game.board[currentPos.row][currentPos.col];
+        if (pieceInPath && pieceInPath.color !== playerTeam) {
+          // Enemy piece in path - this is a siege capture
+          siegeCapture = pieceInPath;
+          game.board[currentPos.row][currentPos.col] = null; // Remove the piece in path
+          console.log(`Siege mode: Capturing piece in path at (${currentPos.row},${currentPos.col})`);
+          break;
+        }
+        currentPos.row += direction.row;
+        currentPos.col += direction.col;
+      }
+    }
+    
     game.board = makeMove(game.board, from, to);
     
-    // Award capture income if a piece was captured
+    // Award capture income for regular capture
     if (capturedPiece) {
+      match.sharedState.upgradeManager.awardCaptureIncome(playerTeam);
+      // Update team economy
+      const upgradeState = match.sharedState.upgradeManager.getUpgradeState();
+      match.teams[playerTeam].economy = upgradeState.economy[playerTeam];
+    }
+    
+    // Award capture income for siege capture
+    if (siegeCapture) {
       match.sharedState.upgradeManager.awardCaptureIncome(playerTeam);
       // Update team economy
       const upgradeState = match.sharedState.upgradeManager.getUpgradeState();
@@ -231,24 +279,34 @@ class MatchManager {
       to,
       piece,
       capturedPiece,
+      siegeCapture, // Track if this was a siege mode capture
       player: playerTeam,
       timestamp: new Date()
     };
     game.moveHistory.push(move);
 
-    // Process turn end for the current player
-    const controlledZones = this._countControlledZones(game, playerTeam);
-    match.sharedState.upgradeManager.processTurnEnd(playerTeam, controlledZones);
+    // IMPORTANT: Sync current economy TO upgradeManager before processing income
+    // This ensures poker bets are not overwritten
+    match.sharedState.upgradeManager.economy[TeamColor.WHITE] = match.teams[TeamColor.WHITE].economy;
+    match.sharedState.upgradeManager.economy[TeamColor.BLACK] = match.teams[TeamColor.BLACK].economy;
+    
+    // Give income to the player who just made a move
+    // This encourages active play - you get rewarded for making moves
+    const movingPlayerControlledZones = this._countControlledZones(game, playerTeam);
+    match.sharedState.upgradeManager.processTurnEnd(playerTeam, movingPlayerControlledZones);
+    
+    // After processing income, sync the new economy back to match.teams
+    const newEconomyState = match.sharedState.upgradeManager.getUpgradeState();
+    match.teams[TeamColor.WHITE].economy = newEconomyState.economy.white;
+    match.teams[TeamColor.BLACK].economy = newEconomyState.economy.black;
     
     // Update control zone ownership and poker effects
     const cardsRemoved = this._updateControlZoneEffects(match, game);
     
-    // Update match state with latest upgrade/economy info
+    // Sync only upgrades from upgradeManager (economy already handled above)
     const upgradeState = match.sharedState.upgradeManager.getUpgradeState();
     match.teams[TeamColor.WHITE].upgrades = upgradeState.upgrades.white;
-    match.teams[TeamColor.WHITE].economy = upgradeState.economy.white;
     match.teams[TeamColor.BLACK].upgrades = upgradeState.upgrades.black;
-    match.teams[TeamColor.BLACK].economy = upgradeState.economy.black;
 
     // Check for win conditions after the move
     const gameStatus = checkGameStatus(game.board);
@@ -331,6 +389,8 @@ class MatchManager {
       if (action !== 'fold') {
         economyChange = player.totalBetThisRound - previousBet;
         match.teams[playerTeam].economy -= economyChange;
+        // Also update upgradeManager to keep in sync
+        match.sharedState.upgradeManager.economy[playerTeam] -= economyChange;
         match.teams[playerTeam].lastBetAmount = player.totalBetThisRound;
       }
       
@@ -430,6 +490,8 @@ class MatchManager {
         
         const beforeEconomy = match.teams[winner].economy;
         match.teams[winner].economy += potShare;
+        // Also update upgradeManager to keep in sync
+        match.sharedState.upgradeManager.economy[winner] += potShare;
         console.log(`${winner} team wins ${potShare} chips (economy: ${beforeEconomy} -> ${match.teams[winner].economy})`);
       });
       
@@ -487,6 +549,18 @@ class MatchManager {
       // Clear ready states first
       pokerGame.resetReadyStates();
       
+      // Give income to both teams at the start of each poker hand
+      const whiteControlledZones = this._countControlledZones(match.games[GameSlot.A], TeamColor.WHITE);
+      match.sharedState.upgradeManager.processTurnEnd(TeamColor.WHITE, whiteControlledZones);
+      
+      const blackControlledZones = this._countControlledZones(match.games[GameSlot.A], TeamColor.BLACK);
+      match.sharedState.upgradeManager.processTurnEnd(TeamColor.BLACK, blackControlledZones);
+      
+      // Update match state with new economy after income
+      const upgradeState = match.sharedState.upgradeManager.getUpgradeState();
+      match.teams[TeamColor.WHITE].economy = upgradeState.economy.white;
+      match.teams[TeamColor.BLACK].economy = upgradeState.economy.black;
+      
       // Start the new hand (this will rotate positions once)
       const teamEconomies = {
         white: { liquid: match.teams.white.economy },
@@ -500,7 +574,9 @@ class MatchManager {
       const bigBlindPlayer = pokerGame.getBigBlindPlayer();
       
       match.teams[dealerPlayer.team].economy -= pokerGame.smallBlind;
+      match.sharedState.upgradeManager.economy[dealerPlayer.team] -= pokerGame.smallBlind;
       match.teams[bigBlindPlayer.team].economy -= pokerGame.bigBlind;
+      match.sharedState.upgradeManager.economy[bigBlindPlayer.team] -= pokerGame.bigBlind;
       
       // Track blind payments so we don't double-deduct
       match.teams[dealerPlayer.team].lastBetAmount = pokerGame.smallBlind;
@@ -560,6 +636,119 @@ class MatchManager {
         error: error.message
       };
     }
+  }
+
+  // Purchase a modifier for a team
+  purchaseModifier(socketId, modifierId) {
+    const playerInfo = this.playerSockets.get(socketId);
+    if (!playerInfo) {
+      throw new Error('Player not found');
+    }
+    const { matchId, role } = playerInfo;
+    const match = this.matches.get(matchId);
+    
+    if (!match) {
+      throw new Error('Match not found');
+    }
+    
+    const playerTeam = getTeamFromRole(role);
+    const { MODIFIERS, getBlindAmounts } = require('./modifierDefinitions');
+    
+    // Check if modifier exists
+    const modifier = MODIFIERS[modifierId];
+    if (!modifier) {
+      return {
+        success: false,
+        error: 'Invalid modifier'
+      };
+    }
+    
+    // Create a state object with the necessary properties for modifier calculations
+    const stateForModifiers = {
+      ...match.sharedState,
+      teams: match.teams
+    };
+    
+    // Check if player can purchase
+    const cost = modifier.getCost(stateForModifiers);
+    const teamEconomy = match.teams[playerTeam].economy;
+    
+    if (teamEconomy < cost) {
+      return {
+        success: false,
+        error: 'Insufficient funds'
+      };
+    }
+    
+    // Apply the modifier (apply to sharedState, not the combined state)
+    const result = modifier.apply(match.sharedState, playerTeam);
+    
+    if (result.success) {
+      // Deduct cost from team economy
+      match.teams[playerTeam].economy -= cost;
+      match.sharedState.upgradeManager.economy[playerTeam] -= cost;
+      
+      // Update poker game blind levels
+      const pokerGame = match.games[GameSlot.B].state;
+      pokerGame.updateBlindLevel(match.sharedState.blindLevel);
+      
+      console.log(`Modifier purchased: ${modifierId} for ${playerTeam} team, new blind level: ${match.sharedState.blindLevel}`);
+      
+      return {
+        success: true,
+        message: result.message,
+        blindLevel: match.sharedState.blindLevel,
+        blindAmounts: getBlindAmounts(match.sharedState.blindLevel),
+        economy: {
+          white: match.teams[TeamColor.WHITE].economy,
+          black: match.teams[TeamColor.BLACK].economy
+        }
+      };
+    } else {
+      return {
+        success: false,
+        error: result.message
+      };
+    }
+  }
+
+  // Get available modifiers for a team
+  getAvailableModifiers(socketId) {
+    console.log('getAvailableModifiers called for socket:', socketId);
+    const playerInfo = this.playerSockets.get(socketId);
+    if (!playerInfo) {
+      console.error('Player not found for socket:', socketId);
+      throw new Error('Player not found');
+    }
+    const { matchId, role } = playerInfo;
+    console.log('Player info:', { matchId, role });
+    
+    const match = this.matches.get(matchId);
+    if (!match) {
+      console.error('Match not found:', matchId);
+      throw new Error('Match not found');
+    }
+    
+    const playerTeam = getTeamFromRole(role);
+    console.log('Player team:', playerTeam);
+    
+    const { getAvailableModifiers } = require('./modifierDefinitions');
+    
+    // Create a state object with the necessary properties for modifier calculations
+    const stateForModifiers = {
+      ...match.sharedState,
+      teams: match.teams
+    };
+    
+    console.log('State for modifiers:', {
+      blindLevel: stateForModifiers.blindLevel,
+      teamEconomy: stateForModifiers.teams[playerTeam].economy
+    });
+    
+    const modifiers = getAvailableModifiers(stateForModifiers, playerTeam);
+    console.log('Available modifiers:', JSON.stringify(modifiers, null, 2));
+    
+    return modifiers;
   }
 
   // Get match state for a specific player
@@ -651,6 +840,8 @@ class MatchManager {
       winReason: match.sharedState.winReason,
       controlZoneOwnership: match.sharedState.controlZoneOwnership,
       activePokerEffects: match.sharedState.activePokerEffects,
+      blindLevel: match.sharedState.blindLevel || 1,
+      blindAmounts: require('./modifierDefinitions').getBlindAmounts(match.sharedState.blindLevel || 1),
       // Include poker effect definitions for each zone
       controlZonePokerEffects: Object.entries(CONTROL_ZONE_POKER_EFFECTS).reduce((acc, [zoneId, effectId]) => {
         const effect = POKER_EFFECTS[effectId];
@@ -711,8 +902,9 @@ class MatchManager {
       throw new Error(`Cannot afford ${pieceType}. Price: ${price}, Balance: ${teamData.economy}`);
     }
 
-    // Deduct the cost
+    // Deduct the cost from both places
     teamData.economy -= price;
+    match.sharedState.upgradeManager.economy[team] -= price;
 
     // Add piece to barracks
     teamData.barracks.push({

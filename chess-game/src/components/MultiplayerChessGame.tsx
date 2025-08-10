@@ -34,6 +34,9 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
   const [isAdminMode, setIsAdminMode] = useState(false);
   const [availableUpgrades, setAvailableUpgrades] = useState<UpgradeDefinition[]>([]);
   const [purchasablePieces, setPurchasablePieces] = useState<PurchasablePiece[]>([]);
+  const [availableModifiers, setAvailableModifiers] = useState<any[]>([]);
+  const [blindLevel, setBlindLevel] = useState<number>(1);
+  const [blindAmounts, setBlindAmounts] = useState<{smallBlind: number, bigBlind: number}>({smallBlind: 5, bigBlind: 10});
   const [matchState, setMatchState] = useState<MatchState | null>(null);
   const [barracks, setBarracks] = useState<{ white: BarracksPiece[], black: BarracksPiece[] }>({ white: [], black: [] });
   const [selectedBarracksPiece, setSelectedBarracksPiece] = useState<number | null>(null);
@@ -95,6 +98,17 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
         setGameState(gameState);
         setError(null);
       }
+      // Update blind level and amounts if present
+      if ((state as any).blindLevel) {
+        setBlindLevel((state as any).blindLevel);
+      }
+      if ((state as any).blindAmounts) {
+        setBlindAmounts((state as any).blindAmounts);
+      }
+      
+      // Request modifiers after we have match state
+      console.log('Requesting modifiers after match state received');
+      socket.emit('get_modifiers');
       // Update barracks from match state
       if (state.teams) {
         setBarracks({
@@ -154,6 +168,16 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
       if (gameState) {
         setGameState(gameState);
       }
+      // Update blind level and amounts if present
+      if ((data.matchState as any).blindLevel) {
+        setBlindLevel((data.matchState as any).blindLevel);
+      }
+      if ((data.matchState as any).blindAmounts) {
+        setBlindAmounts((data.matchState as any).blindAmounts);
+      }
+      
+      // Request modifiers after state update
+      socket.emit('get_modifiers');
       // Update barracks from match state
       if (data.matchState.teams) {
         setBarracks({
@@ -274,6 +298,33 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
       setTimeout(() => setError(null), 3000);
     });
 
+    // Listen for available modifiers (requested after match state is received)
+    socket.on('available_modifiers', (data: { modifiers: any[] }) => {
+      console.log('MultiplayerChessGame - Received available modifiers:', data.modifiers);
+      console.log('MultiplayerChessGame - First modifier details:', data.modifiers?.[0]);
+      setAvailableModifiers(data.modifiers);
+    });
+
+    socket.on('modifier_purchased', (data: any) => {
+      console.log('Modifier purchased:', data);
+      setError(data.message);
+      setTimeout(() => setError(null), 3000);
+      // Request updated modifiers list
+      socket.emit('get_modifiers');
+    });
+
+    socket.on('modifier_error', (error: { message: string }) => {
+      setError(error.message);
+    });
+
+    socket.on('blind_level_changed', (data: { blindLevel: number, blindAmounts: any }) => {
+      console.log('Blind level changed:', data);
+      setBlindLevel(data.blindLevel);
+      setBlindAmounts(data.blindAmounts);
+      setError(`Blind level changed to ${data.blindLevel}! SB: ${data.blindAmounts.smallBlind}, BB: ${data.blindAmounts.bigBlind}`);
+      setTimeout(() => setError(null), 5000);
+    });
+
     return () => {
       socket.off('match_state');
       socket.off('move_made');
@@ -289,6 +340,10 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
       socket.off('purchase_error');
       socket.off('placement_error');
       socket.off('admin_success');
+      socket.off('available_modifiers');
+      socket.off('modifier_purchased');
+      socket.off('modifier_error');
+      socket.off('blind_level_changed');
     };
   }, [gameId, convertMatchStateToGameState]);
 
@@ -388,6 +443,14 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
 
   const handlePurchaseUpgrade = (upgradeId: string) => {
     socketService.purchaseUpgrade(upgradeId);
+  };
+
+  const handlePurchaseModifier = (modifierId: string) => {
+    console.log('Purchasing modifier:', modifierId);
+    const socket = socketService.getSocket();
+    if (socket) {
+      socket.emit('purchase_modifier', { modifierId });
+    }
   };
 
   const handlePurchasePiece = (pieceType: PieceType) => {
@@ -501,7 +564,16 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
             {gameState.status === 'active' && (
               <>
                 <button 
-                  onClick={() => setShowUpgradeStore(!showUpgradeStore)} 
+                  onClick={() => {
+                    setShowUpgradeStore(!showUpgradeStore);
+                    // Request fresh modifiers when opening store
+                    if (!showUpgradeStore) {
+                      const socket = socketService.getSocket();
+                      if (socket) {
+                        socket.emit('get_modifiers');
+                      }
+                    }
+                  }} 
                   className="upgrade-store-button"
                 >
                   🛒 Upgrade Store
@@ -610,8 +682,12 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
               economy={gameState.economy}
               onPurchaseUpgrade={handlePurchaseUpgrade}
               onPurchasePiece={handlePurchasePiece}
+              onPurchaseModifier={handlePurchaseModifier}
               availableUpgrades={availableUpgrades}
               purchasablePieces={purchasablePieces}
+              availableModifiers={availableModifiers}
+              blindLevel={blindLevel}
+              blindAmounts={blindAmounts}
             />
           </div>
         </div>

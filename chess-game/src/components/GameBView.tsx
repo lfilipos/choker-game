@@ -66,6 +66,9 @@ const GameBView: React.FC<GameBViewProps> = ({ matchId, socket, playerName, onLe
   const [gameWinner, setGameWinner] = useState<'white' | 'black' | null>(null);
   const [winReason, setWinReason] = useState<string | undefined>(undefined);
   const [controlZonePokerEffects, setControlZonePokerEffects] = useState<Record<string, any>>({});
+  const [availableModifiers, setAvailableModifiers] = useState<any[]>([]);
+  const [blindLevel, setBlindLevel] = useState<number>(1);
+  const [blindAmounts, setBlindAmounts] = useState<{smallBlind: number, bigBlind: number}>({smallBlind: 5, bigBlind: 10});
 
   useEffect(() => {
     // Get initial match state
@@ -86,6 +89,17 @@ const GameBView: React.FC<GameBViewProps> = ({ matchId, socket, playerName, onLe
       if (state.controlZonePokerEffects) {
         setControlZonePokerEffects(state.controlZonePokerEffects);
       }
+      // Update blind level and amounts if present
+      if ((state as any).blindLevel) {
+        setBlindLevel((state as any).blindLevel);
+      }
+      if ((state as any).blindAmounts) {
+        setBlindAmounts((state as any).blindAmounts);
+      }
+      
+      // Request modifiers after we have match state
+      console.log('Requesting modifiers after match state received');
+      socket.emit('get_modifiers');
       
       // Extract poker state if available
       const currentGame = state.currentGame as any;
@@ -132,6 +146,17 @@ const GameBView: React.FC<GameBViewProps> = ({ matchId, socket, playerName, onLe
         setGameWinner(data.matchState.winCondition as 'white' | 'black');
         setWinReason(data.matchState.winReason || undefined);
       }
+      
+      // Update blind level and amounts if present
+      if ((data.matchState as any).blindLevel) {
+        setBlindLevel((data.matchState as any).blindLevel);
+      }
+      if ((data.matchState as any).blindAmounts) {
+        setBlindAmounts((data.matchState as any).blindAmounts);
+      }
+      
+      // Request modifiers after state update
+      socket.emit('get_modifiers');
       
       const currentGame = data.matchState.currentGame as any;
       console.log('Updated current game type:', currentGame?.type);
@@ -242,6 +267,33 @@ const GameBView: React.FC<GameBViewProps> = ({ matchId, socket, playerName, onLe
       setError(error.message);
     });
 
+    // Listen for available modifiers (requested after match state is received)
+    socket.on('available_modifiers', (data: { modifiers: any[] }) => {
+      console.log('GameBView - Received available modifiers:', data.modifiers);
+      console.log('GameBView - First modifier details:', data.modifiers?.[0]);
+      setAvailableModifiers(data.modifiers);
+    });
+
+    socket.on('modifier_purchased', (data: any) => {
+      console.log('Modifier purchased:', data);
+      setError(data.message);
+      setTimeout(() => setError(null), 3000);
+      // Request updated modifiers list
+      socket.emit('get_modifiers');
+    });
+
+    socket.on('modifier_error', (error: { message: string }) => {
+      setError(error.message);
+    });
+
+    socket.on('blind_level_changed', (data: { blindLevel: number, blindAmounts: any }) => {
+      console.log('Blind level changed:', data);
+      setBlindLevel(data.blindLevel);
+      setBlindAmounts(data.blindAmounts);
+      setError(`Blind level changed to ${data.blindLevel}! SB: ${data.blindAmounts.smallBlind}, BB: ${data.blindAmounts.bigBlind}`);
+      setTimeout(() => setError(null), 5000);
+    });
+
     return () => {
       socket.off('match_state');
       socket.off('match_state_updated');
@@ -252,11 +304,20 @@ const GameBView: React.FC<GameBViewProps> = ({ matchId, socket, playerName, onLe
       socket.off('purchasable_pieces');
       socket.off('piece_purchased');
       socket.off('purchase_error');
+      socket.off('available_modifiers');
+      socket.off('modifier_purchased');
+      socket.off('modifier_error');
+      socket.off('blind_level_changed');
     };
   }, [matchId, socket]);
 
   const handlePurchaseUpgrade = (upgradeId: string) => {
     socket.emit('purchase_upgrade', { upgradeId });
+  };
+
+  const handlePurchaseModifier = (modifierId: string) => {
+    console.log('Purchasing modifier:', modifierId);
+    socket.emit('purchase_modifier', { modifierId });
   };
 
   const handlePurchasePiece = (pieceType: PieceType) => {
@@ -322,7 +383,13 @@ const GameBView: React.FC<GameBViewProps> = ({ matchId, socket, playerName, onLe
           Leave Game
         </button>
         <button 
-          onClick={() => setShowUpgradeStore(!showUpgradeStore)}
+          onClick={() => {
+            setShowUpgradeStore(!showUpgradeStore);
+            // Request fresh modifiers when opening store
+            if (!showUpgradeStore) {
+              socket.emit('get_modifiers');
+            }
+          }}
           className="upgrade-button"
         >
           Upgrade Store
@@ -459,8 +526,12 @@ const GameBView: React.FC<GameBViewProps> = ({ matchId, socket, playerName, onLe
               playerColor={matchState.playerTeam as 'white' | 'black'}
               onPurchaseUpgrade={handlePurchaseUpgrade}
               onPurchasePiece={handlePurchasePiece}
+              onPurchaseModifier={handlePurchaseModifier}
               availableUpgrades={availableUpgrades}
               purchasablePieces={purchasablePieces}
+              availableModifiers={availableModifiers}
+              blindLevel={blindLevel}
+              blindAmounts={blindAmounts}
             />
             <button 
               className="close-modal"

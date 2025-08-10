@@ -88,7 +88,7 @@ class PokerPlayer {
 }
 
 class PokerGameState {
-  constructor() {
+  constructor(initialBlindLevel = 1) {
     this.deck = new Deck();
     this.players = new Map(); // Map of team -> PokerPlayer
     this.communityCards = [];
@@ -96,8 +96,14 @@ class PokerGameState {
     this.sidePots = []; // For all-in situations
     this.currentBet = 0;
     this.minimumBet = 10; // Default minimum bet
-    this.smallBlind = 5;
-    this.bigBlind = 10;
+    
+    // Blind level management
+    this.blindLevel = initialBlindLevel;
+    const { getBlindAmounts } = require('./modifierDefinitions');
+    const blindAmounts = getBlindAmounts(this.blindLevel);
+    this.smallBlind = blindAmounts.smallBlind;
+    this.bigBlind = blindAmounts.bigBlind;
+    
     this.phase = PokerPhase.WAITING;
     this.currentTurn = null; // Which team's turn
     this.dealerTeam = null;
@@ -150,6 +156,16 @@ class PokerGameState {
     // In heads-up poker, dealer is small blind
     dealerPlayer.position = Position.DEALER;
     otherPlayer.position = Position.BIG_BLIND;
+  }
+
+  // Update blind levels (called when modifiers are purchased)
+  updateBlindLevel(newLevel) {
+    this.blindLevel = newLevel;
+    const { getBlindAmounts } = require('./modifierDefinitions');
+    const blindAmounts = getBlindAmounts(this.blindLevel);
+    this.smallBlind = blindAmounts.smallBlind;
+    this.bigBlind = blindAmounts.bigBlind;
+    console.log(`Blind level updated to ${this.blindLevel}: SB=${this.smallBlind}, BB=${this.bigBlind}`);
   }
 
   startNewHand(teamEconomies = null) {
