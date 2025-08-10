@@ -339,7 +339,7 @@ class MatchManager {
     return {
       match,
       move,
-      gameStatus: gameStatus,
+      gameStatus: gameStatusResult.status,
       winCondition: match.sharedState.winCondition,
       winReason: match.sharedState.winReason,
       pokerCardsRemoved: cardsRemoved
