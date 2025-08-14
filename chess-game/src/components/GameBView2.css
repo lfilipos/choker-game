@@ -64,16 +64,29 @@
 /* Team Economy Box */
 .team-economy-box {
   background: white;
-  padding: 15px;
+  padding: 12px;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .team-economy-box h3 {
-  margin: 0 0 12px 0;
-  font-size: 16px;
+  margin: 0 0 8px 0;
+  font-size: 14px;
   font-weight: 600;
   color: #333;
+}
+
+.treasury-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+}
+
+.treasury-item-compact {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .treasury-item {
@@ -85,21 +98,22 @@
 }
 
 .treasury-label {
-  display: block;
   font-size: 13px;
-  margin-bottom: 4px;
   color: #666;
+  font-weight: 500;
 }
 
 .treasury-value {
-  font-size: 18px;
+  font-size: 16px;
   font-weight: bold;
   color: #2e7d32;
+  display: flex;
+  align-items: center;
 }
 
 .currency-symbol {
-  font-size: 20px;
-  margin-right: 4px;
+  font-size: 16px;
+  margin-right: 3px;
 }
 
 /* Control Zones Box */
@@ -177,66 +191,9 @@
   justify-content: center;
 }
 
-.chess-board-box .mini-chess-board-container {
-  background: #f5f5f5;
-  padding: 8px;
-  border-radius: 6px;
-  display: inline-block;
-}
-
-/* Calculate chess board size based on container width */
-.chess-board-box .mini-chess-board {
-  width: 224px; /* 14px * 16 columns */
-  height: 140px; /* 14px * 10 rows */
-}
-
-.chess-board-box .mini-board-square {
-  width: 14px;
-  height: 14px;
-  font-size: 12px;
-}
-
-.chess-board-box .mini-piece {
-  font-size: 12px;
-}
-
-.chess-board-box .mini-board-header {
-  display: none;
-}
-
-.chess-board-box .mini-file-labels {
-  display: flex;
-  margin-top: 2px;
-}
-
-.chess-board-box .mini-file-label {
-  width: 14px;
-  text-align: center;
-  font-size: 9px;
-  color: #666;
-  font-weight: 500;
-}
-
-.chess-board-box .mini-board-with-ranks {
-  display: flex;
-  gap: 3px;
-  width: fit-content;
-}
-
-.chess-board-box .mini-rank-labels {
-  display: flex;
-  flex-direction: column;
-}
-
-.chess-board-box .mini-rank-label {
-  height: 14px;
-  line-height: 14px;
-  font-size: 9px;
-  color: #666;
-  font-weight: 500;
-  text-align: right;
-  padding-right: 2px;
-}
+/* Mini chess board adjustments */
+/* Board will naturally size based on 20px squares from MiniChessBoard.css */
+/* No overrides needed - squares are 20px in the base CSS */
 
 /* Chess Moves Box */
 .chess-moves-box {
@@ -382,16 +339,4 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
-.mini-board-row {
-  display: flex;
-  height: 14px;
-}
 
-.mini-board-square {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 14px;
-  height: 14px;
-}

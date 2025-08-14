@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Socket } from 'socket.io-client';
-import UpgradeStore from './UpgradeStore';
 import MiniChessBoard from './MiniChessBoard';
 import MiniControlZoneStatus from './MiniControlZoneStatus';
+import CompactStore from './CompactStore';
 import { PokerTable } from './PokerTable';
 import GameOverlay from './GameOverlay';
 import { PokerGameState, PokerMatchState } from '../types/poker';
@@ -53,7 +53,6 @@ interface GameBViewProps {
 
 const GameBView: React.FC<GameBViewProps> = ({ matchId, socket, playerName, onLeaveGame }) => {
   const [matchState, setMatchState] = useState<MatchState | null>(null);
-  const [showUpgradeStore, setShowUpgradeStore] = useState(false);
   const [chessMoveHistory, setChessMoveHistory] = useState<Move[]>([]);
   const [availableUpgrades, setAvailableUpgrades] = useState<any[]>([]);
   const [purchasablePieces, setPurchasablePieces] = useState<PurchasablePiece[]>([]);
@@ -342,25 +341,6 @@ const GameBView: React.FC<GameBViewProps> = ({ matchId, socket, playerName, onLe
     socket.emit('poker_ready', { ready: true });
   }, [socket]);
 
-  const getPieceSymbol = (piece: ChessPiece): string => {
-    const symbols = {
-      white: { king: '♚', queen: '♛', rook: '♜', bishop: '♝', knight: '♞', pawn: '♟' },
-      black: { king: '♚', queen: '♛', rook: '♜', bishop: '♝', knight: '♞', pawn: '♟' }
-    };
-    return symbols[piece.color][piece.type];
-  };
-
-  const formatMove = (move: Move, index: number): string => {
-    const fromCol = String.fromCharCode(97 + move.from.col);
-    const fromRow = 10 - move.from.row;
-    const toCol = String.fromCharCode(97 + move.to.col);
-    const toRow = 10 - move.to.row;
-    
-    const piece = getPieceSymbol(move.piece);
-    const capture = move.capturedPiece ? 'x' : '-';
-    
-    return `${Math.floor(index / 2) + 1}. ${piece} ${fromCol}${fromRow}${capture}${toCol}${toRow}`;
-  };
 
   if (!matchState) {
     return <div className="game-b-view">Loading...</div>;
@@ -382,18 +362,6 @@ const GameBView: React.FC<GameBViewProps> = ({ matchId, socket, playerName, onLe
         <button onClick={onLeaveGame} className="leave-button">
           Leave Game
         </button>
-        <button 
-          onClick={() => {
-            setShowUpgradeStore(!showUpgradeStore);
-            // Request fresh modifiers when opening store
-            if (!showUpgradeStore) {
-              socket.emit('get_modifiers');
-            }
-          }}
-          className="upgrade-button"
-        >
-          Upgrade Store
-        </button>
         {/* Admin Panel disabled in Game B view */}
       </div>
 
@@ -401,19 +369,21 @@ const GameBView: React.FC<GameBViewProps> = ({ matchId, socket, playerName, onLe
         <div className="info-sidebar">
           <div className="team-economy-box">
             <h3>Team Economy</h3>
-            <div className="treasury-item">
-              <span className="treasury-label">Your treasury</span>
-              <span className="treasury-value">
-                <span className="currency-symbol">₿</span>
-                {economy[matchState.playerTeam as 'white' | 'black']}
-              </span>
-            </div>
-            <div className="treasury-item">
-              <span className="treasury-label">Opponent's</span>
-              <span className="treasury-value">
-                <span className="currency-symbol">₿</span>
-                {economy[matchState.playerTeam === 'white' ? 'black' : 'white']}
-              </span>
+            <div className="treasury-row">
+              <div className="treasury-item-compact">
+                <span className="treasury-label">Yours:</span>
+                <span className="treasury-value">
+                  <span className="currency-symbol">₿</span>
+                  {economy[matchState.playerTeam as 'white' | 'black']}
+                </span>
+              </div>
+              <div className="treasury-item-compact">
+                <span className="treasury-label">Opp:</span>
+                <span className="treasury-value">
+                  <span className="currency-symbol">₿</span>
+                  {economy[matchState.playerTeam === 'white' ? 'black' : 'white']}
+                </span>
+              </div>
             </div>
           </div>
           
@@ -468,20 +438,13 @@ const GameBView: React.FC<GameBViewProps> = ({ matchId, socket, playerName, onLe
             )}
           </div>
           
-          <div className="chess-moves-box">
-            <h3>Chess Moves</h3>
-            <div className="move-list">
-              {chessMoveHistory.length === 0 ? (
-                <p className="no-moves">No moves yet</p>
-              ) : (
-                chessMoveHistory.slice(-10).map((move, index) => (
-                  <div key={chessMoveHistory.length - 10 + index} className={`move-entry ${move.piece.color}`}>
-                    {formatMove(move, chessMoveHistory.length - 10 + index)}
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
+          <CompactStore
+            playerTeam={matchState.playerTeam as 'white' | 'black'}
+            economy={economy}
+            matchId={matchId}
+            onPurchaseUpgrade={handlePurchaseUpgrade}
+            onPurchaseModifier={handlePurchaseModifier}
+          />
         </div>
 
         <div className="poker-game-section">
@@ -516,32 +479,6 @@ const GameBView: React.FC<GameBViewProps> = ({ matchId, socket, playerName, onLe
           )}
         </div>
       </div>
-
-      {showUpgradeStore && (
-        <div className="modal-overlay" onClick={() => setShowUpgradeStore(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <UpgradeStore
-              economy={economy}
-              upgrades={upgrades}
-              playerColor={matchState.playerTeam as 'white' | 'black'}
-              onPurchaseUpgrade={handlePurchaseUpgrade}
-              onPurchasePiece={handlePurchasePiece}
-              onPurchaseModifier={handlePurchaseModifier}
-              availableUpgrades={availableUpgrades}
-              purchasablePieces={purchasablePieces}
-              availableModifiers={availableModifiers}
-              blindLevel={blindLevel}
-              blindAmounts={blindAmounts}
-            />
-            <button 
-              className="close-modal"
-              onClick={() => setShowUpgradeStore(false)}
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Admin panel not available in Game B */}
       

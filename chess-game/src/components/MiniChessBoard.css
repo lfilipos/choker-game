@@ -1,41 +1,3 @@
-.mini-chess-board-container {
-  background: #f5f5f5;
-  border-radius: 8px;
-  padding: 12px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.mini-board-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
-  padding: 0 4px;
-}
-
-.mini-board-header h4 {
-  margin: 0;
-  font-size: 14px;
-  font-weight: 600;
-  color: #333;
-}
-
-.mini-current-player {
-  font-size: 12px;
-  font-weight: 500;
-  padding: 2px 8px;
-  border-radius: 4px;
-  background: rgba(0, 0, 0, 0.05);
-}
-
-.mini-current-player.white {
-  color: #666;
-}
-
-.mini-current-player.black {
-  color: #333;
-}
-
 .mini-chess-board {
   display: inline-block;
   border: 2px solid #8B7355;
@@ -72,7 +34,7 @@
   justify-content: center;
   width: 100%;
   height: 100%;
-  font-size: 16px;
+  font-size: 20px;
   font-weight: bold;
   line-height: 1;
   cursor: default;
@@ -130,38 +92,3 @@
   background-color: rgba(76, 175, 80, 0.15);
 }
 
-.mini-board-coordinates {
-  margin-top: 4px;
-}
-
-.mini-file-labels {
-  display: flex;
-  padding: 0 2px;
-  margin-left: 2px;
-}
-
-.mini-file-label {
-  width: 20px;
-  text-align: center;
-  font-size: 10px;
-  color: #666;
-  font-weight: 500;
-}
-
-/* Responsive adjustments for larger screens */
-@media (min-width: 1200px) {
-  .mini-board-square {
-    width: 24px;
-    height: 24px;
-    font-size: 16px;
-  }
-  
-  .mini-file-label {
-    width: 24px;
-    font-size: 11px;
-  }
-  
-  .mini-piece {
-    font-size: 16px;
-  }
-}

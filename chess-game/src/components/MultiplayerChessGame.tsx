@@ -3,7 +3,6 @@ import { Position, PieceColor, BarracksPiece, PurchasablePiece, PieceType } from
 import { ChessBoard } from './ChessBoard';
 import { socketService, MultiplayerGameState, MatchState } from '../services/socketService';
 import { UpgradeDefinition } from '../types/upgrades';
-import UpgradeStore from './UpgradeStore';
 import AdminPanel from './AdminPanel';
 import GameOverlay from './GameOverlay';
 import DualBarracks from './DualBarracks';
@@ -29,7 +28,6 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
   const [possibleMoves, setPossibleMoves] = useState<Position[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isConnected, setIsConnected] = useState(true);
-  const [showUpgradeStore, setShowUpgradeStore] = useState(false);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [isAdminMode, setIsAdminMode] = useState(false);
   const [availableUpgrades, setAvailableUpgrades] = useState<UpgradeDefinition[]>([]);
@@ -539,7 +537,6 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
   return (
     <div className="chess-game">
       <div className="game-header">
-        <h1>Multiplayer Chess Game</h1>
         <div className="game-info">
           <div className="players-list">
             {getPlayersList()}
@@ -563,21 +560,6 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
             </button>
             {gameState.status === 'active' && (
               <>
-                <button 
-                  onClick={() => {
-                    setShowUpgradeStore(!showUpgradeStore);
-                    // Request fresh modifiers when opening store
-                    if (!showUpgradeStore) {
-                      const socket = socketService.getSocket();
-                      if (socket) {
-                        socket.emit('get_modifiers');
-                      }
-                    }
-                  }} 
-                  className="upgrade-store-button"
-                >
-                  🛒 Upgrade Store
-                </button>
                 <button 
                   onClick={() => setShowAdminPanel(!showAdminPanel)} 
                   className="admin-panel-button"
@@ -674,27 +656,6 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
           {isConnected ? '🟢 Connected' : '🔴 Disconnected'}
         </p>
       </div>
-
-      {showUpgradeStore && gameState.upgrades && gameState.economy && (
-        <div className="modal-overlay" onClick={() => setShowUpgradeStore(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <button className="modal-close" onClick={() => setShowUpgradeStore(false)}>✖</button>
-            <UpgradeStore
-              playerColor={gameState.playerColor as PieceColor | null}
-              upgrades={gameState.upgrades}
-              economy={gameState.economy}
-              onPurchaseUpgrade={handlePurchaseUpgrade}
-              onPurchasePiece={handlePurchasePiece}
-              onPurchaseModifier={handlePurchaseModifier}
-              availableUpgrades={availableUpgrades}
-              purchasablePieces={purchasablePieces}
-              availableModifiers={availableModifiers}
-              blindLevel={blindLevel}
-              blindAmounts={blindAmounts}
-            />
-          </div>
-        </div>
-      )}
 
       {showAdminPanel && gameState.upgrades && gameState.economy && (
         <div className="modal-overlay" onClick={() => setShowAdminPanel(false)}>
