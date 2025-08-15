@@ -37,6 +37,7 @@ class MatchManager {
           economy: upgradeState.economy.white,
           upgrades: upgradeState.upgrades.white,
           barracks: [], // Array of pieces waiting to be placed
+          unlockedPieceTypes: [], // Array of piece types that can be purchased
           players: {
             [GameSlot.A]: null,
             [GameSlot.B]: null
@@ -46,6 +47,7 @@ class MatchManager {
           economy: upgradeState.economy.black,
           upgrades: upgradeState.upgrades.black,
           barracks: [], // Array of pieces waiting to be placed
+          unlockedPieceTypes: [], // Array of piece types that can be purchased
           players: {
             [GameSlot.A]: null,
             [GameSlot.B]: null
@@ -263,6 +265,12 @@ class MatchManager {
       // Update team economy
       const upgradeState = match.sharedState.upgradeManager.getUpgradeState();
       match.teams[playerTeam].economy = upgradeState.economy[playerTeam];
+      
+      // Unlock the captured piece type for the capturing team
+      if (!match.teams[playerTeam].unlockedPieceTypes.includes(capturedPiece.type)) {
+        match.teams[playerTeam].unlockedPieceTypes.push(capturedPiece.type);
+        console.log(`${playerTeam} team unlocked ${capturedPiece.type} for purchase after capturing opponent's ${capturedPiece.type}`);
+      }
     }
     
     // Award capture income for siege capture
@@ -271,6 +279,12 @@ class MatchManager {
       // Update team economy
       const upgradeState = match.sharedState.upgradeManager.getUpgradeState();
       match.teams[playerTeam].economy = upgradeState.economy[playerTeam];
+      
+      // Unlock the captured piece type for the capturing team
+      if (!match.teams[playerTeam].unlockedPieceTypes.includes(siegeCapture.type)) {
+        match.teams[playerTeam].unlockedPieceTypes.push(siegeCapture.type);
+        console.log(`${playerTeam} team unlocked ${siegeCapture.type} for purchase after siege capture of opponent's ${siegeCapture.type}`);
+      }
     }
     
     // Add to move history
@@ -964,6 +978,11 @@ class MatchManager {
 
     const team = getTeamFromRole(playerInfo.role);
     const teamData = match.teams[team];
+    
+    // Check if the piece type is unlocked for this team
+    if (!teamData.unlockedPieceTypes.includes(pieceType)) {
+      throw new Error(`Cannot purchase ${pieceType}. You must first capture an opponent's ${pieceType} to unlock this piece type for purchase.`);
+    }
     
     // Get base price
     let price = getPiecePrice(pieceType);

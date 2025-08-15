@@ -7,16 +7,12 @@ require('dotenv').config();
 const MatchManager = require('./matchManager');
 const { getPossibleMoves } = require('./gameLogic');
 const { GameSlot, getTeamFromRole, getGameSlotFromRole } = require('./matchTypes');
-const { getPurchasablePieces } = require('./pieceDefinitions');
+const { getPurchasablePieces, getPurchasablePiecesForTeam } = require('./pieceDefinitions');
 
 const app = express();
 const server = http.createServer(app);
 
-// Debug environment variables
-console.log('Environment variables:');
-console.log('NODE_ENV:', process.env.NODE_ENV);
-console.log('FRONTEND_URL:', process.env.FRONTEND_URL);
-console.log('CORS origins for Socket.IO:', process.env.NODE_ENV === 'production' ? [process.env.FRONTEND_URL] : ["http://localhost:3000"]);
+
 
 // Configure CORS for Socket.IO
 const io = socketIo(server, {
@@ -31,8 +27,7 @@ const io = socketIo(server, {
 
 const matchManager = new MatchManager();
 
-// Debug Express CORS origins
-console.log('CORS origins for Express:', process.env.NODE_ENV === 'production' ? [process.env.FRONTEND_URL] : ["http://localhost:3000"]);
+
 
 // Middleware
 app.use(cors({
@@ -775,34 +770,66 @@ io.on('connection', (socket) => {
   // Get purchasable pieces
   socket.on('get_purchasable_pieces', () => {
     try {
-      const pieces = getPurchasablePieces();
+      const playerInfo = matchManager.playerSockets.get(socket.id);
+      if (!playerInfo) {
+        throw new Error('Player not found');
+      }
+      
+      const match = matchManager.matches.get(playerInfo.matchId);
+      if (!match) {
+        throw new Error('Match not found');
+      }
+      
+      const team = getTeamFromRole(playerInfo.role);
+      const teamData = match.teams[team];
+      
+      // Get only unlocked piece types for this team
+      const pieces = getPurchasablePiecesForTeam(teamData.unlockedPieceTypes);
       
       // Check if player has Zone C discount
-      const playerInfo = matchManager.playerSockets.get(socket.id);
       let hasDiscount = false;
       let discountedPieces = pieces;
       
-      if (playerInfo) {
-        const match = matchManager.matches.get(playerInfo.matchId);
-        if (match) {
-          const team = getTeamFromRole(playerInfo.role);
-          hasDiscount = match.sharedState.controlZoneOwnership?.C === team;
-          
-          if (hasDiscount) {
-            // Apply discount to all pieces
-            discountedPieces = pieces.map(piece => ({
-              ...piece,
-              originalPrice: piece.price,
-              price: Math.ceil(piece.price * 0.5),
-              hasDiscount: true
-            }));
-          }
-        }
+      hasDiscount = match.sharedState.controlZoneOwnership?.C === team;
+      
+      if (hasDiscount) {
+        // Apply discount to all pieces
+        discountedPieces = pieces.map(piece => ({
+          ...piece,
+          originalPrice: piece.price,
+          price: Math.ceil(piece.price * 0.5),
+          hasDiscount: true
+        }));
       }
       
       socket.emit('purchasable_pieces', { 
         pieces: discountedPieces,
-        hasZoneCDiscount: hasDiscount 
+        hasZoneCDiscount: hasDiscount,
+        unlockedPieceTypes: teamData.unlockedPieceTypes
+      });
+    } catch (error) {
+      socket.emit('error', { message: error.message });
+    }
+  });
+
+  // Get unlocked piece types for a team
+  socket.on('get_unlocked_piece_types', () => {
+    try {
+      const playerInfo = matchManager.playerSockets.get(socket.id);
+      if (!playerInfo) {
+        throw new Error('Player not found');
+      }
+      
+      const match = matchManager.matches.get(playerInfo.matchId);
+      if (!match) {
+        throw new Error('Match not found');
+      }
+      
+      const team = getTeamFromRole(playerInfo.role);
+      const teamData = match.teams[team];
+      
+      socket.emit('unlocked_piece_types', { 
+        unlockedPieceTypes: teamData.unlockedPieceTypes 
       });
     } catch (error) {
       socket.emit('error', { message: error.message });

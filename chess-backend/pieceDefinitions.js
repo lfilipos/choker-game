@@ -20,6 +20,18 @@ function getPurchasablePieces() {
   }));
 }
 
+// Get purchasable pieces for a specific team (only unlocked types)
+function getPurchasablePiecesForTeam(teamUnlockedPieceTypes) {
+  return Object.entries(PIECE_PRICES)
+    .filter(([type, price]) => teamUnlockedPieceTypes.includes(type))
+    .map(([type, price]) => ({
+      type,
+      price,
+      name: type.charAt(0).toUpperCase() + type.slice(1),
+      description: `Purchase a new ${type} for your barracks`
+    }));
+}
+
 // Check if a team can afford a piece
 function canAffordPiece(pieceType, teamEconomy) {
   const price = PIECE_PRICES[pieceType];
@@ -31,9 +43,22 @@ function getPiecePrice(pieceType) {
   return PIECE_PRICES[pieceType] || 0;
 }
 
+// Check if a team can purchase a specific piece type
+function canPurchasePieceType(pieceType, teamUnlockedPieceTypes) {
+  return teamUnlockedPieceTypes.includes(pieceType);
+}
+
+// Check if a team can afford and purchase a piece
+function canAffordAndPurchasePiece(pieceType, teamEconomy, teamUnlockedPieceTypes) {
+  return canAffordPiece(pieceType, teamEconomy) && canPurchasePieceType(pieceType, teamUnlockedPieceTypes);
+}
+
 module.exports = {
   PIECE_PRICES,
   getPurchasablePieces,
+  getPurchasablePiecesForTeam,
   canAffordPiece,
+  canPurchasePieceType,
+  canAffordAndPurchasePiece,
   getPiecePrice
 };
