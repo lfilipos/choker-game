@@ -12,6 +12,12 @@ const { getPurchasablePieces } = require('./pieceDefinitions');
 const app = express();
 const server = http.createServer(app);
 
+// Debug environment variables
+console.log('Environment variables:');
+console.log('NODE_ENV:', process.env.NODE_ENV);
+console.log('FRONTEND_URL:', process.env.FRONTEND_URL);
+console.log('CORS origins for Socket.IO:', process.env.NODE_ENV === 'production' ? [process.env.FRONTEND_URL] : ["http://localhost:3000"]);
+
 // Configure CORS for Socket.IO
 const io = socketIo(server, {
   cors: {
@@ -24,6 +30,9 @@ const io = socketIo(server, {
 });
 
 const matchManager = new MatchManager();
+
+// Debug Express CORS origins
+console.log('CORS origins for Express:', process.env.NODE_ENV === 'production' ? [process.env.FRONTEND_URL] : ["http://localhost:3000"]);
 
 // Middleware
 app.use(cors({
