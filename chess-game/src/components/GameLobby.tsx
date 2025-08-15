@@ -99,7 +99,7 @@ export const GameLobby: React.FC<GameLobbyProps> = ({ onMatchSelect }) => {
     return (
       <div className="game-lobby">
         <div className="lobby-container">
-          <h1>Choker Game Lobby</h1>
+          <h1>Lockstep Game Lobby</h1>
           <div className="loading">
             <p>Connecting to server...</p>
           </div>
@@ -112,7 +112,7 @@ export const GameLobby: React.FC<GameLobbyProps> = ({ onMatchSelect }) => {
     return (
       <div className="game-lobby">
         <div className="lobby-container">
-          <h1>Choker Game Lobby</h1>
+          <h1>Lockstep Game Lobby</h1>
           <div className="connection-error">
             <p>Failed to connect to server</p>
             <button onClick={connectToServer} className="retry-button">
@@ -127,7 +127,7 @@ export const GameLobby: React.FC<GameLobbyProps> = ({ onMatchSelect }) => {
   return (
     <div className="game-lobby">
       <div className="lobby-container">
-        <h1>Choker Game Lobby</h1>
+        <h1>Lockstep Game Lobby</h1>
         
         <div className="player-setup">
           <label htmlFor="playerName">Your Name:</label>
