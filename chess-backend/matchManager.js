@@ -229,6 +229,9 @@ class MatchManager {
     const piece = game.board[from.row][from.col];
     const capturedPiece = game.board[to.row][to.col];
     
+    // Store the unlocked piece types BEFORE this move
+    const unlockedBeforeMove = [...match.teams[playerTeam].unlockedPieceTypes];
+    
     // Check for siege mode capture (rook passing through enemy piece)
     let siegeCapture = null;
     if (piece.type === PieceType.ROOK && 
@@ -270,6 +273,9 @@ class MatchManager {
       if (!match.teams[playerTeam].unlockedPieceTypes.includes(capturedPiece.type)) {
         match.teams[playerTeam].unlockedPieceTypes.push(capturedPiece.type);
         console.log(`${playerTeam} team unlocked ${capturedPiece.type} for purchase after capturing opponent's ${capturedPiece.type}`);
+        console.log(`${playerTeam} team now has unlocked pieces:`, match.teams[playerTeam].unlockedPieceTypes);
+      } else {
+        console.log(`${playerTeam} team already had ${capturedPiece.type} unlocked`);
       }
     }
     
@@ -284,6 +290,9 @@ class MatchManager {
       if (!match.teams[playerTeam].unlockedPieceTypes.includes(siegeCapture.type)) {
         match.teams[playerTeam].unlockedPieceTypes.push(siegeCapture.type);
         console.log(`${playerTeam} team unlocked ${siegeCapture.type} for purchase after siege capture of opponent's ${siegeCapture.type}`);
+        console.log(`${playerTeam} team now has unlocked pieces:`, match.teams[playerTeam].unlockedPieceTypes);
+      } else {
+        console.log(`${playerTeam} team already had ${siegeCapture.type} unlocked`);
       }
     }
     
@@ -350,13 +359,29 @@ class MatchManager {
     
     match.lastActivity = new Date();
 
+    // Track what piece types were unlocked this move
+    const unlockedPieceTypes = [];
+    const unlockedAfterMove = match.teams[playerTeam].unlockedPieceTypes;
+    
+    // Find what was newly unlocked by comparing before and after
+    for (const pieceType of unlockedAfterMove) {
+      if (!unlockedBeforeMove.includes(pieceType)) {
+        unlockedPieceTypes.push(pieceType);
+      }
+    }
+
+    console.log(`Move completed. Unlocked piece types:`, unlockedPieceTypes);
+    console.log(`Capturing team:`, playerTeam);
+
     return {
       match,
       move,
       gameStatus: gameStatusResult.status,
       winCondition: match.sharedState.winCondition,
       winReason: match.sharedState.winReason,
-      pokerCardsRemoved: cardsRemoved
+      pokerCardsRemoved: cardsRemoved,
+      unlockedPieceTypes: unlockedPieceTypes,
+      capturingTeam: playerTeam
     };
   }
 

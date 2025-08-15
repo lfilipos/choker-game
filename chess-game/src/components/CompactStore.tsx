@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { PurchasablePiece, UpgradeDefinition } from '../types';
+import { PurchasablePiece, UpgradeDefinition, PieceType } from '../types';
 import { socketService } from '../services/socketService';
 import './CompactStore.css';
 
@@ -7,8 +7,10 @@ interface CompactStoreProps {
   playerTeam: 'white' | 'black';
   economy: { white: number; black: number };
   matchId: string;
+  purchasablePieces?: PurchasablePiece[];
   onPurchaseUpgrade?: (upgradeId: string) => void;
   onPurchaseModifier?: (modifierId: string) => void;
+  onPurchasePiece?: (pieceType: PieceType) => void;
 }
 
 interface Modifier {
@@ -25,11 +27,12 @@ const CompactStore: React.FC<CompactStoreProps> = ({
   playerTeam, 
   economy,
   matchId,
+  purchasablePieces = [],
   onPurchaseUpgrade,
-  onPurchaseModifier 
+  onPurchaseModifier,
+  onPurchasePiece
 }) => {
   const [activeTab, setActiveTab] = useState<TabType>('pieces');
-  const [pieces, setPieces] = useState<PurchasablePiece[]>([]);
   const [upgrades, setUpgrades] = useState<UpgradeDefinition[]>([]);
   const [modifiers, setModifiers] = useState<Modifier[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -40,15 +43,14 @@ const CompactStore: React.FC<CompactStoreProps> = ({
     fetchStoreData();
   }, []);
 
+  // Update pieces when purchasablePieces prop changes
+  useEffect(() => {
+    console.log('CompactStore received new purchasablePieces:', purchasablePieces);
+  }, [purchasablePieces]);
+
   const fetchStoreData = () => {
     const socket = socketService.getSocket();
     if (!socket) return;
-
-    // Fetch pieces
-    socket.emit('get_purchasable_pieces');
-    socket.once('purchasable_pieces', (data: any) => {
-      setPieces(data.pieces || []);
-    });
 
     // Fetch upgrades
     socket.emit('get_available_upgrades');
@@ -66,7 +68,7 @@ const CompactStore: React.FC<CompactStoreProps> = ({
   const getCurrentItems = () => {
     switch (activeTab) {
       case 'pieces':
-        return pieces;
+        return purchasablePieces;
       case 'upgrades':
         return upgrades;
       case 'modifiers':
@@ -78,20 +80,25 @@ const CompactStore: React.FC<CompactStoreProps> = ({
 
   const handlePurchasePiece = (piece: PurchasablePiece) => {
     if (playerBalance >= piece.price) {
-      setIsLoading(true);
-      const socket = socketService.getSocket();
-      if (socket) {
-        socket.emit('purchase_piece', { 
-          matchId: matchId,
-          pieceType: piece.type 
-        });
-        socket.once('piece_purchased', () => {
-          setIsLoading(false);
-          fetchStoreData(); // Refresh store data
-        });
-        socket.once('purchase_error', () => {
-          setIsLoading(false);
-        });
+      if (onPurchasePiece) {
+        onPurchasePiece(piece.type);
+      } else {
+        // Fallback to direct socket call if no callback provided
+        setIsLoading(true);
+        const socket = socketService.getSocket();
+        if (socket) {
+          socket.emit('purchase_piece', { 
+            matchId: matchId,
+            pieceType: piece.type 
+          });
+          socket.once('piece_purchased', () => {
+            setIsLoading(false);
+            fetchStoreData(); // Refresh store data
+          });
+          socket.once('purchase_error', () => {
+            setIsLoading(false);
+          });
+        }
       }
     }
   };

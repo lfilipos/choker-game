@@ -442,8 +442,10 @@ const GameBView: React.FC<GameBViewProps> = ({ matchId, socket, playerName, onLe
             playerTeam={matchState.playerTeam as 'white' | 'black'}
             economy={economy}
             matchId={matchId}
+            purchasablePieces={purchasablePieces}
             onPurchaseUpgrade={handlePurchaseUpgrade}
             onPurchaseModifier={handlePurchaseModifier}
+            onPurchasePiece={handlePurchasePiece}
           />
         </div>
 

@@ -181,7 +181,13 @@ io.on('connection', (socket) => {
       const result = matchManager.makeGameMove(socket.id, gameSlot, from, to);
       
       // Send updated match state to all players in the match
-      const { match, pokerCardsRemoved } = result;
+      const { match, pokerCardsRemoved, unlockedPieceTypes, capturingTeam } = result;
+      
+      console.log(`Server received move result:`, {
+        unlockedPieceTypes,
+        capturingTeam,
+        hasUnlocks: unlockedPieceTypes && unlockedPieceTypes.length > 0
+      });
       
       for (const [socketId] of matchManager.playerSockets) {
         if (matchManager.playerSockets.get(socketId)?.matchId === match.id) {
@@ -198,6 +204,49 @@ io.on('connection', (socket) => {
               matchState: playerMatchState,
               reason: 'poker_cards_removed'
             });
+          }
+          
+          // If piece types were unlocked, only notify the capturing team
+          if (unlockedPieceTypes && unlockedPieceTypes.length > 0) {
+            const playerRole = matchManager.playerSockets.get(socketId)?.role;
+            if (playerRole) {
+              const playerTeam = getTeamFromRole(playerRole);
+              console.log(`Player ${socketId} is on team ${playerTeam}, capturing team is ${capturingTeam}`);
+              
+              // Only send unlock notification and updated pieces to the capturing team
+              if (playerTeam === capturingTeam) {
+                console.log(`Emitting piece_types_unlocked to ${socketId} for team ${capturingTeam}`);
+                io.to(socketId).emit('piece_types_unlocked', {
+                  unlockedPieceTypes: unlockedPieceTypes,
+                  capturingTeam: capturingTeam,
+                  matchState: playerMatchState
+                });
+                
+                // Send updated purchasable pieces to the capturing team
+                const teamData = match.teams[playerTeam];
+                const pieces = getPurchasablePiecesForTeam(teamData.unlockedPieceTypes);
+                console.log(`Sending updated purchasable pieces to ${socketId}:`, pieces);
+                
+                // Check for Zone C discount
+                let hasDiscount = match.sharedState.controlZoneOwnership?.C === playerTeam;
+                let discountedPieces = pieces;
+                
+                if (hasDiscount) {
+                  discountedPieces = pieces.map(piece => ({
+                    ...piece,
+                    originalPrice: piece.price,
+                    price: Math.ceil(piece.price * 0.5),
+                    hasDiscount: true
+                  }));
+                }
+                
+                io.to(socketId).emit('purchasable_pieces', { 
+                  pieces: discountedPieces,
+                  hasZoneCDiscount: hasDiscount,
+                  unlockedPieceTypes: teamData.unlockedPieceTypes
+                });
+              }
+            }
           }
         }
       }
