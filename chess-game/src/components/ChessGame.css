@@ -270,21 +270,146 @@
 }
 
 .game-sidebar-left .dual-barracks {
-  flex: 0 0 40%;
+  flex: 1;
   min-height: 200px;
   overflow: hidden;
 }
 
-.game-sidebar-left .sidebar-move-history {
-  flex: 0 0 30%;
-  min-height: 150px;
+/* Unified Team Barracks - Chess Game Only */
+.game-sidebar-left .unified-team-barracks {
   background: white;
   border-radius: 8px;
-  padding: 15px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  display: flex;
-  flex-direction: column;
   overflow: hidden;
+  flex: 1;
+  min-height: 200px;
+}
+
+.game-sidebar-left .team-section {
+  padding: 15px;
+}
+
+.game-sidebar-left .team-section.black-team {
+  background: #f8f8f8;
+}
+
+.game-sidebar-left .team-section.white-team {
+  background: white;
+}
+
+.game-sidebar-left .team-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.game-sidebar-left .team-name {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+}
+
+.game-sidebar-left .team-treasury {
+  font-size: 18px;
+  font-weight: bold;
+  color: #28a745;
+}
+
+.game-sidebar-left .team-divider {
+  height: 1px;
+  background: #e0e0e0;
+  margin: 0;
+}
+
+.game-sidebar-left .team-barracks-area {
+  min-height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.game-sidebar-left .barracks-placeholder {
+  color: #999;
+  font-size: 14px;
+  text-align: center;
+  font-style: italic;
+}
+
+.game-sidebar-left .barracks-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  align-content: start;
+  overflow-y: auto;
+  overflow-x: hidden;
+  flex: 1;
+  padding-right: 5px;
+  min-height: 50px;
+  width: 100%;
+}
+
+.game-sidebar-left .barracks-piece {
+  width: 42px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f5f5f5;
+  border-radius: 4px;
+  border: 2px solid #e0e0e0;
+  transition: all 0.2s ease;
+}
+
+.game-sidebar-left .barracks-piece.team-piece {
+  cursor: pointer;
+}
+
+.game-sidebar-left .barracks-piece.team-piece:hover {
+  background: #e8f4fd;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  border-color: #1976d2;
+}
+
+.game-sidebar-left .barracks-piece.selected {
+  border-color: #1976d2;
+  background: #e3f2fd;
+  box-shadow: 0 0 12px rgba(25, 118, 210, 0.3);
+}
+
+.game-sidebar-left .barracks-piece.placement-mode {
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+.game-sidebar-left .piece-symbol {
+  font-size: 26px;
+  line-height: 1;
+  font-weight: bold;
+}
+
+.game-sidebar-left .barracks-piece.white .piece-symbol {
+  color: #f0f0f0;
+  text-shadow: 
+    0 0 2px #000,
+    1px 1px 1px #000,
+    -1px -1px 1px #000;
+  filter: drop-shadow(0 1px 1px rgba(0,0,0,0.5));
+}
+
+.game-sidebar-left .barracks-piece.black .piece-symbol {
+  color: #1a1a1a;
+  text-shadow: 0 0 1px rgba(255,255,255,0.3);
 }
 
 .game-main-area {
@@ -313,80 +438,7 @@
   flex: 0 0 auto;
 }
 
-.sidebar-move-history h3 {
-  margin: 0 0 10px 0;
-  font-size: 16px;
-  font-weight: 600;
-  color: #333;
-  flex: 0 0 auto;
-}
 
-.sidebar-move-history .moves-list {
-  flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.sidebar-move-history .move-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 8px;
-  background: #f8f8f8;
-  border-radius: 4px;
-  font-size: 12px;
-  transition: all 0.2s ease;
-  border: 1px solid #e0e0e0;
-}
-
-.sidebar-move-history .move-item:hover {
-  background: #f0f0f0;
-  border-color: #ccc;
-}
-
-.sidebar-move-history .move-number {
-  color: #999;
-  font-weight: 600;
-  min-width: 22px;
-}
-
-.sidebar-move-history .move-piece {
-  font-weight: 600;
-  min-width: 35px;
-  padding: 2px 4px;
-  border-radius: 3px;
-}
-
-.sidebar-move-history .move-piece.white {
-  color: #666;
-  font-weight: 600;
-}
-
-.sidebar-move-history .move-piece.black {
-  color: #1a1a1a;
-  font-weight: 600;
-}
-
-.sidebar-move-history .move-notation {
-  color: #555;
-  font-family: 'Monaco', 'Courier New', monospace;
-  font-size: 11px;
-}
-
-.sidebar-move-history .no-moves {
-  text-align: center;
-  color: #999;
-  font-size: 13px;
-  padding: 20px;
-  font-style: italic;
-  min-height: 80px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
 
 /* Multiplayer specific styles */
 .players-list {

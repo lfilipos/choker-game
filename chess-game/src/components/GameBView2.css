@@ -98,15 +98,15 @@
 }
 
 .treasury-label {
-  font-size: 13px;
+  font-size: 18px;
   color: #666;
   font-weight: 500;
 }
 
 .treasury-value {
-  font-size: 16px;
+  font-size: 24px;
   font-weight: bold;
-  color: #2e7d32;
+  color: #28a745;
   display: flex;
   align-items: center;
 }
@@ -124,11 +124,72 @@
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
+/* Control Zones Box */
 .control-zones-box h3 {
   margin: 0 0 12px 0;
   font-size: 16px;
   font-weight: 600;
   color: #333;
+}
+
+/* Unified Team Barracks */
+.unified-team-barracks {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.team-section {
+  padding: 15px;
+}
+
+.team-section.black-team {
+  background: #f8f8f8;
+}
+
+.team-section.white-team {
+  background: white;
+}
+
+.team-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.team-name {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+}
+
+.team-treasury {
+  font-size: 18px;
+  font-weight: bold;
+  color: #28a745;
+}
+
+.team-divider {
+  height: 1px;
+  background: #e0e0e0;
+  margin: 0;
+}
+
+.team-barracks-area {
+  min-height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.barracks-placeholder {
+  color: #999;
+  font-size: 14px;
+  text-align: center;
+  font-style: italic;
 }
 
 .zone-list {
@@ -148,6 +209,12 @@
   font-size: 14px;
   transition: all 0.3s ease;
   border: 2px solid transparent;
+}
+
+.zone-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 /* Neutral zone (default grey) */

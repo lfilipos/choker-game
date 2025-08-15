@@ -197,7 +197,7 @@ export const PokerTable: React.FC<PokerTableProps> = ({ gameState, onAction, onR
       {/* Opponent area */}
       <div className="opponent-area">
         <div className={`player-box ${isCurrentTurn(gameState.opponent.team) ? 'current-turn' : ''} ${gameState.opponent.folded ? 'folded' : ''}`}>
-          <div className="player-info">
+          <div className={`player-info team-${gameState.opponent.team.toLowerCase()}`}>
             <div className="player-name">
               {gameState.opponent.name} ({gameState.opponent.team})
               {getPositionBadge(gameState.opponent.position)}
@@ -286,7 +286,7 @@ export const PokerTable: React.FC<PokerTableProps> = ({ gameState, onAction, onR
       {/* Player area */}
       <div className="player-area">
         <div className={`player-box ${isCurrentTurn(gameState.player.team) ? 'current-turn' : ''} ${gameState.player.folded ? 'folded' : ''}`}>
-          <div className="player-info">
+          <div className={`player-info team-${gameState.player.team.toLowerCase()}`}>
             <div className="player-name">
               {gameState.player.name} ({gameState.player.team})
               {getPositionBadge(gameState.player.position)}

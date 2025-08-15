@@ -371,17 +371,17 @@ const GameBView: React.FC<GameBViewProps> = ({ matchId, socket, playerName, onLe
             <h3>Team Economy</h3>
             <div className="treasury-row">
               <div className="treasury-item-compact">
-                <span className="treasury-label">Yours:</span>
+                <span className="treasury-label">Black:</span>
                 <span className="treasury-value">
-                  <span className="currency-symbol">₿</span>
-                  {economy[matchState.playerTeam as 'white' | 'black']}
+                  <span className="currency-symbol">$</span>
+                  {economy.black}
                 </span>
               </div>
               <div className="treasury-item-compact">
-                <span className="treasury-label">Opp:</span>
+                <span className="treasury-label">White:</span>
                 <span className="treasury-value">
-                  <span className="currency-symbol">₿</span>
-                  {economy[matchState.playerTeam === 'white' ? 'black' : 'white']}
+                  <span className="currency-symbol">$</span>
+                  {economy.white}
                 </span>
               </div>
             </div>

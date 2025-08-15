@@ -29,9 +29,10 @@ const DualBarracks: React.FC<DualBarracksProps> = ({
 
   const enemyColor = playerColor === 'white' ? 'black' : 'white';
 
-  return (
-    <div className="dual-barracks">
-      <div className="enemy-barracks-section">
+  // Render barracks sections based on player color
+  const renderBarracksSections = () => {
+    const enemySection = (
+      <div key="enemy" className="enemy-barracks-section">
         <h3>Enemy Barracks</h3>
         <div className="barracks-grid">
           {enemyBarracks.length === 0 ? (
@@ -45,10 +46,10 @@ const DualBarracks: React.FC<DualBarracksProps> = ({
           )}
         </div>
       </div>
+    );
 
-      <div className="divider" />
-
-      <div className="team-barracks-section">
+    const playerSection = (
+      <div key="player" className="team-barracks-section">
         <h3>Your Barracks</h3>
         <div className="barracks-grid">
           {playerBarracks.length === 0 ? (
@@ -74,6 +75,32 @@ const DualBarracks: React.FC<DualBarracksProps> = ({
           </div>
         )}
       </div>
+    );
+
+    // For white players: enemy on top, player on bottom
+    // For black players: player on top, enemy on bottom
+    if (playerColor === 'white') {
+      return (
+        <>
+          {enemySection}
+          <div className="divider" />
+          {playerSection}
+        </>
+      );
+    } else {
+      return (
+        <>
+          {playerSection}
+          <div className="divider" />
+          {enemySection}
+        </>
+      );
+    }
+  };
+
+  return (
+    <div className="dual-barracks">
+      {renderBarracksSections()}
     </div>
   );
 };

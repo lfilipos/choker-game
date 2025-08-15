@@ -94,10 +94,41 @@
   opacity: 0.5;
 }
 
-.player-info {
+/* Black team player styling */
+.player-info.team-black {
+  background: #000000;
+  color: #ffffff;
+  padding: 8px;
+  border-radius: 8px;
   margin-bottom: 10px;
-  color: white;
 }
+
+.player-info.team-black .player-name {
+  color: #ffffff;
+}
+
+.player-info.team-black .player-status {
+  color: #ffffff;
+}
+
+/* White team player styling */
+.player-info.team-white {
+  background: #ffffff;
+  color: #000000;
+  padding: 8px;
+  border-radius: 8px;
+  margin-bottom: 10px;
+}
+
+.player-info.team-white .player-name {
+  color: #000000;
+}
+
+.player-info.team-white .player-status {
+  color: #000000;
+}
+
+/* Generic player info styling - now overridden by specific player area styles */
 
 .player-name {
   font-weight: bold;
@@ -107,6 +138,7 @@
   align-items: center;
   justify-content: center;
   gap: 10px;
+  /* Color is now handled by specific player area styles */
 }
 
 .position-badge {
@@ -133,6 +165,7 @@
 .player-status {
   height: 20px;
   font-size: 14px;
+  /* Color is now handled by specific player area styles */
 }
 
 .folded-text {

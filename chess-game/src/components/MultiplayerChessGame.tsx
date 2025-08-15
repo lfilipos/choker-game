@@ -35,6 +35,14 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
   const [availableModifiers, setAvailableModifiers] = useState<any[]>([]);
   const [blindLevel, setBlindLevel] = useState<number>(1);
   const [blindAmounts, setBlindAmounts] = useState<{smallBlind: number, bigBlind: number}>({smallBlind: 5, bigBlind: 10});
+
+  const getPieceSymbol = (piece: any): string => {
+    const symbols: Record<string, Record<string, string>> = {
+      white: { king: '♚', queen: '♛', rook: '♜', bishop: '♝', knight: '♞', pawn: '♟' },
+      black: { king: '♚', queen: '♛', rook: '♜', bishop: '♝', knight: '♞', pawn: '♟' }
+    };
+    return symbols[piece.color]?.[piece.type] || '?';
+  };
   const [matchState, setMatchState] = useState<MatchState | null>(null);
   const [barracks, setBarracks] = useState<{ white: BarracksPiece[], black: BarracksPiece[] }>({ white: [], black: [] });
   const [selectedBarracksPiece, setSelectedBarracksPiece] = useState<number | null>(null);
@@ -577,43 +585,71 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
         <div className="game-sidebar-left">
           {gameState.status === 'active' && gameState.economy && gameState.playerColor && (
             <>
-              <SidebarTreasury 
-                economy={gameState.economy} 
-                playerColor={gameState.playerColor}
-              />
-              
-              <DualBarracks
-                playerBarracks={barracks[gameState.playerColor] || []}
-                enemyBarracks={barracks[gameState.playerColor === 'white' ? 'black' : 'white'] || []}
-                playerColor={gameState.playerColor}
-                selectedPieceIndex={selectedBarracksPiece}
-                onSelectPiece={handleBarracksPieceSelect}
-                placementMode={placementMode}
-              />
-              
-              {/* Move History */}
-              <div className="sidebar-move-history">
-                <h3>Move History</h3>
-                <div className="moves-list">
-                  {!gameState.moveHistory || gameState.moveHistory.length === 0 ? (
-                    <div className="no-moves">No moves yet</div>
-                  ) : (
-                    gameState.moveHistory.slice(-10).map((move, index) => (
-                      <div key={gameState.moveHistory.length - 10 + index} className="move-item">
-                        <span className="move-number">{gameState.moveHistory.length - 9 + index}.</span>
-                        <span className={`move-piece ${move.piece.color}`}>
-                          {move.piece.color === 'white' ? 'W' : 'B'} {move.piece.type.charAt(0).toUpperCase()}
-                        </span>
-                        <span className="move-notation">
-                          {String.fromCharCode(97 + move.from.col)}{10 - move.from.row}
-                          {move.capturedPiece ? 'x' : '-'}
-                          {String.fromCharCode(97 + move.to.col)}{10 - move.to.row}
-                        </span>
+              <div className="unified-team-barracks">
+                {/* Black Team - Always on top */}
+                <div className="team-section black-team">
+                  <div className="team-header">
+                    <h3 className="team-name">Black Team</h3>
+                    <div className="team-treasury">
+                      <span className="currency-symbol">₿</span>
+                      {gameState.economy.black}
+                    </div>
+                  </div>
+                  <div className="team-barracks-area">
+                    {barracks.black && barracks.black.length > 0 ? (
+                      <div className="barracks-grid">
+                        {barracks.black.map((piece, index) => (
+                          <div
+                            key={index}
+                            className={`barracks-piece team-piece ${gameState.playerColor} ${selectedBarracksPiece === index ? 'selected' : ''} ${placementMode ? 'placement-mode' : ''}`}
+                                                         onClick={() => gameState.playerColor === 'black' ? handleBarracksPieceSelect(selectedBarracksPiece === index ? null : index) : undefined}
+                          >
+                            <span className="piece-symbol">{getPieceSymbol(piece)}</span>
+                          </div>
+                        ))}
                       </div>
-                    ))
-                  )}
+                    ) : (
+                      <div className="barracks-placeholder">
+                        No pieces in barracks
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="team-divider"></div>
+
+                {/* White Team - Always on bottom */}
+                <div className="team-section white-team">
+                  <div className="team-header">
+                    <h3 className="team-name">White Team</h3>
+                    <div className="team-treasury">
+                      <span className="currency-symbol">₿</span>
+                      {gameState.economy.white}
+                    </div>
+                  </div>
+                  <div className="team-barracks-area">
+                    {barracks.white && barracks.white.length > 0 ? (
+                      <div className="barracks-grid">
+                                                 {barracks.white.map((piece, index) => (
+                           <div
+                             key={index}
+                             className={`barracks-piece team-piece ${gameState.playerColor} ${selectedBarracksPiece === index ? 'selected' : ''} ${placementMode ? 'placement-mode' : ''}`}
+                             onClick={() => gameState.playerColor === 'white' ? handleBarracksPieceSelect(selectedBarracksPiece === index ? null : index) : undefined}
+                           >
+                             <span className="piece-symbol">{getPieceSymbol(piece)}</span>
+                           </div>
+                         ))}
+                      </div>
+                    ) : (
+                      <div className="barracks-placeholder">
+                        No pieces in barracks
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
+              
+
             </>
           )}
         </div>
