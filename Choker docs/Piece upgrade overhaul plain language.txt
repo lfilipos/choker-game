@@ -1,0 +1,222 @@
+# Upgrades
+
+I would like to implement a deeper upgrade system. Instead of all piece upgrades being available all the time, I would like to make the pieces upgrades more of a path, so there’s upgrade level 1, 2, and 3\. Each successive upgrade can’t be bought without buying the previous upgrade. Additionally, each upgrade will have additional requirements to purchase, so in order to unlock a purchase, all conditions must be met. Unless otherwise noted because the correct upgrade already exists, please remove any other upgrades for pieces that are currently in place. 
+
+The upgrade store UI should additionally be changed to be organized more effectively. Instead of all upgrades being on a single page, the upgrade store tab should have a dropdown allowing players to select one of the piece types and view the upgrades for that piece. Piece upgrade tiles should have a short summary description of what the piece does (feel free to update the summaries below to make the more readable and fit on one line). Additionally, they should have additional lines that indicate what requirements are needed to unlock that upgrade. Once upgrades are bought, they should still be visible in the store, but should change their styling and content to indicate that they have been successfully purchased. Additionally, when pieces are upgraded, chess players should be able to hover over the upgrade badges on the pieces to see a tooltip indicating the upgrades that piece has.
+
+Pawns
+
+* Level 1  
+  * Summary: Move two spaces on first try  
+  * Game requirements to be eligible for purchase:   
+    * Capture 1 pawn  
+  * Cost: 250   
+  * Functional requirements: this already exists. Nothing is needed to implement  
+* Level 2  
+  * Summary: Capture from two squares away  
+  * Game requirements to be eligible for purchase:   
+    * Purchase pawn upgrade level 1  
+    * Capture 2 pawns  
+  * Cost: 350  
+  * Functional requirements: this already exists. Nothing is needed to implement  
+* Level 3  
+  * Summary: Move two pawns at a time  
+  * Game requirements to be eligible for purchase:   
+    * Purchase pawn upgrade level 2  
+    * Capture 2 pawns  
+  * Cost: 350  
+  * Functional requirements:  
+    * When this upgrade is enabled the player can move two pawns at a time  
+    * The player should be able to move one pawn, and if this upgrade is active, then the player should have the option to move another pawn  
+    * The player should only be able to move one other pawn, but no other pieces should be able to move like this  
+    * This will require some sort of UI that allows the user to indicate whether they would like to move another pawn or just that first pawn only for this turn.  
+    * Pawns moved in this way should be able to capture other pieces according to their upgraded move set, so it’s possible that a player may capture two pieces on one turn
+
+Rooks
+
+* Level 1  
+  * Summary: Defend piece behind it  
+  * Game requirements to be eligible for purchase:  
+    * Capture 1 rook  
+  * Cost: 200  
+  * Functional requirements:  
+    * When this upgrade is enabled, if a friendly pawn is sitting in the square directly behind the rook, it cannot be captured.  
+    * No other pieces would get this benefit, only the friendly pawn  
+    * If the pawn moves out from behind the rook, or if the rook moves to a different location, this benefit is lost.  
+    * Additionally, the UI for showing a player their potential moves must be updated to account for moves blocked by the rook’s protection  
+* Level 2  
+  * Summary: Link with one other rook  
+  * Game requirements to be eligible for purchase:  
+    * Purchase rook level 1  
+    * Capture 2 rooks  
+  * Cost: 400  
+  * Functional requirements:  
+    * Rook level 1 upgrade is still in effect  
+    * On the player’s turn, they may select two rooks that are within two spaces of each other (one space in between) to link with each other  
+    * When two rooks are linked, other enemy pieces cannot pass through the linkage, effectively creating a wall.  
+    * The only pieces that can pass through the wall are the player’s other friendly pieces, or enemy knights.  
+    * When a player links two rooks, that counts as their move for their turn.  
+    * Linked rooks can still move.  
+    * When this upgrade is purchased the rooks moveset is reduced so that it can only move a maximum of 5 spaces across the board at a time.  
+    * If a linked rook moves more than 2 spaces away (more than 1 space in between) from its linked pair, the wall breaks.  
+    * If a rook is captured, the wall breaks.  
+    * Some sort of UI indicator will be necessary for showing the wall to both players, as well as for the player to link the two rooks.  
+    * Additionally, the UI for showing a player their potential moves must be updated to account for moves blocked by the wall  
+    * The idea behind this upgrade is that the rooks will become less mobile, but more versatile in being able to defend positions.  
+* Level 3  
+  * Summary: Link with one other rook 3 spaces away  
+  * Game requirements to be eligible for purchase:  
+    * Purchase rook level 2  
+    * Capture 3 rooks  
+  * Cost: 600  
+  * Functional requirements:  
+    * Same behavior as rook level 2 with a few changes  
+    * The rooks can now link from 3 spaces away (2 spaces between them)  
+    * Their moveset is reduced so they can only move a maximum of 3 spaces across the board at a time.
+
+Knights
+
+* Level 1  
+  * Summary: Knight can move 1 square adjacent  
+  * Game requirements to be eligible for purchase:  
+    * Capture 1 knight  
+  * Cost:  
+    * 150  
+  * Functional requirements:  
+    * When the player selects the knight to move, the knight should have the added ability to move 1 square adjacent to it in any direction  
+    * The knight will still have the ability to move in its normal pattern if it desires  
+* Level 2  
+  * Summary: 3-2 move  
+  * Game requirements to be eligible for purchase:  
+    * Purchase knight level 1  
+  * Cost:  
+    * 250  
+  * Functional requirements: this already exists. Nothing is needed to implement
+
+    
+
+* Level 3  
+  * Summary: Double move  
+  * Game requirements to be eligible for purchase:  
+    * Purchase knight level 2  
+    * Capture 2 knights  
+  * Cost:  
+    * 350  
+  * Functional requirements:  
+    * This already exists, but isn’t functional. Please update to follow these requirements  
+    * Once the knight makes its first move according to the movesets available granted to it from knight upgrade levels 1 and 2, it has the option to make another move.  
+    * The knight does not have to make another move if it doesn’t want to   
+    * There will need to be a UI option to allow the player to only make the first move. For example, once the knight has made its first move, clicking on it again will finalize its position without making another move.  
+    * The UI should show the new movement options once the knight has made its initial move.  
+    * Once the knight has made its initial move, it cannot return to its starting spot on that turn, unless it chooses to use its second move to do so. In effect, once the knight makes its first move, that segment of the turn is finalized.
+
+Bishop
+
+* Level 1  
+  * Summary: Sidestep 1 orthogonal  
+  * Game requirements to be eligible for purchase:  
+    * Capture 1 bishop  
+  * Cost:  
+    * 300  
+  * Functional requirements:  
+    * When the bishop is selected to make a move, in addition to its normal moveset, it can move up, down, left, or right one square  
+* Level 2  
+  * Summary: Bishops are cheaper  
+  * Game requirements to be eligible for purchase:  
+    * Purchase bishop level 1  
+    * Capture 2 bishops  
+  * Cost:  
+    * 450  
+  * Functional requirements:  
+    * The player’s teams bishops receive a 50% discount from their normal price when purchased in the shop  
+* Level 3  
+  * Summary: Every X squares moved by any bishop \= \+Y to team bank (or invested?)  
+  * Game requirements to be eligible for purchase:  
+    * Purchase bishop level 2  
+    * Capture 3 bishops  
+  * Cost:  
+    * 600  
+  * Functional requirements:  
+    * The game should now keep track of the cumulative number of squares that all of that team’s bishops move.  
+    * For every 10 squares that that team’s bishops move, deposit 25 into the team’s treasury. This is in addition to any other money the team receives on that player’s turn.
+
+Queen
+
+* Level 1  
+  * Summary: Can move one space in any direction at the end of its normal move  
+  * Game requirements to be eligible for purchase:  
+    * Capture 5 pawns  
+  * Cost:  
+    * 300  
+  * Functional requirements:  
+    * The queen can move in any direction as normal, however at the end of its move, it has the option to move one square in any direction  
+    * For example, the queen could move diagonally 6 squares, and then at the end move 1 square down  
+    * Once the queen has made her initial move, the UI should show the new movement options of one square all around her  
+    * The queen has the option to move that extra square, but doesn’t have to. Similar to the knight, there should be a UI element, like clicking again on the queen to finalize her position.  
+    * The initial movement is final once made. The queen cannot move back to its original spot in the same turn once it has been placed the first time.  
+* Level 2  
+  * Summary: Can move through 1 pawn 1 space; allowed to capture 2 pieces  
+  * Game requirements to be eligible for purchase:  
+    * Purchase queen level 1  
+    * Capture a knight, a rook, and a bishop  
+  * Cost:  
+    * 500  
+  * Functional requirements:  
+    * The queen can move through one pawn if it has the space or the movement to do so.  
+    * The pawn that the queen moves through is captured.  
+    * The queen can only move one additional space past the initial pawn it captured.  
+    * The queen can continue its direction like normal that one extra space, or it can change direction in accordance with the rules of queen level 1\.  
+    * If the queen lands on another piece with its second move, that piece is also captured.  
+    * Similar to queen level 1, once the queen captures the first pawn, it has the option to move one additional square in any direction, but does not need to.  
+    * The same position finalization UI and flow in queen level 1 applies here.  
+* Level 3  
+  * Summary: Instead of being captured, pieces within 1 square of the queen move one square back when attacked (unless there is no space available)  
+  * Game requirements to be eligible for purchase:  
+    * Purchase queen level 2  
+    * Capture another queen  
+  * Cost:  
+    * 750  
+  * Functional requirements:  
+    * Any friendly pieces that are within one square of a friendly queen attempt to evade capture.  
+    * When an enemy piece lands on a friendly piece within one square of the queen and tries to capture it, that friendly piece attempts to move backwards 1 square.  
+    * If the piece can successfully move back one square, it does so and the attacking enemy piece is now in the position the friendly piece formerly occupied.  
+    * If the piece cannot successfully move back one square, either because there is another piece (friendly or enemy) already occupying that square, or if there is no place to move because of the edge of the game board, then that piece is captured.  
+    * If a piece within one square of the queen is attacked by an enemy piece, that piece must attempt to evade.  
+    * Pieces lose their ability to evade as soon as they are no longer within one square of a queen.
+
+King
+
+* Level 1  
+  * Summary: Can move 2 squares at a time  
+  * Game requirements to be eligible for purchase:  
+    * Your team has at least 750 in their treasury  
+  * Cost:  
+    * 250  
+  * Functional requirements:  
+    * The king can now move 2 squares in any direction, rather than just 1  
+* Level 2  
+  * Summary: Can move another piece within 2 squares (1 in between) 1 space closer to the king  
+  * Game requirements to be eligible for purchase:  
+    * Purchased king level 1  
+    * Your team has at least 1000 in their treasury  
+  * Cost:  
+    * 350  
+  * Functional requirements:  
+    * Instead of moving, a king has the option to make any piece, friendly or enemy, that is within 2 squares of it (1 square in between), move 1 square in any direction  
+    * If the piece they are moving is an enemy piece, they can only move it to an open square. They cannot move it into a friendly piece or another enemy piece  
+    * If the piece they are moving is a friendly piece, they can move it to an open square, or onto an enemy piece, which would capture it  
+    * Moving this other piece counts as the king’s move  
+    * In order to select the other piece, the player must first select the king, and then select an eligible piece within range, and then make the piece move one space in any eligible direction.  
+    * If the king selects clicks on the selected other piece again, it will effectively deselect that piece and the king can either move or select another piece.  
+    * The UI should effectively communicate when a piece is selected, deselected, and when appropriate, what its eligible moves are.  
+* Level 3  
+  * Summary: Can swap places with any friendly castle on the board  
+  * Game requirements to be eligible for purchase:  
+    * Purchased king level 2  
+    * Your team must have 1250 in their treasury  
+  * Cost:  
+    * 450  
+  * Functional requirements:  
+    * When a player selects a king, that king has the option to swap places with any friendly castle on the board. This is effectively a long range “castle” with the king  
+    * When the king is selected, the other available castles should be highlighted.  
+    * If the player clicks on one of the castles, the king will swap places with it.

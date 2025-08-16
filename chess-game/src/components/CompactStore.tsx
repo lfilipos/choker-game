@@ -126,6 +126,7 @@ const CompactStore: React.FC<CompactStoreProps> = ({
 
   const renderPieceItem = (piece: PurchasablePiece) => {
     const canAfford = playerBalance >= piece.price;
+    const isUnlocked = piece.isUnlocked || piece.isAvailable;
     const pieceSymbols: { [key: string]: string } = {
       pawn: '♟',
       knight: '♞',
@@ -136,19 +137,31 @@ const CompactStore: React.FC<CompactStoreProps> = ({
     };
 
     return (
-      <div key={piece.type} className="compact-store-item">
+      <div key={piece.type} className={`compact-store-item ${!isUnlocked ? 'unavailable' : ''}`}>
         <div className="item-header">
           <span className="item-icon">{pieceSymbols[piece.type]}</span>
           <span className="item-name">{piece.name}</span>
           <span className="item-cost">₿{piece.price}</span>
         </div>
-        <button
-          className={`buy-button ${!canAfford ? 'disabled' : ''}`}
-          onClick={() => handlePurchasePiece(piece)}
-          disabled={!canAfford || isLoading}
-        >
-          {canAfford ? 'Buy' : 'Can\'t afford'}
-        </button>
+        {piece.hasDiscount && (
+          <div className="item-discount">
+            <span className="original-price">₿{piece.originalPrice}</span>
+            <span className="discount-badge">Zone C</span>
+          </div>
+        )}
+        {isUnlocked ? (
+          <button
+            className={`buy-button ${!canAfford ? 'disabled' : ''}`}
+            onClick={() => handlePurchasePiece(piece)}
+            disabled={!canAfford || isLoading}
+          >
+            {canAfford ? 'Buy' : 'Can\'t afford'}
+          </button>
+        ) : (
+          <div className="unlock-requirement">
+            <span className="unlock-text">Capture a {piece.name} to unlock</span>
+          </div>
+        )}
       </div>
     );
   };

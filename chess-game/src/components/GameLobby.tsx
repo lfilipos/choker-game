@@ -125,7 +125,7 @@ export const GameLobby: React.FC<GameLobbyProps> = ({ onMatchSelect }) => {
   }
 
   return (
-    <div className="game-lobby">
+    <div className="game-lobby" data-testid="game-lobby">
       <div className="lobby-container">
         <h1>Lockstep Game Lobby</h1>
         
@@ -142,7 +142,7 @@ export const GameLobby: React.FC<GameLobbyProps> = ({ onMatchSelect }) => {
         </div>
 
         {error && (
-          <div className="error-message">
+          <div className="error-message" data-testid="error-message">
             {error}
           </div>
         )}

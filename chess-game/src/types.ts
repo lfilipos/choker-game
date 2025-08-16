@@ -84,6 +84,8 @@ export interface PurchasablePiece {
   description: string;
   originalPrice?: number;
   hasDiscount?: boolean;
+  isUnlocked?: boolean;
+  isAvailable?: boolean;
 }
 
 export interface GameState {

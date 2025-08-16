@@ -832,22 +832,27 @@ io.on('connection', (socket) => {
       const team = getTeamFromRole(playerInfo.role);
       const teamData = match.teams[team];
       
-      // Get only unlocked piece types for this team
-      const pieces = getPurchasablePiecesForTeam(teamData.unlockedPieceTypes);
+      // Get all piece types and mark which ones are unlocked
+      const allPieces = getPurchasablePieces();
+      const piecesWithAvailability = allPieces.map(piece => ({
+        ...piece,
+        isUnlocked: teamData.unlockedPieceTypes.includes(piece.type),
+        isAvailable: teamData.unlockedPieceTypes.includes(piece.type)
+      }));
       
       // Check if player has Zone C discount
       let hasDiscount = false;
-      let discountedPieces = pieces;
+      let discountedPieces = piecesWithAvailability;
       
       hasDiscount = match.sharedState.controlZoneOwnership?.C === team;
       
       if (hasDiscount) {
-        // Apply discount to all pieces
-        discountedPieces = pieces.map(piece => ({
+        // Apply discount to unlocked pieces only
+        discountedPieces = piecesWithAvailability.map(piece => ({
           ...piece,
-          originalPrice: piece.price,
-          price: Math.ceil(piece.price * 0.5),
-          hasDiscount: true
+          originalPrice: piece.isUnlocked ? piece.price : piece.price,
+          price: piece.isUnlocked ? Math.ceil(piece.price * 0.5) : piece.price,
+          hasDiscount: piece.isUnlocked
         }));
       }
       

@@ -240,10 +240,11 @@ const UpgradeStore: React.FC<UpgradeStoreProps> = ({
         <div className="pieces-grid">
           {purchasablePieces.map(piece => {
             const canAfford = playerBalance >= piece.price;
+            const isUnlocked = piece.isUnlocked || piece.isAvailable;
             return (
               <div 
                 key={piece.type} 
-                className={`piece-card ${!canAfford ? 'unaffordable' : ''}`}
+                className={`piece-card ${!canAfford ? 'unaffordable' : ''} ${!isUnlocked ? 'unavailable' : ''}`}
               >
                 <div className="piece-header">
                   <span className="piece-icon large">{pieceEmojis[piece.type]}</span>
@@ -272,13 +273,19 @@ const UpgradeStore: React.FC<UpgradeStoreProps> = ({
                     )}
                   </div>
                   
-                  <button 
-                    className="purchase-btn"
-                    disabled={!canAfford}
-                    onClick={() => handlePurchasePiece(piece.type)}
-                  >
-                    {canAfford ? 'Purchase' : 'Insufficient Funds'}
-                  </button>
+                  {isUnlocked ? (
+                    <button 
+                      className="purchase-btn"
+                      disabled={!canAfford}
+                      onClick={() => handlePurchasePiece(piece.type)}
+                    >
+                      {canAfford ? 'Purchase' : 'Insufficient Funds'}
+                    </button>
+                  ) : (
+                    <div className="unlock-requirement">
+                      <span className="unlock-text">Capture a {piece.name} to unlock</span>
+                    </div>
+                  )}
                 </div>
               </div>
             );

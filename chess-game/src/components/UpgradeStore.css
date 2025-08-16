@@ -274,6 +274,24 @@
   border-color: #ccc;
 }
 
+.piece-card.unavailable {
+  opacity: 0.5;
+  background: #f5f5f5;
+  border-color: #ddd;
+}
+
+.piece-card.unavailable .piece-header h3 {
+  color: #999;
+}
+
+.piece-card.unavailable .piece-description {
+  color: #999;
+}
+
+.piece-card.unavailable .piece-cost {
+  color: #999;
+}
+
 .piece-header {
   display: flex;
   flex-direction: column;
@@ -318,6 +336,24 @@
   font-size: 18px;
   font-weight: bold;
   color: #2e7d32;
+}
+
+.unlock-requirement {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 16px;
+  background: #f0f0f0;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  margin-top: 10px;
+}
+
+.unlock-text {
+  font-size: 14px;
+  color: #666;
+  font-style: italic;
+  text-align: center;
 }
 
 .no-pieces {

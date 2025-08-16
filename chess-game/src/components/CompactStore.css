@@ -70,6 +70,20 @@
   border-color: #ccc;
 }
 
+.compact-store-item.unavailable {
+  opacity: 0.6;
+  background: #f5f5f5;
+  border-color: #ddd;
+}
+
+.compact-store-item.unavailable .item-name {
+  color: #999;
+}
+
+.compact-store-item.unavailable .item-cost {
+  color: #999;
+}
+
 .item-header {
   display: flex;
   align-items: center;
@@ -96,6 +110,46 @@
   font-weight: bold;
   color: #2e7d32;
   white-space: nowrap;
+}
+
+.item-discount {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  margin: 2px 0;
+}
+
+.original-price {
+  color: #999;
+  text-decoration: line-through;
+}
+
+.discount-badge {
+  background: #4CAF50;
+  color: white;
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.unlock-requirement {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 8px;
+  background: #f0f0f0;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  margin-top: 4px;
+}
+
+.unlock-text {
+  font-size: 11px;
+  color: #666;
+  font-style: italic;
+  text-align: center;
 }
 
 .item-desc {
