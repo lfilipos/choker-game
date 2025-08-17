@@ -164,53 +164,10 @@ function getUpgradedRookMoves(board, position, color, upgrades, standardMoves) {
   const moves = [...standardMoves];
   const pieceUpgrades = upgrades[color][PieceType.ROOK] || [];
   
-  // Siege mode - can pass through one enemy piece to capture another
-  if (pieceUpgrades.includes('rook_siege_mode')) {
-    console.log('Rook has siege mode upgrade!');
-    const directions = [[-1, 0], [1, 0], [0, -1], [0, 1]];
-    
-    directions.forEach(([dRow, dCol]) => {
-      let encounteredEnemy = null;
-      let encounteredEnemyPos = null;
-      
-      for (let i = 1; i < 16; i++) {
-        const newPos = { row: position.row + i * dRow, col: position.col + i * dCol };
-        
-        // Check if position is valid
-        if (newPos.row < 0 || newPos.row >= 10 || newPos.col < 0 || newPos.col >= 16) break;
-        
-        const targetPiece = board[newPos.row][newPos.col];
-        
-        if (!targetPiece) {
-          // Empty square - can move here even after passing through one enemy
-          if (encounteredEnemy) {
-            // This is a siege move through an enemy piece
-            console.log(`Adding siege move through enemy at (${encounteredEnemyPos.row},${encounteredEnemyPos.col}) to (${newPos.row},${newPos.col})`);
-            moves.push(newPos);
-          }
-          // Standard moves are already included
-        } else {
-          // There's a piece here
-          if (targetPiece.color !== color) {
-            // Enemy piece
-            if (!encounteredEnemy) {
-              // First enemy piece - can pass through it
-              encounteredEnemy = targetPiece;
-              encounteredEnemyPos = newPos;
-              // The capture of this first piece is already in standard moves
-            } else {
-              // Second enemy piece - can capture it (siege capture)
-              console.log(`Adding siege capture at (${newPos.row},${newPos.col})`);
-              moves.push(newPos);
-              break; // Can't go further after capturing second piece
-            }
-          } else {
-            // Friendly piece - can't pass through
-            break;
-          }
-        }
-      }
-    });
+  // Pawn Protection upgrade - no additional movement abilities, just protection effect
+  // The protection logic is handled in move validation, not in move generation
+  if (pieceUpgrades.includes('rook_pawn_protection')) {
+    console.log('Rook has pawn protection upgrade!');
   }
   
   return moves;
@@ -334,8 +291,54 @@ function isProtectedByQueenAura(board, position, color, upgrades) {
   return false;
 }
 
+// Check if a pawn is protected by a rook's protection ability
+function isProtectedByRook(board, position, color, upgrades) {
+  // Safety check for upgrades structure
+  if (!upgrades || !upgrades[color] || !upgrades[color][PieceType.ROOK] || !upgrades[color][PieceType.ROOK].includes('rook_pawn_protection')) {
+    return false;
+  }
+  
+  // Check if the piece at this position is a pawn
+  const piece = board[position.row][position.col];
+  if (!piece || piece.type !== PieceType.PAWN || piece.color !== color) {
+    return false;
+  }
+  
+  // Check for a protecting rook in the same column
+  // A pawn is protected if it's in the square directly behind a rook
+  // "Behind" means in the direction of the rook's home side:
+  // - White rooks (home side = row 9) protect pawns in row + 1 (toward row 9)
+  // - Black rooks (home side = row 0) protect pawns in row - 1 (toward row 0)
+  
+  for (let row = 0; row < 10; row++) {
+    if (row === position.row) continue; // Skip the pawn's position
+    
+    const checkPiece = board[row][position.col];
+    if (checkPiece && checkPiece.type === PieceType.ROOK && checkPiece.color === color) {
+      // Check if this rook has the pawn protection upgrade
+      if (upgrades[color][PieceType.ROOK].includes('rook_pawn_protection')) {
+        // Determine if the pawn is directly behind the rook
+        if (color === PieceColor.WHITE) {
+          // White rook: pawn must be in row + 1 (closer to row 9)
+          if (position.row === row + 1) {
+            return true;
+          }
+        } else {
+          // Black rook: pawn must be in row - 1 (closer to row 0)
+          if (position.row === row - 1) {
+            return true;
+          }
+        }
+      }
+    }
+  }
+  
+  return false;
+}
+
 module.exports = {
   applyUpgradesToMoves,
   hasUpgradeEffect,
-  isProtectedByQueenAura
+  isProtectedByQueenAura,
+  isProtectedByRook
 };

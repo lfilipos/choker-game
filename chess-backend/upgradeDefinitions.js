@@ -28,16 +28,16 @@ const UPGRADE_DEFINITIONS = {
     }],
     activationMethod: ActivationMethod.PURCHASE
   },
-  pawn_en_passant_plus: {
-    id: 'pawn_en_passant_plus',
-    name: 'Enhanced En Passant',
-    description: 'Pawns can capture en passant from 2 files away',
-    cost: 120,
+  pawn_dual_movement: {
+    id: 'pawn_dual_movement',
+    name: 'Dual Pawn Movement',
+    description: 'Move two pawns in sequence during a single turn',
+    cost: 200,
     pieceType: PieceType.PAWN,
     effects: [{
-      type: UpgradeType.SPECIAL,
-      value: 'en_passant_extended',
-      description: 'En passant capture range extended'
+      type: UpgradeType.TURN_MECHANICS,
+      value: 'dual_movement',
+      description: 'Can move two pawns per turn'
     }],
     activationMethod: ActivationMethod.CONTROL_ZONE
   },
@@ -99,31 +99,18 @@ const UPGRADE_DEFINITIONS = {
   },
 
   // ROOK UPGRADES
-  rook_castle_anywhere: {
-    id: 'rook_castle_anywhere',
-    name: 'Flexible Castle',
-    description: 'Rooks can castle from any position on the back rank',
-    cost: 180,
+  rook_pawn_protection: {
+    id: 'rook_pawn_protection',
+    name: 'Pawn Protection',
+    description: 'Rooks can protect friendly pawns positioned directly behind them from capture',
+    cost: 250,
     pieceType: PieceType.ROOK,
     effects: [{
-      type: UpgradeType.SPECIAL,
-      value: 'castle_flexible',
-      description: 'Castle from any back rank position'
+      type: UpgradeType.DEFENSE,
+      value: 'pawn_protection',
+      description: 'Protects pawns directly behind rook from capture'
     }],
     activationMethod: ActivationMethod.PURCHASE
-  },
-  rook_siege_mode: {
-    id: 'rook_siege_mode',
-    name: 'Siege Tower',
-    description: 'Rooks can capture up to 2 pieces in one move along their path',
-    cost: 400,
-    pieceType: PieceType.ROOK,
-    effects: [{
-      type: UpgradeType.ATTACK,
-      value: 'multi_capture',
-      description: 'Capture multiple pieces in path'
-    }],
-    activationMethod: ActivationMethod.ACHIEVEMENT
   },
 
   // QUEEN UPGRADES
@@ -184,12 +171,12 @@ const UPGRADE_DEFINITIONS = {
   }
 };
 
-// Control zone specific upgrades
-const CONTROL_ZONE_UPGRADES = {
-  A: ['pawn_en_passant_plus', 'bishop_piercing'],
-  B: ['queen_aura'],
-  C: ['pawn_en_passant_plus', 'bishop_piercing']
-};
+// Control zone specific upgrades - REMOVED: Control zones should not grant piece upgrades
+// const CONTROL_ZONE_UPGRADES = {
+//   A: ['pawn_dual_movement', 'bishop_piercing'],
+//   B: ['queen_aura'],
+//   C: ['pawn_dual_movement', 'bishop_piercing']
+// };
 
 // Starting economy values
 const STARTING_ECONOMY = {
@@ -206,7 +193,7 @@ const INCOME_RATES = {
 
 module.exports = {
   UPGRADE_DEFINITIONS,
-  CONTROL_ZONE_UPGRADES,
+  // CONTROL_ZONE_UPGRADES, // REMOVED: Control zones should not grant piece upgrades
   STARTING_ECONOMY,
   INCOME_RATES
 };

@@ -1,5 +1,5 @@
 const { PieceType, PieceColor, CONTROL_ZONES } = require('./types');
-const { applyUpgradesToMoves, isProtectedByQueenAura } = require('./upgradeLogic');
+const { applyUpgradesToMoves, isProtectedByQueenAura, isProtectedByRook } = require('./upgradeLogic');
 
 // Create initial chess board (16x10)
 function createInitialBoard() {
@@ -65,7 +65,21 @@ function getPossibleMoves(board, position, upgrades = null, upgradeManager = nul
     console.log(`Standard moves for ${piece.type}: ${standardMoves.length} moves`);
     const upgradedMoves = applyUpgradesToMoves(board, position, piece, standardMoves, upgrades, upgradeManager);
     console.log(`Upgraded moves: ${upgradedMoves.length} moves`);
-    return upgradedMoves;
+    
+    // Filter out moves that would capture protected pieces
+    const filteredMoves = upgradedMoves.filter(move => {
+      const targetPiece = board[move.row][move.col];
+      if (targetPiece && targetPiece.color !== piece.color) {
+        // This is a capture move, check if the target is protected
+        const isProtected = isProtectedByQueenAura(board, move, targetPiece.color, upgrades) ||
+                           isProtectedByRook(board, move, targetPiece.color, upgrades);
+        return !isProtected;
+      }
+      return true; // Non-capture moves are always valid
+    });
+    
+    console.log(`Filtered moves (removing protected pieces): ${filteredMoves.length} moves`);
+    return filteredMoves;
   }
   
   return standardMoves;
@@ -239,6 +253,14 @@ function calculateAllControlZoneStatuses(board) {
   return CONTROL_ZONES.map(zone => calculateControlZoneStatus(board, zone));
 }
 
+// Check if a piece is protected by any protection mechanism
+function isPieceProtected(board, position, color, upgrades) {
+  if (!upgrades || !upgrades[color]) return false;
+  
+  return isProtectedByQueenAura(board, position, color, upgrades) ||
+         isProtectedByRook(board, position, color, upgrades);
+}
+
 // Validate if a move is legal
 function isValidMove(board, from, to, color, upgrades = null, upgradeManager = null) {
   const piece = board[from.row][from.col];
@@ -255,5 +277,6 @@ module.exports = {
   makeMove,
   calculateControlZoneStatus,
   calculateAllControlZoneStatuses,
-  isValidMove
+  isValidMove,
+  isPieceProtected
 };

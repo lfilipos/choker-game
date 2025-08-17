@@ -211,6 +211,50 @@ export const makeMove = (board: Board, from: Position, to: Position): Board => {
   return newBoard;
 };
 
+// Check if a pawn is protected by a rook's protection ability
+export const isProtectedByRook = (board: Board, position: Position, color: PieceColor, upgrades: any): boolean => {
+  if (!upgrades || !upgrades[color] || !upgrades[color].rook || !upgrades[color].rook.includes('rook_pawn_protection')) {
+    return false;
+  }
+  
+  // Check if the piece at this position is a pawn
+  const piece = board[position.row][position.col];
+  if (!piece || piece.type !== 'pawn' || piece.color !== color) {
+    return false;
+  }
+  
+  // Check for a protecting rook in the same column
+  // A pawn is protected if it's in the square directly behind a rook
+  // "Behind" means in the direction of the rook's home side:
+  // - White rooks (home side = row 9) protect pawns in row + 1 (toward row 9)
+  // - Black rooks (home side = row 0) protect pawns in row - 1 (toward row 0)
+  
+  for (let row = 0; row < 10; row++) {
+    if (row === position.row) continue; // Skip the pawn's position
+    
+    const checkPiece = board[row][position.col];
+    if (checkPiece && checkPiece.type === 'rook' && checkPiece.color === color) {
+      // Check if this rook has the pawn protection upgrade
+      if (upgrades[color].rook.includes('rook_pawn_protection')) {
+        // Determine if the pawn is directly behind the rook
+        if (color === 'white') {
+          // White rook: pawn must be in row + 1 (closer to row 9)
+          if (position.row === row + 1) {
+            return true;
+          }
+        } else {
+          // Black rook: pawn must be in row - 1 (closer to row 0)
+          if (position.row === row - 1) {
+            return true;
+          }
+        }
+      }
+    }
+  }
+  
+  return false;
+};
+
 export const isValidMove = (board: Board, from: Position, to: Position, color: PieceColor): boolean => {
   const piece = board[from.row][from.col];
   if (!piece || piece.color !== color) return false;

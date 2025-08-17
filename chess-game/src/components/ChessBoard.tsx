@@ -15,6 +15,10 @@ interface ChessBoardProps {
   upgrades?: UpgradeState;
   highlightedSquares?: Position[];
   lastMove?: { from: Position; to: Position; piece: { type: string; color: string } } | null;
+  // Dual movement checkmark button props
+  showDualMoveCheckmark?: boolean;
+  firstPawnPosition?: { row: number; col: number } | null;
+  onEndTurn?: () => void;
 }
 
 export const ChessBoard: React.FC<ChessBoardProps> = ({
@@ -26,6 +30,9 @@ export const ChessBoard: React.FC<ChessBoardProps> = ({
   upgrades,
   highlightedSquares = [],
   lastMove,
+  showDualMoveCheckmark,
+  firstPawnPosition,
+  onEndTurn,
 }) => {
   const isSquareSelected = (row: number, col: number): boolean => {
     return selectedSquare !== null && selectedSquare.row === row && selectedSquare.col === col;
@@ -98,9 +105,31 @@ export const ChessBoard: React.FC<ChessBoardProps> = ({
                   controlZone={controlZone}
                   onClick={onSquareClick}
                   upgrades={upgrades}
+                  board={board}
                 />
               );
             })
+          )}
+          
+          {/* Dual Movement Checkmark Button - positioned relative to the chess board */}
+          {showDualMoveCheckmark && firstPawnPosition && onEndTurn && (
+            <div 
+              className="dual-move-checkmark-overlay"
+              style={{
+                position: 'absolute',
+                top: `${firstPawnPosition.row * 60 - 8}px`, // 2px from top of square - 10px = -8px
+                left: `${firstPawnPosition.col * 60 - 8}px`, // 2px from left edge of square - 10px = -8px
+                zIndex: 100
+              }}
+            >
+              <button 
+                className="end-turn-checkmark"
+                onClick={onEndTurn}
+                title="End Turn"
+              >
+                ✓
+              </button>
+            </div>
           )}
         </div>
 
