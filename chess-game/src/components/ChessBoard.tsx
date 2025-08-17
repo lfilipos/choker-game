@@ -1,6 +1,6 @@
 import React from 'react';
 import { Board, Position, ControlZone } from '../types';
-import { UpgradeState } from '../types/upgrades';
+import { UpgradeState, TieredUpgradeDefinition } from '../types/upgrades';
 import { ChessSquare } from './ChessSquare';
 import { MoveArrow } from './MoveArrow';
 import { isSquareInControlZone } from '../utils/controlZones';
@@ -13,6 +13,7 @@ interface ChessBoardProps {
   controlZones: ControlZone[];
   onSquareClick: (position: Position) => void;
   upgrades?: UpgradeState;
+  tieredUpgrades?: TieredUpgradeDefinition[];
   highlightedSquares?: Position[];
   lastMove?: { from: Position; to: Position; piece: { type: string; color: string } } | null;
 }
@@ -24,6 +25,7 @@ export const ChessBoard: React.FC<ChessBoardProps> = ({
   controlZones,
   onSquareClick,
   upgrades,
+  tieredUpgrades,
   highlightedSquares = [],
   lastMove,
 }) => {
@@ -98,6 +100,7 @@ export const ChessBoard: React.FC<ChessBoardProps> = ({
                   controlZone={controlZone}
                   onClick={onSquareClick}
                   upgrades={upgrades}
+                  tieredUpgrades={tieredUpgrades}
                 />
               );
             })

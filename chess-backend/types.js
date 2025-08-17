@@ -77,6 +77,20 @@ const ActivationMethod = {
   TIMED: 'timed'
 };
 
+// New tiered upgrade system types
+const RequirementType = {
+  CAPTURE: 'capture',
+  PURCHASE: 'purchase',
+  TREASURY: 'treasury',
+  CONTROL_ZONE: 'control_zone'
+};
+
+const UpgradeTier = {
+  TIER_1: 1,
+  TIER_2: 2,
+  TIER_3: 3
+};
+
 module.exports = {
   GameStatus,
   PieceType,
@@ -84,5 +98,7 @@ module.exports = {
   ControlZoneType,
   CONTROL_ZONES,
   UpgradeType,
-  ActivationMethod
+  ActivationMethod,
+  RequirementType,
+  UpgradeTier
 };

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { PieceColor, PieceType, PurchasablePiece } from '../types';
-import { UpgradeDefinition, UpgradeState, TeamEconomy } from '../types/upgrades';
+import { TieredUpgradeDefinition, UpgradeState, TeamEconomy, UpgradeProgress } from '../types/upgrades';
 import './UpgradeStore.css';
 
 interface Modifier {
@@ -25,11 +25,12 @@ interface UpgradeStoreProps {
   onPurchaseUpgrade: (upgradeId: string) => void;
   onPurchasePiece?: (pieceType: PieceType) => void;
   onPurchaseModifier?: (modifierId: string) => void;
-  availableUpgrades: UpgradeDefinition[];
+  availableUpgrades: TieredUpgradeDefinition[];
   purchasablePieces?: PurchasablePiece[];
   availableModifiers?: Modifier[];
   blindLevel?: number;
   blindAmounts?: { smallBlind: number; bigBlind: number };
+  upgradeProgress?: Record<PieceType, UpgradeProgress>;
 }
 
 const pieceEmojis: Record<PieceType, string> = {
@@ -39,6 +40,27 @@ const pieceEmojis: Record<PieceType, string> = {
   rook: '♜',
   queen: '♛',
   king: '♚'
+};
+
+const pieceNames: Record<PieceType, string> = {
+  pawn: 'Pawn',
+  knight: 'Knight',
+  bishop: 'Bishop',
+  rook: 'Rook',
+  queen: 'Queen',
+  king: 'King'
+};
+
+const tierColors = {
+  1: '#4CAF50', // Green
+  2: '#2196F3', // Blue
+  3: '#9C27B0'  // Purple
+};
+
+const tierNames = {
+  1: 'Basic',
+  2: 'Advanced',
+  3: 'Master'
 };
 
 // Calculate blind amounts using Fibonacci sequence
@@ -68,6 +90,147 @@ const calculateBlindAmounts = (level: number): { smallBlind: number; bigBlind: n
   return { smallBlind: currentSB, bigBlind: currentBB };
 };
 
+// Component for displaying upgrade requirements
+const RequirementDisplay: React.FC<{ requirements: any[] }> = ({ requirements }) => {
+  if (!requirements || requirements.length === 0) {
+    return <div className="no-requirements">No requirements</div>;
+  }
+
+  return (
+    <div className="requirements-list">
+      {requirements.map((req, idx) => {
+        let requirementText = '';
+        let requirementIcon = '';
+
+        switch (req.type) {
+          case 'capture':
+            requirementIcon = '⚔️';
+            requirementText = `Capture ${req.count} ${req.pieceType ? pieceNames[req.pieceType as PieceType] : 'piece'}${req.count > 1 ? 's' : ''}`;
+            break;
+          case 'purchase':
+            requirementIcon = '🔓';
+            requirementText = `Purchase previous tier upgrade`;
+            break;
+          case 'treasury':
+            requirementIcon = '💰';
+            requirementText = `Have ${req.amount} currency`;
+            break;
+          case 'control_zone':
+            requirementIcon = '🎯';
+            requirementText = `Control zone ${req.zoneId}`;
+            break;
+          default:
+            requirementIcon = '❓';
+            requirementText = 'Unknown requirement';
+        }
+
+        return (
+          <div key={idx} className="requirement-item">
+            <span className="requirement-icon">{requirementIcon}</span>
+            <span className="requirement-text">{requirementText}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+// Component for individual upgrade tile
+const UpgradeTile: React.FC<{
+  upgrade: TieredUpgradeDefinition;
+  isOwned: boolean;
+  canAfford: boolean;
+  onPurchase: (upgradeId: string) => void;
+  onMouseEnter: (upgradeId: string) => void;
+  onMouseLeave: () => void;
+  isHovered: boolean;
+}> = ({ upgrade, isOwned, canAfford, onPurchase, onMouseEnter, onMouseLeave, isHovered }) => {
+  return (
+    <div 
+      className={`upgrade-tile tier-${upgrade.tier} ${!canAfford ? 'unaffordable' : ''} ${isOwned ? 'owned' : ''} ${isHovered ? 'hovered' : ''}`}
+      onMouseEnter={() => onMouseEnter(upgrade.id)}
+      onMouseLeave={onMouseLeave}
+    >
+      <div className="upgrade-header">
+        <div className="piece-info">
+          <span className="piece-icon">{pieceEmojis[upgrade.pieceType]}</span>
+          <span className="piece-name">{pieceNames[upgrade.pieceType]}</span>
+        </div>
+        <div className="tier-badge" style={{ backgroundColor: tierColors[upgrade.tier] }}>
+          {tierNames[upgrade.tier]}
+        </div>
+      </div>
+      
+      <div className="upgrade-content">
+        <h3 className="upgrade-name">{upgrade.name}</h3>
+        <p className="upgrade-summary">{upgrade.summary}</p>
+        <p className="upgrade-description">{upgrade.description}</p>
+        
+        <div className="upgrade-effects">
+          {upgrade.effects.map((effect, idx) => (
+            <div key={idx} className={`effect ${effect.type}`}>
+              <span className="effect-type">{effect.type}</span>
+              <span className="effect-desc">{effect.description}</span>
+            </div>
+          ))}
+        </div>
+
+        <div className="upgrade-requirements">
+          <h4>Requirements:</h4>
+          <RequirementDisplay requirements={upgrade.requirements} />
+        </div>
+      </div>
+
+      <div className="upgrade-footer">
+        <div className="upgrade-cost">
+          <span className="currency-symbol">💰</span>
+          <span className="cost-amount">{upgrade.cost}</span>
+        </div>
+        
+        {isOwned ? (
+          <button className="purchase-btn owned" disabled>
+            ✓ Owned
+          </button>
+        ) : (
+          <button 
+            className="purchase-btn"
+            disabled={!canAfford}
+            onClick={() => onPurchase(upgrade.id)}
+          >
+            {canAfford ? 'Purchase' : 'Insufficient Funds'}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// Component for piece type selector
+const PieceTypeSelector: React.FC<{
+  selectedPiece: PieceType | 'all';
+  onPieceSelect: (pieceType: PieceType | 'all') => void;
+}> = ({ selectedPiece, onPieceSelect }) => {
+  return (
+    <div className="piece-type-selector">
+      <button 
+        className={`piece-filter-btn ${selectedPiece === 'all' ? 'active' : ''}`}
+        onClick={() => onPieceSelect('all')}
+      >
+        All Pieces
+      </button>
+      {Object.entries(pieceEmojis).map(([piece, emoji]) => (
+        <button
+          key={piece}
+          className={`piece-filter-btn ${selectedPiece === piece ? 'active' : ''}`}
+          onClick={() => onPieceSelect(piece as PieceType)}
+        >
+          {emoji} {pieceNames[piece as PieceType]}
+        </button>
+      ))}
+    </div>
+  );
+};
+
 const UpgradeStore: React.FC<UpgradeStoreProps> = ({
   playerColor,
   upgrades,
@@ -79,12 +242,12 @@ const UpgradeStore: React.FC<UpgradeStoreProps> = ({
   purchasablePieces = [],
   availableModifiers = [],
   blindLevel = 1,
-  blindAmounts = { smallBlind: 5, bigBlind: 10 }
+  blindAmounts = { smallBlind: 5, bigBlind: 10 },
+  upgradeProgress = {}
 }) => {
   const [activeTab, setActiveTab] = useState<'upgrades' | 'pieces' | 'modifiers'>('upgrades');
   const [selectedPiece, setSelectedPiece] = useState<PieceType | 'all'>('all');
-  const [showingUpgrade, setShowingUpgrade] = useState<string | null>(null);
-
+  const [hoveredUpgrade, setHoveredUpgrade] = useState<string | null>(null);
 
   if (!playerColor) return null;
 
@@ -96,20 +259,45 @@ const UpgradeStore: React.FC<UpgradeStoreProps> = ({
     ? availableUpgrades 
     : availableUpgrades.filter(u => u.pieceType === selectedPiece);
 
+  // Sort upgrades by piece type, then by tier
+  const sortedUpgrades = filteredUpgrades.sort((a, b) => {
+    if (a.pieceType !== b.pieceType) {
+      return a.pieceType.localeCompare(b.pieceType);
+    }
+    return a.tier - b.tier;
+  });
+
   // Check if upgrade is already owned
   const isOwned = (upgradeId: string, pieceType: PieceType) => {
     return playerUpgrades[pieceType]?.includes(upgradeId) || false;
   };
 
-  // Check if player can afford upgrade (recalculate locally)
+  // Check if player can afford upgrade
   const canAfford = (cost: number) => {
     return playerBalance >= cost;
   };
 
-  const handlePurchase = (upgrade: UpgradeDefinition) => {
-    // Double-check affordability locally
-    if (canAfford(upgrade.cost) && !isOwned(upgrade.id, upgrade.pieceType)) {
+  // Check if upgrade is available (requirements met)
+  const isUpgradeAvailable = (upgrade: TieredUpgradeDefinition) => {
+    if (upgrade.isAvailable !== undefined) {
+      return upgrade.isAvailable;
+    }
+    
+    // Basic availability check - can be enhanced with backend validation
+    return true;
+  };
+
+  const handlePurchase = (upgrade: TieredUpgradeDefinition) => {
+    if (canAfford(upgrade.cost) && !isOwned(upgrade.id, upgrade.pieceType) && isUpgradeAvailable(upgrade)) {
       onPurchaseUpgrade(upgrade.id);
+    }
+  };
+
+  // Wrapper function for UpgradeTile component that expects just the ID
+  const handlePurchaseById = (upgradeId: string) => {
+    const upgrade = availableUpgrades.find(u => u.id === upgradeId);
+    if (upgrade) {
+      handlePurchase(upgrade);
     }
   };
 
@@ -120,9 +308,9 @@ const UpgradeStore: React.FC<UpgradeStoreProps> = ({
   };
 
   return (
-    <div className="upgrade-store">
+    <div className="upgrade-store" data-testid="upgrade-store">
       <div className="store-header">
-        <h2>Store</h2>
+        <h2>Upgrade Store</h2>
         <div className="store-balance">
           <span className="currency-symbol">💰</span>
           <span className="amount">{playerBalance}</span>
@@ -152,85 +340,35 @@ const UpgradeStore: React.FC<UpgradeStoreProps> = ({
 
       {activeTab === 'upgrades' && (
         <>
-          <div className="piece-filter">
-            <button 
-              className={selectedPiece === 'all' ? 'active' : ''}
-              onClick={() => setSelectedPiece('all')}
-            >
-              All Pieces
-            </button>
-            {Object.entries(pieceEmojis).map(([piece, emoji]) => (
-              <button
-                key={piece}
-                className={selectedPiece === piece ? 'active' : ''}
-                onClick={() => setSelectedPiece(piece as PieceType)}
-              >
-                {emoji} {piece}
-              </button>
-            ))}
-          </div>
+          <PieceTypeSelector 
+            selectedPiece={selectedPiece}
+            onPieceSelect={setSelectedPiece}
+          />
 
           <div className="upgrades-grid">
-            {filteredUpgrades.map(upgrade => {
-          const owned = isOwned(upgrade.id, upgrade.pieceType);
-          const affordable = canAfford(upgrade.cost);
-          return (
-            <div 
-              key={upgrade.id} 
-              className={`upgrade-card ${!affordable ? 'unaffordable' : ''} ${owned ? 'owned' : ''}`}
-              onMouseEnter={() => setShowingUpgrade(upgrade.id)}
-              onMouseLeave={() => setShowingUpgrade(null)}
-            >
-              <div className="upgrade-header">
-                <span className="piece-icon">{pieceEmojis[upgrade.pieceType]}</span>
-                <h3>{upgrade.name}</h3>
-              </div>
+            {sortedUpgrades.map(upgrade => {
+              const owned = isOwned(upgrade.id, upgrade.pieceType);
+              const affordable = canAfford(upgrade.cost);
+              const available = isUpgradeAvailable(upgrade);
               
-              <p className="upgrade-description">{upgrade.description}</p>
-              
-              <div className="upgrade-effects">
-                {upgrade.effects.map((effect, idx) => (
-                  <div key={idx} className={`effect ${effect.type}`}>
-                    <span className="effect-type">{effect.type}</span>
-                    <span className="effect-desc">{effect.description}</span>
-                  </div>
-                ))}
-              </div>
-
-              <div className="upgrade-footer">
-                <div className="upgrade-cost">
-                  <span className="currency-symbol">💰</span>
-                  <span className="cost-amount">{upgrade.cost}</span>
-                </div>
-                
-                {owned ? (
-                  <button className="purchase-btn owned" disabled>
-                    Owned
-                  </button>
-                ) : (
-                  <button 
-                    className="purchase-btn"
-                    disabled={!affordable}
-                    onClick={() => handlePurchase(upgrade)}
-                  >
-                    {affordable ? 'Purchase' : 'Insufficient Funds'}
-                  </button>
-                )}
-              </div>
-
-              {upgrade.duration && (
-                <div className="upgrade-duration">
-                  ⏱ Temporary: {upgrade.duration} turns
-                </div>
-              )}
-            </div>
-          );
-        })}
+              return (
+                <UpgradeTile
+                  key={upgrade.id}
+                  upgrade={upgrade}
+                  isOwned={owned}
+                  canAfford={affordable}
+                  onPurchase={handlePurchaseById}
+                  onMouseEnter={setHoveredUpgrade}
+                  onMouseLeave={() => setHoveredUpgrade(null)}
+                  isHovered={hoveredUpgrade === upgrade.id}
+                />
+              );
+            })}
           </div>
 
-          {filteredUpgrades.length === 0 && (
+          {sortedUpgrades.length === 0 && (
             <div className="no-upgrades">
-              <p>No upgrades available for {selectedPiece === 'all' ? 'any piece' : selectedPiece}</p>
+              <p>No upgrades available for {selectedPiece === 'all' ? 'any piece' : pieceNames[selectedPiece]}</p>
             </div>
           )}
         </>

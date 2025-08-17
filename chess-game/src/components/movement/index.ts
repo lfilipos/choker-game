@@ -1,0 +1,11 @@
+export { MovementMechanics } from './MovementMechanics';
+export { DualMoveSelector } from './DualMoveSelector';
+export { KnightAdjacentMovement } from './KnightAdjacentMovement';
+export { BishopOrthogonalMovement } from './BishopOrthogonalMovement';
+export { RookProtectionMechanics } from './RookProtectionMechanics';
+export { QueenExtendedMovement } from './QueenExtendedMovement';
+export { KingEnhancedMovement } from './KingEnhancedMovement';
+export { RookLinkingMechanics } from './RookLinkingMechanics';
+export { KnightDoubleMovement } from './KnightDoubleMovement';
+export { QueenAdvancedCapture } from './QueenAdvancedCapture';
+export { KingPieceManipulation } from './KingPieceManipulation';

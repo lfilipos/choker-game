@@ -133,8 +133,8 @@ class GameManager {
     const controlledZones = this.countControlledZones(game, player.color);
     game.upgradeManager.processTurnEnd(player.color, controlledZones);
     
-    // Update control zone upgrades
-    game.upgradeManager.activateControlZoneUpgrades(game.controlZones, game.board);
+    // Control zone upgrades are now handled by the tiered system
+    // No need to call activateControlZoneUpgrades as it was removed
     
     // Update game state with latest upgrade/economy info
     const upgradeState = game.upgradeManager.getUpgradeState();
@@ -258,8 +258,10 @@ class GameManager {
 
   // Count how many control zones a team controls
   countControlledZones(game, color) {
-    const zoneControl = game.upgradeManager.calculateZoneControl(game.controlZones, game.board);
-    return Object.values(zoneControl).filter(controller => controller === color).length;
+    // Use the gameLogic function instead of the removed upgradeManager method
+    const { calculateAllControlZoneStatuses } = require('./gameLogic');
+    const controlZoneStatuses = calculateAllControlZoneStatuses(game.board);
+    return controlZoneStatuses.filter(status => status.controlledBy === color).length;
   }
 
   // Purchase an upgrade for a player
@@ -277,7 +279,13 @@ class GameManager {
     }
     
     try {
-      game.upgradeManager.purchaseUpgrade(player.color, upgradeId);
+      // Create matchState object for the new tiered system
+      const matchState = {
+        matchId: gameId,
+        currentPlayer: player.color,
+        economy: game.upgradeManager.economy
+      };
+      game.upgradeManager.purchaseUpgrade(matchState, upgradeId);
       
       // Update game state with latest upgrade/economy info
       const upgradeState = game.upgradeManager.getUpgradeState();
@@ -314,7 +322,13 @@ class GameManager {
       throw new Error('Player not in this game');
     }
     
-    return game.upgradeManager.getAvailableUpgrades(player.color);
+    // Create matchState object for the new tiered system
+    const matchState = {
+      matchId: gameId,
+      currentPlayer: player.color,
+      economy: game.upgradeManager.economy
+    };
+    return game.upgradeManager.getAvailableUpgrades(matchState);
   }
 }
 

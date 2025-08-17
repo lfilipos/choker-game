@@ -1,5 +1,6 @@
 const { PieceType, PieceColor, CONTROL_ZONES } = require('./types');
-const { applyUpgradesToMoves, isProtectedByQueenAura } = require('./upgradeLogic');
+const { applyUpgradesToMoves, isProtectedByRook, canPieceBeCaptured, getAllValidMovesWithUpgrades } = require('./upgradeLogic');
+const { SpecialMovesManager } = require('./specialMoves');
 
 // Create initial chess board (16x10)
 function createInitialBoard() {
@@ -191,11 +192,59 @@ function getKnightMoves(board, position, color) {
   return moves;
 }
 
-// Make a move on the board
-function makeMove(board, from, to) {
+// Make a move on the board with special move support
+function makeMove(board, from, to, specialMoveType = null, specialMovesManager = null, upgrades = null) {
   const newBoard = board.map(row => [...row]);
   const piece = newBoard[from.row][from.col];
   
+  if (specialMoveType && specialMovesManager && upgrades) {
+    // Handle special moves
+    switch (specialMoveType) {
+      case 'knight_double':
+        if (specialMovesManager.handleKnightDoubleMove(newBoard, from, to, piece.color, upgrades)) {
+          newBoard[to.row][to.col] = piece;
+          newBoard[from.row][from.col] = null;
+          return newBoard;
+        }
+        break;
+        
+      case 'king_swap':
+        if (specialMovesManager.handleKingPieceSwap(newBoard, from, to, piece.color, upgrades)) {
+          const temp = newBoard[from.row][from.col];
+          newBoard[from.row][from.col] = newBoard[to.row][to.col];
+          newBoard[to.row][to.col] = temp;
+          return newBoard;
+        }
+        break;
+        
+      case 'king_royal_command':
+        const targetPiece = newBoard[to.row][to.col];
+        if (specialMovesManager.handleKingRoyalCommand(newBoard, from, to, targetPiece, piece.color, upgrades)) {
+          newBoard[to.row][to.col] = piece;
+          newBoard[from.row][from.col] = null;
+          return newBoard;
+        }
+        break;
+        
+      case 'queen_advanced_capture':
+        if (specialMovesManager.handleQueenAdvancedCapture(newBoard, from, to, piece.color, upgrades)) {
+          newBoard[to.row][to.col] = piece;
+          newBoard[from.row][from.col] = null;
+          return newBoard;
+        }
+        break;
+        
+      case 'queen_royal_teleport':
+        if (specialMovesManager.handleQueenRoyalTeleport(newBoard, from, to, piece.color, upgrades)) {
+          newBoard[to.row][to.col] = piece;
+          newBoard[from.row][from.col] = null;
+          return newBoard;
+        }
+        break;
+    }
+  }
+  
+  // Standard move
   newBoard[to.row][to.col] = piece;
   newBoard[from.row][from.col] = null;
   
@@ -239,13 +288,346 @@ function calculateAllControlZoneStatuses(board) {
   return CONTROL_ZONES.map(zone => calculateControlZoneStatus(board, zone));
 }
 
-// Validate if a move is legal
-function isValidMove(board, from, to, color, upgrades = null, upgradeManager = null) {
+// Validate if a move is legal including special moves
+function isValidMove(board, from, to, color, upgrades = null, upgradeManager = null, specialMovesManager = null) {
   const piece = board[from.row][from.col];
   if (!piece || piece.color !== color) return false;
   
+  // Check standard moves first
   const possibleMoves = getPossibleMoves(board, from, upgrades, upgradeManager);
-  return possibleMoves.some(move => move.row === to.row && move.col === to.col);
+  const isStandardMove = possibleMoves.some(move => move.row === to.row && move.col === to.col);
+  
+  if (isStandardMove) return true;
+  
+  // Check special moves if available
+  if (specialMovesManager && upgrades) {
+    const specialMoves = specialMovesManager.getAvailableSpecialMoves(board, from, piece, color, upgrades);
+    
+    for (const specialMove of specialMoves) {
+      if (specialMove.available) {
+        switch (specialMove.type) {
+          case 'knight_double':
+            if (piece.type === PieceType.KNIGHT && specialMovesManager.isValidKnightMove(from, to)) {
+              return true;
+            }
+            break;
+            
+          case 'king_swap':
+            if (piece.type === PieceType.KING) {
+              const targetPiece = board[to.row][to.col];
+              if (targetPiece && targetPiece.color === color && targetPiece.type !== PieceType.KING) {
+                return true;
+              }
+            }
+            break;
+            
+          case 'king_royal_command':
+            if (piece.type === PieceType.KING) {
+              const targetPiece = board[to.row][to.col];
+              if (targetPiece && targetPiece.color === color && specialMovesManager.isAdjacent(from, to)) {
+                return true;
+              }
+            }
+            break;
+            
+          case 'queen_advanced_capture':
+            if (piece.type === PieceType.QUEEN) {
+              return specialMovesManager.isValidQueenAdvancedCapture(board, to, color);
+            }
+            break;
+            
+          case 'queen_royal_teleport':
+            if (piece.type === PieceType.QUEEN) {
+              const targetPiece = board[to.row][to.col];
+              return !targetPiece; // Can only teleport to empty squares
+            }
+            break;
+        }
+      }
+    }
+  }
+  
+  return false;
+}
+
+// This function is now imported from upgradeLogic.js
+
+// Get all valid moves for a player considering upgrades
+function getAllValidMoves(board, color, upgrades = null, upgradeManager = null) {
+  const allMoves = [];
+  
+  for (let row = 0; row < 10; row++) {
+    for (let col = 0; col < 16; col++) {
+      const piece = board[row][col];
+      if (piece && piece.color === color) {
+        const position = { row, col };
+        const moves = getPossibleMoves(board, position, upgrades, upgradeManager);
+        
+        moves.forEach(move => {
+          allMoves.push({
+            from: position,
+            to: move,
+            piece: piece
+          });
+        });
+      }
+    }
+  }
+  
+  return allMoves;
+}
+
+// Check if a move would result in check
+function wouldMoveResultInCheck(board, from, to, color, upgrades = null, upgradeManager = null) {
+  // Make the move on a copy of the board
+  const newBoard = makeMove(board, from, to);
+  
+  // Find the king's position
+  let kingPosition = null;
+  for (let row = 0; row < 10; row++) {
+    for (let col = 0; col < 16; col++) {
+      const piece = newBoard[row][col];
+      if (piece && piece.type === PieceType.KING && piece.color === color) {
+        kingPosition = { row, col };
+        break;
+      }
+    }
+    if (kingPosition) break;
+  }
+  
+  if (!kingPosition) return false;
+  
+  // Check if any enemy piece can capture the king
+  const enemyColor = color === PieceColor.WHITE ? PieceColor.BLACK : PieceColor.WHITE;
+  for (let row = 0; row < 10; row++) {
+    for (let col = 0; col < 16; col++) {
+      const piece = newBoard[row][col];
+      if (piece && piece.color === enemyColor) {
+        const moves = getPossibleMoves(newBoard, { row, col }, upgrades, upgradeManager);
+        if (moves.some(move => move.row === kingPosition.row && move.col === kingPosition.col)) {
+          return true; // Move would result in check
+        }
+      }
+    }
+  }
+  
+  return false;
+}
+
+// Get valid moves that don't result in check
+function getValidMovesWithoutCheck(board, position, color, upgrades = null, upgradeManager = null) {
+  const allMoves = getPossibleMoves(board, position, upgrades, upgradeManager);
+  const validMoves = [];
+  
+  allMoves.forEach(move => {
+    if (!wouldMoveResultInCheck(board, position, move, color, upgrades, upgradeManager)) {
+      validMoves.push(move);
+    }
+  });
+  
+  return validMoves;
+}
+
+// Enhanced move validation considering protection mechanics
+function isValidMoveWithProtection(board, from, to, color, upgrades = null, upgradeManager = null) {
+  // First check if it's a basic valid move
+  if (!isValidMove(board, from, to, color, upgrades, upgradeManager)) {
+    return false;
+  }
+  
+  // Check if the target piece is protected and can't be captured
+  const targetPiece = board[to.row][to.col];
+  if (targetPiece && targetPiece.color !== color) {
+    // This is a capture move
+    if (!canPieceBeCaptured(board, to, color, upgrades)) {
+      return false; // Target is protected
+    }
+  }
+  
+  return true;
+}
+
+// Get all valid moves with enhanced validation
+function getAllValidMovesEnhanced(board, color, upgrades = null, upgradeManager = null) {
+  const allMoves = [];
+  
+  for (let row = 0; row < 10; row++) {
+    for (let col = 0; col < 16; col++) {
+      const piece = board[row][col];
+      if (piece && piece.color === color) {
+        const position = { row, col };
+        const moves = getPossibleMoves(board, position, upgrades, upgradeManager);
+        
+        moves.forEach(move => {
+          // Check if this move is valid considering protection mechanics
+          if (isValidMoveWithProtection(board, position, move, color, upgrades, upgradeManager)) {
+            allMoves.push({
+              from: position,
+              to: move,
+              piece: piece,
+              isCapture: board[move.row][move.col] !== null,
+              isProtected: board[move.row][move.col] && !canPieceBeCaptured(board, move, color, upgrades)
+            });
+          }
+        });
+      }
+    }
+  }
+  
+  return allMoves;
+}
+
+// Check if a position is under attack considering upgrades
+function isPositionUnderAttack(board, position, byColor, upgrades = null, upgradeManager = null) {
+  for (let row = 0; row < 10; row++) {
+    for (let col = 0; col < 16; col++) {
+      const piece = board[row][col];
+      if (piece && piece.color === byColor) {
+        const moves = getPossibleMoves(board, { row, col }, upgrades, upgradeManager);
+        if (moves.some(move => move.row === position.row && move.col === position.col)) {
+          return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+
+// Check if a king is in check considering upgrades
+function isKingInCheck(board, color, upgrades = null, upgradeManager = null) {
+  // Find the king's position
+  let kingPosition = null;
+  for (let row = 0; row < 10; row++) {
+    for (let col = 0; col < 16; col++) {
+      const piece = board[row][col];
+      if (piece && piece.type === PieceType.KING && piece.color === color) {
+        kingPosition = { row, col };
+        break;
+      }
+    }
+    if (kingPosition) break;
+  }
+  
+  if (!kingPosition) return false;
+  
+  // Check if any enemy piece can attack the king
+  const enemyColor = color === PieceColor.WHITE ? PieceColor.BLACK : PieceColor.WHITE;
+  return isPositionUnderAttack(board, kingPosition, enemyColor, upgrades, upgradeManager);
+}
+
+// Get all valid moves including special moves
+function getAllValidMovesWithSpecialMoves(board, color, upgrades = null, upgradeManager = null, specialMovesManager = null) {
+  const allMoves = [];
+  
+  for (let row = 0; row < 10; row++) {
+    for (let col = 0; col < 16; col++) {
+      const piece = board[row][col];
+      if (piece && piece.color === color) {
+        const position = { row, col };
+        const moves = getPossibleMoves(board, position, upgrades, upgradeManager);
+        
+        moves.forEach(move => {
+          allMoves.push({
+            from: position,
+            to: move,
+            piece: piece,
+            isStandard: true
+          });
+        });
+        
+        // Add special moves if available
+        if (specialMovesManager && upgrades) {
+          const specialMoves = specialMovesManager.getAvailableSpecialMoves(board, position, piece, color, upgrades);
+          
+          specialMoves.forEach(specialMove => {
+            if (specialMove.available) {
+              // Add special move targets based on move type
+              const specialMoveTargets = getSpecialMoveTargets(board, position, piece, specialMove.type, color);
+              
+              specialMoveTargets.forEach(target => {
+                allMoves.push({
+                  from: position,
+                  to: target,
+                  piece: piece,
+                  isStandard: false,
+                  specialMoveType: specialMove.type,
+                  description: specialMove.description
+                });
+              });
+            }
+          });
+        }
+      }
+    }
+  }
+  
+  return allMoves;
+}
+
+// Get valid targets for special moves
+function getSpecialMoveTargets(board, position, piece, specialMoveType, color) {
+  const targets = [];
+  
+  switch (specialMoveType) {
+    case 'knight_double':
+      // Add all valid knight move targets
+      const knightMoves = getKnightMoves(board, position, color);
+      targets.push(...knightMoves);
+      break;
+      
+    case 'king_swap':
+      // Add all allied piece positions
+      for (let row = 0; row < 10; row++) {
+        for (let col = 0; col < 16; col++) {
+          const targetPiece = board[row][col];
+          if (targetPiece && targetPiece.color === color && targetPiece.type !== PieceType.KING) {
+            targets.push({ row, col });
+          }
+        }
+      }
+      break;
+      
+      case 'king_royal_command':
+        // Add adjacent positions
+        for (let dRow = -1; dRow <= 1; dRow++) {
+          for (let dCol = -1; dCol <= 1; dCol++) {
+            if (dRow === 0 && dCol === 0) continue;
+            
+            const newPos = { row: position.row + dRow, col: position.col + dCol };
+            if (isValidPosition(newPos)) {
+              targets.push(newPos);
+            }
+          }
+        }
+        break;
+        
+      case 'queen_advanced_capture':
+        // Add all valid queen move targets (the actual logic is in upgradeLogic.js)
+        // This is just for target generation
+        const queenMoves = getQueenMoves(board, position, color);
+        targets.push(...queenMoves);
+        break;
+        
+      case 'queen_royal_teleport':
+        // Add all empty squares
+        for (let row = 0; row < 10; row++) {
+          for (let col = 0; col < 16; col++) {
+            if (!board[row][col] && (row !== position.row || col !== position.col)) {
+              targets.push({ row, col });
+            }
+          }
+        }
+        break;
+  }
+  
+  return targets;
+}
+
+// Reset special moves for a new turn
+function resetSpecialMovesForNewTurn(specialMovesManager) {
+  if (specialMovesManager) {
+    specialMovesManager.resetTurn();
+  }
 }
 
 module.exports = {
@@ -255,5 +637,16 @@ module.exports = {
   makeMove,
   calculateControlZoneStatus,
   calculateAllControlZoneStatuses,
-  isValidMove
+  isValidMove,
+  canPieceBeCaptured,
+  getAllValidMoves,
+  wouldMoveResultInCheck,
+  getValidMovesWithoutCheck,
+  isValidMoveWithProtection,
+  getAllValidMovesEnhanced,
+  isPositionUnderAttack,
+  isKingInCheck,
+  getAllValidMovesWithSpecialMoves,
+  getSpecialMoveTargets,
+  resetSpecialMovesForNewTurn
 };

@@ -1,6 +1,6 @@
 import React from 'react';
 import { ChessPiece, Position, ControlZone } from '../types';
-import { UpgradeState } from '../types/upgrades';
+import { UpgradeState, TieredUpgradeDefinition } from '../types/upgrades';
 import { ChessPieceComponent } from './ChessPieceComponent';
 import './ChessSquare.css';
 
@@ -15,6 +15,7 @@ interface ChessSquareProps {
   controlZone: ControlZone | null;
   onClick: (position: Position) => void;
   upgrades?: UpgradeState;
+  tieredUpgrades?: TieredUpgradeDefinition[];
 }
 
 export const ChessSquare: React.FC<ChessSquareProps> = ({
@@ -28,6 +29,7 @@ export const ChessSquare: React.FC<ChessSquareProps> = ({
   controlZone,
   onClick,
   upgrades,
+  tieredUpgrades,
 }) => {
   const handleClick = () => {
     onClick(position);
@@ -68,7 +70,14 @@ export const ChessSquare: React.FC<ChessSquareProps> = ({
 
   return (
     <div className={getSquareClasses()} onClick={handleClick}>
-      {piece && <ChessPieceComponent piece={piece} upgrades={upgrades} />}
+      {piece && (
+        <ChessPieceComponent 
+          piece={piece} 
+          upgrades={upgrades} 
+          tieredUpgrades={tieredUpgrades}
+          position={position}
+        />
+      )}
     </div>
   );
 };

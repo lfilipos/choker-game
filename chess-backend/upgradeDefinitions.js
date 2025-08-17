@@ -1,194 +1,325 @@
-const { PieceType, UpgradeType, ActivationMethod } = require('./types');
+const { PieceType, UpgradeType, RequirementType, UpgradeTier } = require('./types');
 
-const UPGRADE_DEFINITIONS = {
-  // PAWN UPGRADES
-  pawn_speed_boost: {
-    id: 'pawn_speed_boost',
-    name: 'Swift Advance',
-    description: 'Pawns can move up to 3 squares on their first move',
-    cost: 100,
-    pieceType: PieceType.PAWN,
-    effects: [{
-      type: UpgradeType.MOVEMENT,
-      value: 3,
-      description: 'Initial move extended to 3 squares'
-    }],
-    activationMethod: ActivationMethod.PURCHASE
+// New tiered upgrade definitions with sequential unlocking and requirement-based access
+const TIERED_UPGRADES = {
+  pawn: {
+    tier1: {
+      id: 'pawn_tier1',
+      name: 'Enhanced Movement',
+      description: 'Pawns can move up to 3 squares on their first move',
+      summary: 'Move two spaces on first move',
+      cost: 250,
+      pieceType: PieceType.PAWN,
+      tier: UpgradeTier.TIER_1,
+      requirements: [{ type: RequirementType.CAPTURE, pieceType: PieceType.PAWN, count: 1 }],
+      effects: [{
+        type: UpgradeType.MOVEMENT,
+        value: 3,
+        description: 'Initial move extended to 3 squares'
+      }]
+    },
+    tier2: {
+      id: 'pawn_tier2',
+      name: 'Extended Capture Range',
+      description: 'Pawns can capture diagonally from 2 squares away',
+      summary: 'Capture from two squares away',
+      cost: 350,
+      pieceType: PieceType.PAWN,
+      tier: UpgradeTier.TIER_2,
+      requirements: [
+        { type: RequirementType.PURCHASE, upgradeId: 'pawn_tier1' },
+        { type: RequirementType.CAPTURE, pieceType: PieceType.PAWN, count: 2 }
+      ],
+      effects: [{
+        type: UpgradeType.ATTACK,
+        value: 2,
+        description: 'Diagonal capture range increased to 2'
+      }]
+    },
+    tier3: {
+      id: 'pawn_tier3',
+      name: 'Dual Pawn Movement',
+      description: 'Pawns can move two pawns in one turn',
+      summary: 'Move two pawns in one turn',
+      cost: 500,
+      pieceType: PieceType.PAWN,
+      tier: UpgradeTier.TIER_3,
+      requirements: [
+        { type: RequirementType.PURCHASE, upgradeId: 'pawn_tier2' },
+        { type: RequirementType.CAPTURE, pieceType: PieceType.PAWN, count: 3 }
+      ],
+      effects: [{
+        type: UpgradeType.SPECIAL,
+        value: 'dual_movement',
+        description: 'Can move two pawns in one turn'
+      }]
+    }
   },
-  pawn_diagonal_range: {
-    id: 'pawn_diagonal_range',
-    name: 'Extended Reach',
-    description: 'Pawns can capture diagonally from 2 squares away',
-    cost: 150,
-    pieceType: PieceType.PAWN,
-    effects: [{
-      type: UpgradeType.ATTACK,
-      value: 2,
-      description: 'Diagonal capture range increased to 2'
-    }],
-    activationMethod: ActivationMethod.PURCHASE
+  rook: {
+    tier1: {
+      id: 'rook_tier1',
+      name: 'Defensive Protection',
+      description: 'Rooks can protect pieces behind them from capture',
+      summary: 'Defend piece behind it',
+      cost: 200,
+      pieceType: PieceType.ROOK,
+      tier: UpgradeTier.TIER_1,
+      requirements: [{ type: RequirementType.CAPTURE, pieceType: PieceType.ROOK, count: 1 }],
+      effects: [{
+        type: UpgradeType.DEFENSE,
+        value: 'protection',
+        description: 'Protects pieces behind rook from capture'
+      }]
+    },
+    tier2: {
+      id: 'rook_tier2',
+      name: 'Rook Linking',
+      description: 'Rooks can link with one other rook within 2 squares to create a wall',
+      summary: 'Link with one other rook within 2 squares',
+      cost: 400,
+      pieceType: PieceType.ROOK,
+      tier: UpgradeTier.TIER_2,
+      requirements: [
+        { type: RequirementType.PURCHASE, upgradeId: 'rook_tier1' },
+        { type: RequirementType.CAPTURE, pieceType: PieceType.ROOK, count: 2 }
+      ],
+      effects: [{
+        type: UpgradeType.SPECIAL,
+        value: 'rook_linking',
+        description: 'Can link with other rooks to create walls'
+      }]
+    },
+    tier3: {
+      id: 'rook_tier3',
+      name: 'Extended Rook Linking',
+      description: 'Rooks can link with one other rook within 3 squares',
+      summary: 'Link with one other rook within 3 squares',
+      cost: 600,
+      pieceType: PieceType.ROOK,
+      tier: UpgradeTier.TIER_3,
+      requirements: [
+        { type: RequirementType.PURCHASE, upgradeId: 'rook_tier2' },
+        { type: RequirementType.CAPTURE, pieceType: PieceType.ROOK, count: 3 }
+      ],
+      effects: [{
+        type: UpgradeType.SPECIAL,
+        value: 'extended_rook_linking',
+        description: 'Extended linking range to 3 squares'
+      }]
+    }
   },
-  pawn_en_passant_plus: {
-    id: 'pawn_en_passant_plus',
-    name: 'Enhanced En Passant',
-    description: 'Pawns can capture en passant from 2 files away',
-    cost: 120,
-    pieceType: PieceType.PAWN,
-    effects: [{
-      type: UpgradeType.SPECIAL,
-      value: 'en_passant_extended',
-      description: 'En passant capture range extended'
-    }],
-    activationMethod: ActivationMethod.CONTROL_ZONE
+  knight: {
+    tier1: {
+      id: 'knight_tier1',
+      name: 'Adjacent Movement',
+      description: 'Knights can move to adjacent squares in addition to L-shape moves',
+      summary: 'Move to adjacent squares',
+      cost: 300,
+      pieceType: PieceType.KNIGHT,
+      tier: UpgradeTier.TIER_1,
+      requirements: [{ type: RequirementType.CAPTURE, pieceType: PieceType.KNIGHT, count: 1 }],
+      effects: [{
+        type: UpgradeType.MOVEMENT,
+        value: 'adjacent',
+        description: 'Can move to adjacent squares like a king'
+      }]
+    },
+    tier2: {
+      id: 'knight_tier2',
+      name: 'Extended Leap',
+      description: 'Knights can move in extended L-shape patterns (3-2, 2-3)',
+      summary: 'Extended L-shape movement patterns',
+      cost: 450,
+      pieceType: PieceType.KNIGHT,
+      tier: UpgradeTier.TIER_2,
+      requirements: [
+        { type: RequirementType.PURCHASE, upgradeId: 'knight_tier1' },
+        { type: RequirementType.CAPTURE, pieceType: PieceType.KNIGHT, count: 2 }
+      ],
+      effects: [{
+        type: UpgradeType.MOVEMENT,
+        value: 'extended_leap',
+        description: 'Additional 3-2 and 2-3 L-shape movement patterns'
+      }]
+    },
+    tier3: {
+      id: 'knight_tier3',
+      name: 'Double Movement',
+      description: 'Knights can move twice per turn (cannot capture twice)',
+      summary: 'Move twice per turn',
+      cost: 700,
+      pieceType: PieceType.KNIGHT,
+      tier: UpgradeTier.TIER_3,
+      requirements: [
+        { type: RequirementType.PURCHASE, upgradeId: 'knight_tier2' },
+        { type: RequirementType.CAPTURE, pieceType: PieceType.KNIGHT, count: 3 }
+      ],
+      effects: [{
+        type: UpgradeType.SPECIAL,
+        value: 'double_movement',
+        description: 'Can move twice per turn'
+      }]
+    }
   },
-
-  // KNIGHT UPGRADES
-  knight_extended_leap: {
-    id: 'knight_extended_leap',
-    name: 'Grand Leap',
-    description: 'Knights can move in a 3-2 L-shape pattern',
-    cost: 200,
-    pieceType: PieceType.KNIGHT,
-    effects: [{
-      type: UpgradeType.MOVEMENT,
-      value: '3-2',
-      description: 'Additional 3-2 movement pattern'
-    }],
-    activationMethod: ActivationMethod.PURCHASE
+  bishop: {
+    tier1: {
+      id: 'bishop_tier1',
+      name: 'Orthogonal Movement',
+      description: 'Bishops can move one square orthogonally once per game',
+      summary: 'Move one square orthogonally once per game',
+      cost: 250,
+      pieceType: PieceType.BISHOP,
+      tier: UpgradeTier.TIER_1,
+      requirements: [{ type: RequirementType.CAPTURE, pieceType: PieceType.BISHOP, count: 1 }],
+      effects: [{
+        type: UpgradeType.SPECIAL,
+        value: 'orthogonal_once',
+        description: 'One orthogonal move per game'
+      }]
+    },
+    tier2: {
+      id: 'bishop_tier2',
+      name: 'Piercing Vision',
+      description: 'Bishops can jump over one piece per move',
+      summary: 'Jump over one piece per move',
+      cost: 400,
+      pieceType: PieceType.BISHOP,
+      tier: UpgradeTier.TIER_2,
+      requirements: [
+        { type: RequirementType.PURCHASE, upgradeId: 'bishop_tier1' },
+        { type: RequirementType.CAPTURE, pieceType: PieceType.BISHOP, count: 2 }
+      ],
+      effects: [{
+        type: UpgradeType.MOVEMENT,
+        value: 'jump_one',
+        description: 'Can jump over one piece per move'
+      }]
+    },
+    tier3: {
+      id: 'bishop_tier3',
+      name: 'Color Transcendence',
+      description: 'Bishops can move on both colored squares freely',
+      summary: 'Move freely on both colored squares',
+      cost: 650,
+      pieceType: PieceType.BISHOP,
+      tier: UpgradeTier.TIER_3,
+      requirements: [
+        { type: RequirementType.PURCHASE, upgradeId: 'bishop_tier2' },
+        { type: RequirementType.CAPTURE, pieceType: PieceType.BISHOP, count: 3 }
+      ],
+      effects: [{
+        type: UpgradeType.SPECIAL,
+        value: 'color_transcendence',
+        description: 'Can move on both colored squares without restriction'
+      }]
+    }
   },
-  knight_double_jump: {
-    id: 'knight_double_jump',
-    name: 'Double Jump',
-    description: 'Knights can move twice per turn (cannot capture twice)',
-    cost: 350,
-    pieceType: PieceType.KNIGHT,
-    effects: [{
-      type: UpgradeType.SPECIAL,
-      value: 'double_move',
-      description: 'Can move twice per turn'
-    }],
-    activationMethod: ActivationMethod.ACHIEVEMENT
+  queen: {
+    tier1: {
+      id: 'queen_tier1',
+      name: 'Extended Movement',
+      description: 'Queen can move up to 2 squares in any direction',
+      summary: 'Move up to 2 squares in any direction',
+      cost: 400,
+      pieceType: PieceType.QUEEN,
+      tier: UpgradeTier.TIER_1,
+      requirements: [{ type: RequirementType.CAPTURE, pieceType: PieceType.QUEEN, count: 1 }],
+      effects: [{
+        type: UpgradeType.MOVEMENT,
+        value: 2,
+        description: 'Can move up to 2 squares in any direction'
+      }]
+    },
+    tier2: {
+      id: 'queen_tier2',
+      name: 'Advanced Capture',
+      description: 'Queen can capture through pawns and evade capture more effectively',
+      summary: 'Capture through pawns and evade capture',
+      cost: 550,
+      pieceType: PieceType.QUEEN,
+      tier: UpgradeTier.TIER_2,
+      requirements: [
+        { type: RequirementType.PURCHASE, upgradeId: 'queen_tier1' },
+        { type: RequirementType.CAPTURE, pieceType: PieceType.QUEEN, count: 2 }
+      ],
+      effects: [{
+        type: UpgradeType.SPECIAL,
+        value: 'advanced_capture',
+        description: 'Can capture through pawns and has enhanced evasion'
+      }]
+    },
+    tier3: {
+      id: 'queen_tier3',
+      name: 'Royal Teleport',
+      description: 'Queen can teleport to any empty square once per game',
+      summary: 'Teleport to any empty square once per game',
+      cost: 750,
+      pieceType: PieceType.QUEEN,
+      tier: UpgradeTier.TIER_3,
+      requirements: [
+        { type: RequirementType.PURCHASE, upgradeId: 'queen_tier2' },
+        { type: RequirementType.CAPTURE, pieceType: PieceType.QUEEN, count: 3 }
+      ],
+      effects: [{
+        type: UpgradeType.SPECIAL,
+        value: 'teleport_once',
+        description: 'One teleport to any empty square per game'
+      }]
+    }
   },
-
-  // BISHOP UPGRADES
-  bishop_color_break: {
-    id: 'bishop_color_break',
-    name: 'Color Transcendence',
-    description: 'Bishops can move one square orthogonally once per game',
-    cost: 250,
-    pieceType: PieceType.BISHOP,
-    effects: [{
-      type: UpgradeType.SPECIAL,
-      value: 'color_change',
-      description: 'One orthogonal move per game'
-    }],
-    activationMethod: ActivationMethod.PURCHASE
-  },
-  bishop_piercing: {
-    id: 'bishop_piercing',
-    name: 'Piercing Gaze',
-    description: 'Bishops can jump over one piece per move',
-    cost: 300,
-    pieceType: PieceType.BISHOP,
-    effects: [{
-      type: UpgradeType.MOVEMENT,
-      value: 'jump_one',
-      description: 'Can jump over one piece'
-    }],
-    activationMethod: ActivationMethod.CONTROL_ZONE
-  },
-
-  // ROOK UPGRADES
-  rook_castle_anywhere: {
-    id: 'rook_castle_anywhere',
-    name: 'Flexible Castle',
-    description: 'Rooks can castle from any position on the back rank',
-    cost: 180,
-    pieceType: PieceType.ROOK,
-    effects: [{
-      type: UpgradeType.SPECIAL,
-      value: 'castle_flexible',
-      description: 'Castle from any back rank position'
-    }],
-    activationMethod: ActivationMethod.PURCHASE
-  },
-  rook_siege_mode: {
-    id: 'rook_siege_mode',
-    name: 'Siege Tower',
-    description: 'Rooks can capture up to 2 pieces in one move along their path',
-    cost: 400,
-    pieceType: PieceType.ROOK,
-    effects: [{
-      type: UpgradeType.ATTACK,
-      value: 'multi_capture',
-      description: 'Capture multiple pieces in path'
-    }],
-    activationMethod: ActivationMethod.ACHIEVEMENT
-  },
-
-  // QUEEN UPGRADES
-  queen_teleport: {
-    id: 'queen_teleport',
-    name: 'Royal Teleport',
-    description: 'Queen can teleport to any empty square once per game',
-    cost: 500,
-    pieceType: PieceType.QUEEN,
-    effects: [{
-      type: UpgradeType.SPECIAL,
-      value: 'teleport_once',
-      description: 'One teleport per game'
-    }],
-    activationMethod: ActivationMethod.PURCHASE
-  },
-  queen_aura: {
-    id: 'queen_aura',
-    name: 'Royal Aura',
-    description: 'Allied pieces adjacent to Queen cannot be captured',
-    cost: 450,
-    pieceType: PieceType.QUEEN,
-    effects: [{
-      type: UpgradeType.DEFENSE,
-      value: 'protection_aura',
-      description: 'Protects adjacent allies'
-    }],
-    activationMethod: ActivationMethod.CONTROL_ZONE,
-    duration: 10 // Temporary upgrade lasting 10 turns
-  },
-
-  // KING UPGRADES
-  king_double_step: {
-    id: 'king_double_step',
-    name: 'Royal Stride',
-    description: 'King can move 2 squares in any direction',
-    cost: 350,
-    pieceType: PieceType.KING,
-    effects: [{
-      type: UpgradeType.MOVEMENT,
-      value: 2,
-      description: 'Move up to 2 squares'
-    }],
-    activationMethod: ActivationMethod.PURCHASE
-  },
-  king_swap: {
-    id: 'king_swap',
-    name: 'Royal Exchange',
-    description: 'King can swap positions with any allied piece once per game',
-    cost: 400,
-    pieceType: PieceType.KING,
-    effects: [{
-      type: UpgradeType.SPECIAL,
-      value: 'swap_position',
-      description: 'Swap with any ally once'
-    }],
-    activationMethod: ActivationMethod.ACHIEVEMENT
+  king: {
+    tier1: {
+      id: 'king_tier1',
+      name: 'Enhanced Movement',
+      description: 'King can move 2 squares in any direction',
+      summary: 'Move 2 squares in any direction',
+      cost: 350,
+      pieceType: PieceType.KING,
+      tier: UpgradeTier.TIER_1,
+      requirements: [{ type: RequirementType.CAPTURE, pieceType: PieceType.KING, count: 1 }],
+      effects: [{
+        type: UpgradeType.MOVEMENT,
+        value: 2,
+        description: 'Can move up to 2 squares in any direction'
+      }]
+    },
+    tier2: {
+      id: 'king_tier2',
+      name: 'Piece Manipulation',
+      description: 'King can swap positions with any allied piece once per game',
+      summary: 'Swap positions with any allied piece once per game',
+      cost: 500,
+      pieceType: PieceType.KING,
+      tier: UpgradeTier.TIER_2,
+      requirements: [
+        { type: RequirementType.PURCHASE, upgradeId: 'king_tier1' },
+        { type: RequirementType.CAPTURE, pieceType: PieceType.KING, count: 2 }
+      ],
+      effects: [{
+        type: UpgradeType.SPECIAL,
+        value: 'piece_swap',
+        description: 'Can swap positions with any allied piece once per game'
+      }]
+    },
+    tier3: {
+      id: 'king_tier3',
+      name: 'Royal Command',
+      description: 'King can move any allied piece to an adjacent square once per turn',
+      summary: 'Move any allied piece to adjacent square once per turn',
+      cost: 700,
+      pieceType: PieceType.KING,
+      tier: UpgradeTier.TIER_3,
+      requirements: [
+        { type: RequirementType.PURCHASE, upgradeId: 'king_tier2' },
+        { type: RequirementType.CAPTURE, pieceType: PieceType.KING, count: 3 }
+      ],
+      effects: [{
+        type: UpgradeType.SPECIAL,
+        value: 'royal_command',
+        description: 'Can move any allied piece to adjacent square once per turn'
+      }]
+    }
   }
-};
-
-// Control zone specific upgrades
-const CONTROL_ZONE_UPGRADES = {
-  A: ['pawn_en_passant_plus', 'bishop_piercing'],
-  B: ['queen_aura'],
-  C: ['pawn_en_passant_plus', 'bishop_piercing']
 };
 
 // Starting economy values
@@ -205,8 +336,7 @@ const INCOME_RATES = {
 };
 
 module.exports = {
-  UPGRADE_DEFINITIONS,
-  CONTROL_ZONE_UPGRADES,
+  TIERED_UPGRADES,
   STARTING_ECONOMY,
   INCOME_RATES
 };

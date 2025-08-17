@@ -36,6 +36,7 @@ export interface ControlZoneStatus {
   controlledBy: PieceColor | 'neutral';
 }
 
+// Legacy upgrade types - maintained for backward compatibility
 export type UpgradeType = 'movement' | 'attack' | 'defense' | 'special';
 export type ActivationMethod = 'purchase' | 'control_zone' | 'achievement' | 'timed';
 

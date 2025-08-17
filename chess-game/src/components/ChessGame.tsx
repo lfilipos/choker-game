@@ -1,7 +1,8 @@
 import React, { useState, useCallback } from 'react';
 import { GameState, Position, Move } from '../types';
-import { UpgradeState, TeamEconomy } from '../types/upgrades';
+import { UpgradeState, TeamEconomy, TieredUpgradeDefinition } from '../types/upgrades';
 import { ChessBoard } from './ChessBoard';
+import { MovementMechanics } from './movement/MovementMechanics';
 import { 
   createInitialBoard, 
   getPossibleMoves, 
@@ -35,6 +36,88 @@ export const ChessGame: React.FC = () => {
     }
   };
 
+  // Sample tiered upgrades for demonstration
+  const initialTieredUpgrades: TieredUpgradeDefinition[] = [
+    {
+      id: 'pawn_tier1',
+      name: 'Enhanced Movement',
+      description: 'Pawns can move forward two squares.',
+      summary: 'Move forward two squares',
+      cost: 200,
+      pieceType: 'pawn',
+      tier: 1,
+      requirements: [{ type: 'capture', pieceType: 'pawn', count: 1 }],
+      effects: [{ type: 'movement', value: 'enhanced', description: 'Can move forward two squares' }],
+      isAvailable: true,
+      isPurchased: true,
+    },
+    {
+      id: 'knight_tier1',
+      name: 'Adjacent Movement',
+      description: 'Knights can move to adjacent squares.',
+      summary: 'Move to adjacent squares',
+      cost: 300,
+      pieceType: 'knight',
+      tier: 1,
+      requirements: [{ type: 'capture', pieceType: 'knight', count: 1 }],
+      effects: [{ type: 'movement', value: 'adjacent', description: 'Can move to adjacent squares' }],
+      isAvailable: true,
+      isPurchased: true,
+    },
+    {
+      id: 'bishop_tier1',
+      name: 'Orthogonal Movement',
+      description: 'Bishops can move horizontally and vertically.',
+      summary: 'Move horizontally and vertically',
+      cost: 300,
+      pieceType: 'bishop',
+      tier: 1,
+      requirements: [{ type: 'capture', pieceType: 'bishop', count: 1 }],
+      effects: [{ type: 'movement', value: 'orthogonal', description: 'Can move horizontally and vertically' }],
+      isAvailable: true,
+      isPurchased: true,
+    },
+    {
+      id: 'rook_tier2',
+      name: 'Protection Mechanics',
+      description: 'Rooks can protect squares and control enemy movement.',
+      summary: 'Protect squares and control movement',
+      cost: 400,
+      pieceType: 'rook',
+      tier: 2,
+      requirements: [{ type: 'capture', pieceType: 'rook', count: 2 }],
+      effects: [{ type: 'special', value: 'protection', description: 'Can protect squares' }],
+      isAvailable: true,
+      isPurchased: true,
+    },
+    {
+      id: 'queen_tier2',
+      name: 'Extended Movement',
+      description: 'Queens have enhanced movement patterns.',
+      summary: 'Enhanced movement patterns',
+      cost: 500,
+      pieceType: 'queen',
+      tier: 2,
+      requirements: [{ type: 'capture', pieceType: 'queen', count: 2 }],
+      effects: [{ type: 'movement', value: 'extended_movement', description: 'Enhanced movement capabilities' }],
+      isAvailable: true,
+      isPurchased: true,
+    },
+    {
+      id: 'king_tier2',
+      name: 'Enhanced Movement',
+      description: 'Kings have enhanced movement abilities.',
+      summary: 'Enhanced movement abilities',
+      cost: 600,
+      pieceType: 'king',
+      tier: 2,
+      requirements: [{ type: 'capture', pieceType: 'king', count: 2 }],
+      effects: [{ type: 'movement', value: 'enhanced_movement', description: 'Enhanced movement capabilities' }],
+      isAvailable: true,
+      isPurchased: true,
+    }
+  ];
+
   const initialEconomy: TeamEconomy = {
     white: 500,
     black: 500
@@ -51,6 +134,8 @@ export const ChessGame: React.FC = () => {
     upgrades: initialUpgrades,
     economy: initialEconomy
   });
+
+  const [tieredUpgrades, setTieredUpgrades] = useState<TieredUpgradeDefinition[]>(initialTieredUpgrades);
 
   const handleSquareClick = useCallback((position: Position) => {
     const { board, currentPlayer, selectedSquare } = gameState;
@@ -136,6 +221,29 @@ export const ChessGame: React.FC = () => {
     }
   }, [gameState]);
 
+  // Handle movement mechanics completion
+  const handleMovementMechanicsComplete = useCallback((moves: { from: Position; to: Position }[]) => {
+    // For now, just log the moves - in a real implementation, these would be processed
+    console.log('Movement mechanics completed:', moves);
+    
+    // Reset selection after movement mechanics
+    setGameState(prev => ({
+      ...prev,
+      selectedSquare: null,
+      possibleMoves: []
+    }));
+  }, []);
+
+  // Handle movement mechanics cancellation
+  const handleMovementMechanicsCancel = useCallback(() => {
+    // Reset selection after cancellation
+    setGameState(prev => ({
+      ...prev,
+      selectedSquare: null,
+      possibleMoves: []
+    }));
+  }, []);
+
   const resetGame = () => {
     setGameState({
       board: createInitialBoard(),
@@ -151,6 +259,11 @@ export const ChessGame: React.FC = () => {
   };
 
   const controlZoneStatuses = calculateAllControlZoneStatuses(gameState.board, gameState.controlZones);
+
+  // Get the selected piece for movement mechanics
+  const selectedPiece = gameState.selectedSquare 
+    ? gameState.board[gameState.selectedSquare.row][gameState.selectedSquare.col]
+    : null;
 
   return (
     <div className="chess-game">
@@ -185,7 +298,23 @@ export const ChessGame: React.FC = () => {
             possibleMoves={gameState.possibleMoves}
             controlZones={gameState.controlZones}
             onSquareClick={handleSquareClick}
+            upgrades={gameState.upgrades}
+            tieredUpgrades={tieredUpgrades}
           />
+          
+          {/* Movement Mechanics Integration */}
+          {/* Temporarily disabled for debugging
+          {selectedPiece && gameState.selectedSquare && (
+            <MovementMechanics
+              selectedPiece={selectedPiece}
+              piecePosition={gameState.selectedSquare}
+              upgrades={tieredUpgrades}
+              board={gameState.board}
+              onMoveComplete={handleMovementMechanicsComplete}
+              onCancel={handleMovementMechanicsCancel}
+            />
+          )}
+          */}
         </div>
         
         <div className="game-right">

@@ -729,7 +729,14 @@ class MatchManager {
     const playerTeam = getTeamFromRole(role);
     
     try {
-      match.sharedState.upgradeManager.purchaseUpgrade(playerTeam, upgradeId);
+      // Create matchState object for the new tiered system
+      const matchState = {
+        matchId: match.id,
+        currentPlayer: playerTeam,
+        economy: match.sharedState.upgradeManager.economy
+      };
+      
+      match.sharedState.upgradeManager.purchaseUpgrade(matchState, upgradeId);
       
       // Update match state with latest upgrade/economy info
       const upgradeState = match.sharedState.upgradeManager.getUpgradeState();
@@ -1329,10 +1336,9 @@ class MatchManager {
       return 0;
     }
     
-    const zoneControl = game.upgradeManager ? 
-      game.upgradeManager.calculateZoneControl(game.controlZones, game.board) :
-      {};
-    return Object.values(zoneControl).filter(controller => controller === team).length;
+    // Use the gameLogic function instead of the removed upgradeManager method
+    const controlZoneStatuses = calculateAllControlZoneStatuses(game.board);
+    return controlZoneStatuses.filter(status => status.controlledBy === team).length;
   }
 
   // Get public match state (for players not yet in the match)
@@ -1374,6 +1380,33 @@ class MatchManager {
           }
         }
         this.matches.delete(matchId);
+      }
+    }
+  }
+
+  // Broadcast match state to all players in a match
+  broadcastMatchState(match) {
+    // This method will be implemented to broadcast game state updates
+    // For now, it's a placeholder to prevent errors
+    console.log(`Broadcasting match state for match ${match.id}`);
+  }
+
+  // Notify all players in a match about a specific event
+  notifyMatchPlayers(matchId, event, data) {
+    const match = this.matches.get(matchId);
+    if (!match) {
+      console.error(`Match ${matchId} not found for notification`);
+      return;
+    }
+
+    // Find all players in this match and notify them
+    for (const [socketId, playerInfo] of this.playerSockets.entries()) {
+      if (playerInfo.matchId === matchId) {
+        // Get the socket instance from the global io object
+        // This will be set up in the server.js file
+        if (global.io) {
+          global.io.to(socketId).emit(event, data);
+        }
       }
     }
   }

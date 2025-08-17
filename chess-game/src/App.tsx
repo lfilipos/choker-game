@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { GameLobby } from './components/GameLobby';
 import MatchLobby from './components/MatchLobby';
 import { MultiplayerChessGame } from './components/MultiplayerChessGame';
+import { ChessGame } from './components/ChessGame';
 import GameBView from './components/GameBView';
 import { socketService, MatchState } from './services/socketService';
 import './App.css';
 
-type AppMode = 'lobby' | 'match-lobby' | 'multiplayer' | 'game-b';
+type AppMode = 'lobby' | 'match-lobby' | 'multiplayer' | 'game-b' | 'test-chess';
 
 function App() {
   const [mode, setMode] = useState<AppMode>('lobby');
@@ -68,7 +69,53 @@ function App() {
   if (mode === 'lobby') {
     return (
       <div className="App">
+        <div style={{ padding: '20px', textAlign: 'center' }}>
+          <h2>Chess Game Test</h2>
+          <button 
+            onClick={() => setMode('test-chess')} 
+            style={{ 
+              padding: '10px 20px', 
+              margin: '10px', 
+              fontSize: '16px',
+              backgroundColor: '#4CAF50',
+              color: 'white',
+              border: 'none',
+              borderRadius: '5px',
+              cursor: 'pointer'
+            }}
+          >
+            Test Standalone Chess Game
+          </button>
+        </div>
         <GameLobby onMatchSelect={handleMatchSelect} />
+      </div>
+    );
+  }
+
+  if (mode === 'test-chess') {
+    return (
+      <div className="App">
+        <div style={{ padding: '20px', textAlign: 'center' }}>
+          <button 
+            onClick={() => setMode('lobby')} 
+            style={{ 
+              padding: '10px 20px', 
+              margin: '10px', 
+              fontSize: '16px',
+              backgroundColor: '#f44336',
+              color: 'white',
+              border: 'none',
+              borderRadius: '5px',
+              cursor: 'pointer'
+            }}
+          >
+            ← Back to Lobby
+          </button>
+          <h2>Testing Basic Chess Board</h2>
+        </div>
+        <div style={{ padding: '20px' }}>
+          <ChessGame />
+        </div>
       </div>
     );
   }

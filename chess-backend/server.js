@@ -25,6 +25,9 @@ const io = socketIo(server, {
   }
 });
 
+// Make io globally available for MatchManager
+global.io = io;
+
 const matchManager = new MatchManager();
 
 
@@ -100,8 +103,125 @@ app.get('/api/matches/:matchId', (req, res) => {
       playerCount: playerCount,
       availableSlots: availableSlots,
       createdAt: match.createdAt,
-      pokerGame: pokerInfo
+      pokerInfo: pokerInfo
     });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// NEW: Upgrade System API Endpoints
+// Get available upgrades for a match
+app.get('/api/matches/:matchId/upgrades', (req, res) => {
+  try {
+    const match = matchManager.matches.get(req.params.matchId);
+    if (!match) {
+      return res.status(404).json({ error: 'Match not found' });
+    }
+
+    const { team } = req.query;
+    if (!team || !['white', 'black'].includes(team)) {
+      return res.status(400).json({ error: 'Valid team parameter required (white or black)' });
+    }
+
+    const matchState = {
+      matchId: match.id,
+      currentPlayer: team,
+      economy: match.sharedState.upgradeManager.economy
+    };
+    const availableUpgrades = match.upgradeManager.getAvailableUpgrades(matchState);
+    const upgradeProgress = match.upgradeManager.getUpgradeProgress(team);
+    const teamEconomy = match.upgradeManager.getTeamEconomy(team);
+
+    res.json({
+      availableUpgrades,
+      upgradeProgress,
+      teamEconomy
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Purchase an upgrade
+app.post('/api/matches/:matchId/upgrades/:upgradeId/purchase', (req, res) => {
+  try {
+    const match = matchManager.matches.get(req.params.matchId);
+    if (!match) {
+      return res.status(404).json({ error: 'Match not found' });
+    }
+
+    const { team } = req.body;
+    if (!team || !['white', 'black'].includes(team)) {
+      return res.status(400).json({ error: 'Valid team parameter required (white or black)' });
+    }
+
+    const upgradeId = req.params.upgradeId;
+    
+    // Purchase the upgrade
+    const matchState = {
+      matchId: match.id,
+      currentPlayer: team,
+      economy: match.sharedState.upgradeManager.economy
+    };
+    match.upgradeManager.purchaseUpgrade(matchState, upgradeId);
+    
+    // Get updated state
+    const availableUpgrades = match.upgradeManager.getAvailableUpgrades(matchState);
+    const upgradeProgress = match.upgradeManager.getUpgradeProgress(team);
+    const teamEconomy = match.upgradeManager.getTeamEconomy(team);
+
+    // Notify all players in the match about the upgrade purchase
+    matchManager.notifyMatchPlayers(match.id, 'upgrade_purchased', {
+      team,
+      upgradeId,
+      availableUpgrades,
+      upgradeProgress,
+      teamEconomy
+    });
+
+    res.json({
+      success: true,
+      message: 'Upgrade purchased successfully',
+      availableUpgrades,
+      upgradeProgress,
+      teamEconomy
+    });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// Get upgrade progress for a team
+app.get('/api/matches/:matchId/upgrades/progress/:team', (req, res) => {
+  try {
+    const match = matchManager.matches.get(req.params.matchId);
+    if (!match) {
+      return res.status(404).json({ error: 'Match not found' });
+    }
+
+    const { team } = req.params;
+    if (!['white', 'black'].includes(team)) {
+      return res.status(400).json({ error: 'Valid team parameter required (white or black)' });
+    }
+
+    const upgradeProgress = match.upgradeManager.getUpgradeProgress(team);
+    const teamEconomy = match.upgradeManager.getTeamEconomy(team);
+
+    res.json({
+      upgradeProgress,
+      teamEconomy
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get all upgrade definitions
+app.get('/api/upgrades/definitions', (req, res) => {
+  try {
+    const { TIERED_UPGRADES } = require('./upgradeDefinitions');
+    res.json(TIERED_UPGRADES);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -294,7 +414,13 @@ io.on('connection', (socket) => {
         throw new Error('Match not found');
       }
       const playerTeam = getTeamFromRole(playerInfo.role);
-      const upgrades = match.sharedState.upgradeManager.getAvailableUpgrades(playerTeam);
+      // Create matchState object for the new tiered system
+      const matchState = {
+        matchId: match.id,
+        currentPlayer: playerTeam,
+        economy: match.sharedState.upgradeManager.economy
+      };
+      const upgrades = match.sharedState.upgradeManager.getAvailableUpgrades(matchState);
       socket.emit('available_upgrades', { upgrades });
     } catch (error) {
       socket.emit('error', { message: error.message });
@@ -373,7 +499,13 @@ io.on('connection', (socket) => {
             const playerRole = matchManager.playerSockets.get(socketId)?.role;
             if (playerRole) {
               const playerTeam = getTeamFromRole(playerRole);
-              const upgrades = match.sharedState.upgradeManager.getAvailableUpgrades(playerTeam);
+              // Create matchState object for the new tiered system
+              const matchState = {
+                matchId: match.id,
+                currentPlayer: playerTeam,
+                economy: match.sharedState.upgradeManager.economy
+              };
+              const upgrades = match.sharedState.upgradeManager.getAvailableUpgrades(matchState);
               io.to(socketId).emit('available_upgrades', { upgrades });
             }
           }
@@ -488,7 +620,13 @@ io.on('connection', (socket) => {
           const playerRole = matchManager.playerSockets.get(socketId)?.role;
           if (playerRole) {
             const playerTeam = getTeamFromRole(playerRole);
-            const upgrades = match.sharedState.upgradeManager.getAvailableUpgrades(playerTeam);
+            // Create matchState object for the new tiered system
+            const matchState = {
+              matchId: match.id,
+              currentPlayer: playerTeam,
+              economy: match.sharedState.upgradeManager.economy
+            };
+            const upgrades = match.sharedState.upgradeManager.getAvailableUpgrades(matchState);
             io.to(socketId).emit('available_upgrades', { upgrades });
           }
         }
@@ -779,7 +917,13 @@ io.on('connection', (socket) => {
           const playerRole = matchManager.playerSockets.get(socketId)?.role;
           if (playerRole && match) {
             const playerTeam = getTeamFromRole(playerRole);
-            const upgrades = match.sharedState.upgradeManager.getAvailableUpgrades(playerTeam);
+            // Create matchState object for the new tiered system
+            const matchState = {
+              matchId: match.id,
+              currentPlayer: playerTeam,
+              economy: match.sharedState.upgradeManager.economy
+            };
+            const upgrades = match.sharedState.upgradeManager.getAvailableUpgrades(matchState);
             io.to(socketId).emit('available_upgrades', { upgrades });
           }
         }

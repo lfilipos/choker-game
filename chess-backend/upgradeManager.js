@@ -1,5 +1,6 @@
 const { PieceType, PieceColor, ActivationMethod } = require('./types');
-const { UPGRADE_DEFINITIONS, CONTROL_ZONE_UPGRADES, STARTING_ECONOMY, INCOME_RATES } = require('./upgradeDefinitions');
+const { TIERED_UPGRADES, STARTING_ECONOMY, INCOME_RATES } = require('./upgradeDefinitions');
+const { RequirementValidator } = require('./requirementValidator');
 
 class UpgradeManager {
   constructor() {
@@ -15,6 +16,10 @@ class UpgradeManager {
     
     this.temporaryUpgrades = new Map(); // Track temporary upgrades with expiration
     this.usedOnceUpgrades = new Map(); // Track one-time use upgrades
+    
+    // Initialize requirement validation system
+    this.requirementValidator = new RequirementValidator();
+    this.requirementTrackers = new Map(); // Track requirements per match
   }
 
   initializeTeamUpgrades() {
@@ -171,15 +176,32 @@ class UpgradeManager {
     return this.upgrades[color][pieceType].includes(upgradeId);
   }
 
+  // Get team economy
+  getTeamEconomy(color) {
+    return this.economy[color] || 0;
+  }
+
   // Get all active upgrades for a piece
   getPieceUpgrades(color, pieceType) {
-    return this.upgrades[color][pieceType].map(upgradeId => UPGRADE_DEFINITIONS[upgradeId]);
+    return this.upgrades[color][pieceType].map(upgradeId => this.getUpgradeById(upgradeId));
   }
 
   // Check if a one-time upgrade has been used
   hasUsedOnceUpgrade(color, pieceType, upgradeId, piecePosition) {
     const key = `${color}_${pieceType}_${upgradeId}_${piecePosition.row}_${piecePosition.col}`;
     return this.usedOnceUpgrades.has(key);
+  }
+
+  // Get upgrade by ID from tiered system
+  getUpgradeById(upgradeId) {
+    for (const pieceType in TIERED_UPGRADES) {
+      for (const tier in TIERED_UPGRADES[pieceType]) {
+        if (TIERED_UPGRADES[pieceType][tier].id === upgradeId) {
+          return TIERED_UPGRADES[pieceType][tier];
+        }
+      }
+    }
+    return null;
   }
 
   // Mark a one-time upgrade as used
@@ -189,17 +211,26 @@ class UpgradeManager {
   }
 
   // Get available upgrades for purchase
-  getAvailableUpgrades(color) {
+  getAvailableUpgrades(matchState) {
     const available = [];
+    const { currentPlayer } = matchState;
     
-    Object.entries(UPGRADE_DEFINITIONS).forEach(([id, upgrade]) => {
-      // Show all upgrades that the player doesn't already have
-      if (!this.hasUpgrade(color, upgrade.pieceType, id)) {
-        available.push({
-          ...upgrade,
-          canAfford: this.canAfford(color, upgrade.cost)
-        });
-      }
+    // Iterate through all tiered upgrades
+    Object.entries(TIERED_UPGRADES).forEach(([pieceType, tiers]) => {
+      Object.entries(tiers).forEach(([tier, upgrade]) => {
+        // Check if upgrade is available (requirements met)
+        const isAvailable = this.requirementValidator.isUpgradeAvailable(matchState, upgrade.id);
+        const canAfford = this.canAfford(currentPlayer, upgrade.cost);
+        
+        // Only add upgrades that are actually available (requirements met)
+        if (isAvailable) {
+          available.push({
+            ...upgrade,
+            isAvailable,
+            canAfford
+          });
+        }
+      });
     });
     
     return available;
