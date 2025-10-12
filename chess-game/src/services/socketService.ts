@@ -68,6 +68,12 @@ export interface MatchState {
   controlZoneOwnership?: Record<string, string | null>;
   activePokerEffects?: Record<string, any[]>;
   controlZonePokerEffects?: Record<string, any>;
+  dualMovementState?: {
+    active: boolean;
+    firstPawnPosition: { from: { row: number; col: number }; to: { row: number; col: number } } | null;
+    playerTeam: string | null;
+  };
+  isSecondPawnMove?: boolean;
 }
 
 class SocketService {
@@ -251,6 +257,20 @@ class SocketService {
       this.socket.emit('make_move', { from, to, gameSlot: gameSlot || 'A' });
 
       // The response will come through the 'move_made' event listener
+      resolve();
+    });
+  }
+
+  skipSecondPawnMove(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if (!this.socket) {
+        reject(new Error('Not connected'));
+        return;
+      }
+
+      this.socket.emit('skip_second_pawn_move');
+
+      // The response will come through the 'match_state_updated' event listener
       resolve();
     });
   }

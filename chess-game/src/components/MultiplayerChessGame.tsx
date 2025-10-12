@@ -395,6 +395,11 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
     if (!selectedSquare) {
       // Select the square if it has a piece of the current player's color
       if (clickedPiece && clickedPiece.color === gameState.playerColor) {
+        // During second pawn move, only allow selecting pawns
+        if (matchState?.isSecondPawnMove && clickedPiece.type !== 'pawn') {
+          setError("During dual movement, you can only move pawns!");
+          return;
+        }
         setSelectedSquare(position);
         setPossibleMoves([]); // Clear moves while we wait for server response
         socketService.getPossibleMoves(position, 'A'); // Request moves from server for chess game
@@ -412,6 +417,11 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
 
     // If clicking on another piece of the same color, select it instead
     if (clickedPiece && clickedPiece.color === gameState.playerColor) {
+      // During second pawn move, only allow selecting pawns
+      if (matchState?.isSecondPawnMove && clickedPiece.type !== 'pawn') {
+        setError("During dual movement, you can only move pawns!");
+        return;
+      }
       setSelectedSquare(position);
       setPossibleMoves([]); // Clear moves while we wait for server response
       socketService.getPossibleMoves(position, 'A'); // Request moves from server for chess game
@@ -445,6 +455,13 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
   const handleLeaveGame = () => {
     socketService.disconnect();
     onLeaveGame();
+  };
+
+  const handleSkipSecondMove = () => {
+    socketService.skipSecondPawnMove().catch((error) => {
+      console.error('Skip second move error:', error);
+      setError(error.message);
+    });
   };
 
   const handlePurchaseUpgrade = (upgradeId: string) => {
@@ -528,6 +545,11 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
       return 'Stalemate! It\'s a draw.';
     }
 
+    // Check for dual movement mode
+    if (matchState?.isSecondPawnMove) {
+      return 'Your turn - Second Pawn Move Available';
+    }
+
     return gameState.isPlayerTurn ? 'Your turn' : 'Opponent\'s turn';
   };
 
@@ -554,6 +576,15 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
             <p className={gameState.isPlayerTurn ? 'your-turn' : 'opponent-turn'}>
               {getGameStatusText()}
             </p>
+            {matchState?.isSecondPawnMove && (
+              <button 
+                onClick={handleSkipSecondMove} 
+                className="skip-second-move-button"
+                title="Skip moving a second pawn and end your turn"
+              >
+                Skip Second Move
+              </button>
+            )}
           </div>
 
           {error && (

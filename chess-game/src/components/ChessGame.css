@@ -503,6 +503,34 @@
   background-color: #c82333;
 }
 
+.skip-second-move-button {
+  background-color: #ff9800;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  margin-top: 10px;
+  transition: all 0.3s;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.skip-second-move-button:hover {
+  background-color: #f57c00;
+  transform: scale(1.05);
+}
+
+@keyframes pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(255, 152, 0, 0.7);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(255, 152, 0, 0);
+  }
+}
+
 .connection-status {
   position: fixed;
   top: 20px;

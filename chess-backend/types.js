@@ -67,7 +67,8 @@ const UpgradeType = {
   MOVEMENT: 'movement',
   ATTACK: 'attack',
   DEFENSE: 'defense',
-  SPECIAL: 'special'
+  SPECIAL: 'special',
+  TURN_MECHANICS: 'turn_mechanics'
 };
 
 const ActivationMethod = {

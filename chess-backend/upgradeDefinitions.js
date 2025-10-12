@@ -39,7 +39,7 @@ const UPGRADE_DEFINITIONS = {
       value: 'dual_movement',
       description: 'Can move two pawns per turn'
     }],
-    activationMethod: ActivationMethod.CONTROL_ZONE
+    activationMethod: ActivationMethod.PURCHASE
   },
 
   // KNIGHT UPGRADES

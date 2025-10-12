@@ -6,7 +6,7 @@ require('dotenv').config();
 
 const MatchManager = require('./matchManager');
 const { getPossibleMoves } = require('./gameLogic');
-const { GameSlot, getTeamFromRole, getGameSlotFromRole } = require('./matchTypes');
+const { GameSlot, getTeamFromRole, getGameSlotFromRole, TeamColor } = require('./matchTypes');
 const { getPurchasablePieces, getPurchasablePiecesForTeam } = require('./pieceDefinitions');
 
 const app = express();
@@ -252,6 +252,57 @@ io.on('connection', (socket) => {
       }
       
       console.log(`Move made in match ${match.id}, game ${gameSlot}: ${JSON.stringify(result.move)}`);
+    } catch (error) {
+      socket.emit('error', { message: error.message });
+    }
+  });
+
+  // Skip second pawn move in dual movement
+  socket.on('skip_second_pawn_move', () => {
+    try {
+      const playerInfo = matchManager.playerSockets.get(socket.id);
+      if (!playerInfo) {
+        throw new Error('Player not found');
+      }
+
+      const { matchId, role } = playerInfo;
+      const match = matchManager.matches.get(matchId);
+      
+      if (!match) {
+        throw new Error('Match not found');
+      }
+
+      const playerTeam = getTeamFromRole(role);
+      const dualMovementState = match.sharedState.dualMovementState;
+
+      // Verify the player is in dual movement state
+      if (!dualMovementState.active || dualMovementState.playerTeam !== playerTeam) {
+        throw new Error('Not in dual movement mode');
+      }
+
+      console.log(`${playerTeam} skipped second pawn move`);
+
+      // Reset dual movement state
+      dualMovementState.active = false;
+      dualMovementState.firstPawnPosition = null;
+      dualMovementState.playerTeam = null;
+
+      // Switch turns
+      const game = match.games.A; // Chess game
+      game.currentPlayer = game.currentPlayer === 'white' ? 'black' : 'white';
+      
+      match.lastActivity = new Date();
+
+      // Send updated match state to all players in the match
+      for (const [socketId] of matchManager.playerSockets) {
+        if (matchManager.playerSockets.get(socketId)?.matchId === match.id) {
+          const playerMatchState = matchManager.getMatchState(match.id, socketId);
+          io.to(socketId).emit('match_state_updated', {
+            matchState: playerMatchState,
+            reason: 'second_move_skipped'
+          });
+        }
+      }
     } catch (error) {
       socket.emit('error', { message: error.message });
     }

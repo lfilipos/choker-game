@@ -81,7 +81,12 @@ class MatchManager {
         turnNumber: 0, // Track total turns (increments when switching to white)
         incomeGivenThisTurn: false, // Track if income was given for current turn
         blindLevel: 1, // Track blind level across the match
-        lastBlindIncreaseCost: 100 // Track cost for decrease calculation
+        lastBlindIncreaseCost: 100, // Track cost for decrease calculation
+        dualMovementState: { 
+          active: false, 
+          firstPawnPosition: null, 
+          playerTeam: null 
+        } // Track dual pawn movement state
       },
       createdAt: new Date(),
       lastActivity: new Date()
@@ -352,8 +357,49 @@ class MatchManager {
       }
     }
 
-    // Switch turns (only if game is still active)
-    if (match.status === MatchStatus.ACTIVE) {
+    // Handle dual pawn movement logic
+    let shouldSwitchTurns = true;
+    const dualMovementState = match.sharedState.dualMovementState;
+    const playerUpgrades = match.teams[playerTeam].upgrades;
+    const hasDualMovement = playerUpgrades.pawn && playerUpgrades.pawn.includes('pawn_dual_movement');
+    
+    if (match.status === MatchStatus.ACTIVE && piece.type === PieceType.PAWN && hasDualMovement) {
+      if (!dualMovementState.active) {
+        // First pawn move - enter dual movement mode
+        console.log(`${playerTeam} entering dual movement mode after moving pawn from (${from.row},${from.col}) to (${to.row},${to.col})`);
+        dualMovementState.active = true;
+        dualMovementState.firstPawnPosition = { from: { ...from }, to: { ...to } };
+        dualMovementState.playerTeam = playerTeam;
+        shouldSwitchTurns = false; // Don't switch turns yet
+      } else if (dualMovementState.playerTeam === playerTeam) {
+        // Second pawn move - verify it's a different pawn
+        const isSamePawn = (from.row === dualMovementState.firstPawnPosition.to.row && 
+                           from.col === dualMovementState.firstPawnPosition.to.col);
+        
+        if (isSamePawn) {
+          console.error(`${playerTeam} tried to move the same pawn twice!`);
+          throw new Error('Cannot move the same pawn twice with dual movement');
+        }
+        
+        console.log(`${playerTeam} completed dual movement by moving second pawn from (${from.row},${from.col}) to (${to.row},${to.col})`);
+        // Reset dual movement state and allow turn switch
+        dualMovementState.active = false;
+        dualMovementState.firstPawnPosition = null;
+        dualMovementState.playerTeam = null;
+        shouldSwitchTurns = true;
+      }
+    } else if (dualMovementState.active && dualMovementState.playerTeam === playerTeam) {
+      // Player moved a non-pawn piece during dual movement - this shouldn't happen
+      // Reset the dual movement state and switch turns normally
+      console.log(`${playerTeam} moved non-pawn during dual movement mode, resetting state`);
+      dualMovementState.active = false;
+      dualMovementState.firstPawnPosition = null;
+      dualMovementState.playerTeam = null;
+      shouldSwitchTurns = true;
+    }
+
+    // Switch turns (only if game is still active and we should switch)
+    if (match.status === MatchStatus.ACTIVE && shouldSwitchTurns) {
       game.currentPlayer = game.currentPlayer === PieceColor.WHITE ? PieceColor.BLACK : PieceColor.WHITE;
     }
     
@@ -931,6 +977,10 @@ class MatchManager {
     
     console.log(`Sending match state to ${role}, chess move history length: ${chessGameInfo.moveHistory.length}`);
 
+    // Check if this player is in dual movement mode
+    const dualMovementState = match.sharedState.dualMovementState;
+    const isSecondPawnMove = dualMovementState.active && dualMovementState.playerTeam === playerTeam;
+
     return {
       id: match.id,
       status: match.status,
@@ -959,6 +1009,12 @@ class MatchManager {
       activePokerEffects: match.sharedState.activePokerEffects,
       blindLevel: match.sharedState.blindLevel || 1,
       blindAmounts: require('./modifierDefinitions').getBlindAmounts(match.sharedState.blindLevel || 1),
+      dualMovementState: {
+        active: dualMovementState.active,
+        firstPawnPosition: dualMovementState.firstPawnPosition,
+        playerTeam: dualMovementState.playerTeam
+      },
+      isSecondPawnMove: isSecondPawnMove,
       // Include poker effect definitions for each zone
       controlZonePokerEffects: Object.entries(CONTROL_ZONE_POKER_EFFECTS).reduce((acc, [zoneId, effectId]) => {
         const effect = POKER_EFFECTS[effectId];
