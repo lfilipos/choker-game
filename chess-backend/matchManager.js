@@ -89,7 +89,13 @@ class MatchManager {
           active: false, 
           firstPawnPosition: null, 
           playerTeam: null 
-        } // Track dual pawn movement state
+        }, // Track dual pawn movement state
+        knightDoubleJumpState: {
+          active: false,
+          firstKnightPosition: null,
+          playerTeam: null,
+          hasCaptured: false
+        } // Track knight double jump state
       },
       createdAt: new Date(),
       lastActivity: new Date()
@@ -376,8 +382,10 @@ class MatchManager {
     // Handle dual pawn movement logic
     let shouldSwitchTurns = true;
     const dualMovementState = match.sharedState.dualMovementState;
+    const knightDoubleJumpState = match.sharedState.knightDoubleJumpState;
     const playerUpgrades = match.teams[playerTeam].upgrades;
     const hasDualMovement = playerUpgrades.pawn && playerUpgrades.pawn.includes('pawn_dual_movement');
+    const hasKnightDoubleJump = playerUpgrades.knight && playerUpgrades.knight.includes('knight_double_jump');
     
     if (match.status === MatchStatus.ACTIVE && piece.type === PieceType.PAWN && hasDualMovement) {
       if (!dualMovementState.active) {
@@ -411,6 +419,60 @@ class MatchManager {
       dualMovementState.active = false;
       dualMovementState.firstPawnPosition = null;
       dualMovementState.playerTeam = null;
+      shouldSwitchTurns = true;
+    }
+    
+    // Handle knight double jump logic
+    if (match.status === MatchStatus.ACTIVE && piece.type === PieceType.KNIGHT && hasKnightDoubleJump) {
+      if (!knightDoubleJumpState.active) {
+        // First knight move - enter double jump mode
+        console.log(`${playerTeam} entering knight double jump mode after moving knight from (${from.row},${from.col}) to (${to.row},${to.col})`);
+        knightDoubleJumpState.active = true;
+        knightDoubleJumpState.firstKnightPosition = { from: { ...from }, to: { ...to } };
+        knightDoubleJumpState.playerTeam = playerTeam;
+        knightDoubleJumpState.hasCaptured = capturedPiece !== null;
+        shouldSwitchTurns = false; // Don't switch turns yet
+      } else if (knightDoubleJumpState.playerTeam === playerTeam) {
+        // Second knight move - verify it's the same knight
+        const isSameKnight = (from.row === knightDoubleJumpState.firstKnightPosition.to.row && 
+                             from.col === knightDoubleJumpState.firstKnightPosition.to.col);
+        
+        if (!isSameKnight) {
+          console.error(`${playerTeam} tried to move a different knight during double jump!`);
+          throw new Error('Can only move the same knight twice with double jump');
+        }
+        
+        // Verify knight didn't return to original starting position (this is checked in validation too)
+        const returnedToStart = (to.row === knightDoubleJumpState.firstKnightPosition.from.row &&
+                                to.col === knightDoubleJumpState.firstKnightPosition.from.col);
+        
+        if (returnedToStart) {
+          console.error(`${playerTeam} tried to return knight to starting position!`);
+          throw new Error('Knight cannot return to starting position during double jump');
+        }
+        
+        // Verify capture restriction (only one capture per turn)
+        if (knightDoubleJumpState.hasCaptured && capturedPiece) {
+          console.error(`${playerTeam} tried to capture twice with double jump!`);
+          throw new Error('Knight can only capture once per turn with double jump');
+        }
+        
+        console.log(`${playerTeam} completed knight double jump by moving knight from (${from.row},${from.col}) to (${to.row},${to.col})`);
+        // Reset knight double jump state and allow turn switch
+        knightDoubleJumpState.active = false;
+        knightDoubleJumpState.firstKnightPosition = null;
+        knightDoubleJumpState.playerTeam = null;
+        knightDoubleJumpState.hasCaptured = false;
+        shouldSwitchTurns = true;
+      }
+    } else if (knightDoubleJumpState.active && knightDoubleJumpState.playerTeam === playerTeam) {
+      // Player moved a non-knight piece during double jump - this shouldn't happen
+      // Reset the knight double jump state and switch turns normally
+      console.log(`${playerTeam} moved non-knight during double jump mode, resetting state`);
+      knightDoubleJumpState.active = false;
+      knightDoubleJumpState.firstKnightPosition = null;
+      knightDoubleJumpState.playerTeam = null;
+      knightDoubleJumpState.hasCaptured = false;
       shouldSwitchTurns = true;
     }
 
@@ -1001,6 +1063,10 @@ class MatchManager {
     const dualMovementState = match.sharedState.dualMovementState;
     const isSecondPawnMove = dualMovementState.active && dualMovementState.playerTeam === playerTeam;
 
+    // Check if this player is in knight double jump mode
+    const knightDoubleJumpState = match.sharedState.knightDoubleJumpState;
+    const isSecondKnightMove = knightDoubleJumpState.active && knightDoubleJumpState.playerTeam === playerTeam;
+
     return {
       id: match.id,
       status: match.status,
@@ -1035,6 +1101,13 @@ class MatchManager {
         playerTeam: dualMovementState.playerTeam
       },
       isSecondPawnMove: isSecondPawnMove,
+      knightDoubleJumpState: {
+        active: knightDoubleJumpState.active,
+        firstKnightPosition: knightDoubleJumpState.firstKnightPosition,
+        playerTeam: knightDoubleJumpState.playerTeam,
+        hasCaptured: knightDoubleJumpState.hasCaptured
+      },
+      isSecondKnightMove: isSecondKnightMove,
       // Include poker effect definitions for each zone
       controlZonePokerEffects: Object.entries(CONTROL_ZONE_POKER_EFFECTS).reduce((acc, [zoneId, effectId]) => {
         const effect = POKER_EFFECTS[effectId];

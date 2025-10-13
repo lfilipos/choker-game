@@ -308,6 +308,58 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Skip second knight move in double jump
+  socket.on('skip_second_knight_move', () => {
+    try {
+      const playerInfo = matchManager.playerSockets.get(socket.id);
+      if (!playerInfo) {
+        throw new Error('Player not found');
+      }
+
+      const { matchId, role } = playerInfo;
+      const match = matchManager.matches.get(matchId);
+      
+      if (!match) {
+        throw new Error('Match not found');
+      }
+
+      const playerTeam = getTeamFromRole(role);
+      const knightDoubleJumpState = match.sharedState.knightDoubleJumpState;
+
+      // Verify the player is in knight double jump state
+      if (!knightDoubleJumpState.active || knightDoubleJumpState.playerTeam !== playerTeam) {
+        throw new Error('Not in knight double jump mode');
+      }
+
+      console.log(`${playerTeam} skipped second knight move`);
+
+      // Reset knight double jump state
+      knightDoubleJumpState.active = false;
+      knightDoubleJumpState.firstKnightPosition = null;
+      knightDoubleJumpState.playerTeam = null;
+      knightDoubleJumpState.hasCaptured = false;
+
+      // Switch turns
+      const game = match.games.A; // Chess game
+      game.currentPlayer = game.currentPlayer === 'white' ? 'black' : 'white';
+      
+      match.lastActivity = new Date();
+
+      // Send updated match state to all players in the match
+      for (const [socketId] of matchManager.playerSockets) {
+        if (matchManager.playerSockets.get(socketId)?.matchId === match.id) {
+          const playerMatchState = matchManager.getMatchState(match.id, socketId);
+          io.to(socketId).emit('match_state_updated', {
+            matchState: playerMatchState,
+            reason: 'second_knight_move_skipped'
+          });
+        }
+      }
+    } catch (error) {
+      socket.emit('error', { message: error.message });
+    }
+  });
+
   // Get current match state
   socket.on('get_match_state', (data) => {
     try {
@@ -382,13 +434,36 @@ io.on('connection', (socket) => {
         black: match.teams.black.upgrades
       };
       
-      const possibleMoves = getPossibleMoves(
+      let possibleMoves = getPossibleMoves(
         game.board, 
         position, 
         upgradeState, 
         match.sharedState.upgradeManager,
         game.rookLinks || []
       );
+      
+      // Filter moves for knight double jump restrictions
+      const knightDoubleJumpState = match.sharedState.knightDoubleJumpState;
+      const playerTeam = piece?.color;
+      
+      if (knightDoubleJumpState.active && 
+          knightDoubleJumpState.playerTeam === playerTeam &&
+          piece?.type === 'knight') {
+        // This is the second knight move
+        const originalStart = knightDoubleJumpState.firstKnightPosition.from;
+        
+        // Filter out the original starting position
+        possibleMoves = possibleMoves.filter(move => {
+          return !(move.row === originalStart.row && move.col === originalStart.col);
+        });
+        
+        // If already captured, filter out all capture moves
+        if (knightDoubleJumpState.hasCaptured) {
+          possibleMoves = possibleMoves.filter(move => {
+            return !game.board[move.row][move.col]; // Only allow moves to empty squares
+          });
+        }
+      }
       
       console.log(`Found ${possibleMoves.length} possible moves`);
       

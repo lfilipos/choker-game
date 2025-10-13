@@ -76,6 +76,13 @@ export interface MatchState {
     playerTeam: string | null;
   };
   isSecondPawnMove?: boolean;
+  knightDoubleJumpState?: {
+    active: boolean;
+    firstKnightPosition: { from: { row: number; col: number }; to: { row: number; col: number } } | null;
+    playerTeam: string | null;
+    hasCaptured: boolean;
+  };
+  isSecondKnightMove?: boolean;
 }
 
 class SocketService {
@@ -271,6 +278,20 @@ class SocketService {
       }
 
       this.socket.emit('skip_second_pawn_move');
+
+      // The response will come through the 'match_state_updated' event listener
+      resolve();
+    });
+  }
+
+  skipSecondKnightMove(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if (!this.socket) {
+        reject(new Error('Not connected'));
+        return;
+      }
+
+      this.socket.emit('skip_second_knight_move');
 
       // The response will come through the 'match_state_updated' event listener
       resolve();

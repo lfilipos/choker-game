@@ -67,7 +67,7 @@ const UPGRADE_DEFINITIONS = {
       value: 'double_move',
       description: 'Can move twice per turn'
     }],
-    activationMethod: ActivationMethod.ACHIEVEMENT
+    activationMethod: ActivationMethod.PURCHASE
   },
 
   // BISHOP UPGRADES

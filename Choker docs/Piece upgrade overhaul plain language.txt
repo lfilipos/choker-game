@@ -104,9 +104,9 @@ Knights
     * 350  
   * Functional requirements:  
     * This already exists, but isn’t functional. Please update to follow these requirements  
-    * Once the knight makes its first move according to the movesets available granted to it from knight upgrade levels 1 and 2, it has the option to make another move.  
+    * Once the knight makes its first move, it has the option to make another move.  Both moves should have the movesets available granted to it from any other knight upgrades (example 3-2 move set)
     * The knight does not have to make another move if it doesn’t want to   
-    * There will need to be a UI option to allow the player to only make the first move. For example, once the knight has made its first move, clicking on it again will finalize its position without making another move.  
+    * There will need to be a UI option to allow the player to only make the first move.
     * The UI should show the new movement options once the knight has made its initial move.  
     * Once the knight has made its initial move, it cannot return to its starting spot on that turn, unless it chooses to use its second move to do so. In effect, once the knight makes its first move, that segment of the turn is finalized.
 
