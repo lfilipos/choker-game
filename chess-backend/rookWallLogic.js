@@ -1,0 +1,297 @@
+const { PieceType } = require('./types');
+
+/**
+ * Calculate all wall squares based on rook links
+ * @param {Array} rookLinks - Array of rook link objects { rookPosition: {row, col}, linkedRookPositions: [{row, col}, ...] }
+ * @returns {Array} Array of wall positions {row, col, color}
+ */
+function calculateWallSquares(rookLinks) {
+  const wallSquares = [];
+  
+  if (!rookLinks || rookLinks.length === 0) {
+    return wallSquares;
+  }
+  
+  // For each rook and its linked partners
+  rookLinks.forEach(link => {
+    const { rookPosition, linkedRookPositions, color } = link;
+    
+    // For each linked pair
+    linkedRookPositions.forEach(linkedPos => {
+      // Calculate the wall square(s) between the two rooks
+      const walls = getWallSquaresBetween(rookPosition, linkedPos, color);
+      wallSquares.push(...walls);
+    });
+  });
+  
+  return wallSquares;
+}
+
+/**
+ * Get the wall square(s) between two rook positions
+ * @param {Object} pos1 - First rook position {row, col}
+ * @param {Object} pos2 - Second rook position {row, col}
+ * @param {string} color - Color of the rooks
+ * @returns {Array} Array of wall squares between the rooks
+ */
+function getWallSquaresBetween(pos1, pos2, color) {
+  const walls = [];
+  const rowDiff = pos2.row - pos1.row;
+  const colDiff = pos2.col - pos1.col;
+  
+  // Only create wall if exactly 2 spaces apart (1 space between)
+  const distance = Math.abs(rowDiff) + Math.abs(colDiff);
+  
+  // For orthogonal movement (horizontal or vertical)
+  if ((rowDiff === 0 && Math.abs(colDiff) === 2) || (colDiff === 0 && Math.abs(rowDiff) === 2)) {
+    const wallRow = pos1.row + Math.sign(rowDiff);
+    const wallCol = pos1.col + Math.sign(colDiff);
+    walls.push({ row: wallRow, col: wallCol, color });
+  }
+  // For diagonal movement
+  else if (Math.abs(rowDiff) === 2 && Math.abs(colDiff) === 2) {
+    const wallRow = pos1.row + Math.sign(rowDiff);
+    const wallCol = pos1.col + Math.sign(colDiff);
+    walls.push({ row: wallRow, col: wallCol, color });
+  }
+  
+  return walls;
+}
+
+/**
+ * Check if a position is a wall square
+ * @param {Object} position - Position to check {row, col}
+ * @param {Array} wallSquares - Array of wall squares
+ * @returns {Object|null} Wall square object if position is a wall, null otherwise
+ */
+function isWallSquare(position, wallSquares) {
+  if (!wallSquares || wallSquares.length === 0) {
+    return null;
+  }
+  
+  return wallSquares.find(wall => 
+    wall.row === position.row && wall.col === position.col
+  ) || null;
+}
+
+/**
+ * Validate if two rooks can be linked
+ * @param {Array} board - Game board
+ * @param {Object} rook1Pos - First rook position {row, col}
+ * @param {Object} rook2Pos - Second rook position {row, col}
+ * @param {string} color - Player color
+ * @returns {Object} {valid: boolean, reason: string}
+ */
+function validateRookLink(board, rook1Pos, rook2Pos, color) {
+  // Check if both positions are valid
+  if (!board[rook1Pos.row] || !board[rook2Pos.row]) {
+    return { valid: false, reason: 'Invalid position' };
+  }
+  
+  const piece1 = board[rook1Pos.row][rook1Pos.col];
+  const piece2 = board[rook2Pos.row][rook2Pos.col];
+  
+  // Check if both positions have rooks
+  if (!piece1 || piece1.type !== PieceType.ROOK) {
+    return { valid: false, reason: 'First position does not have a rook' };
+  }
+  if (!piece2 || piece2.type !== PieceType.ROOK) {
+    return { valid: false, reason: 'Second position does not have a rook' };
+  }
+  
+  // Check if both rooks belong to the player
+  if (piece1.color !== color || piece2.color !== color) {
+    return { valid: false, reason: 'Both rooks must belong to the player' };
+  }
+  
+  // Check if rooks are exactly 2 spaces apart (1 space between)
+  const rowDiff = Math.abs(rook2Pos.row - rook1Pos.row);
+  const colDiff = Math.abs(rook2Pos.col - rook1Pos.col);
+  
+  // Valid configurations: horizontal, vertical, or diagonal with exactly 1 space between
+  const isHorizontal = rowDiff === 0 && colDiff === 2;
+  const isVertical = colDiff === 0 && rowDiff === 2;
+  const isDiagonal = rowDiff === 2 && colDiff === 2;
+  
+  if (!isHorizontal && !isVertical && !isDiagonal) {
+    return { valid: false, reason: 'Rooks must be exactly 2 spaces apart (1 space between)' };
+  }
+  
+  // Check if the space between is empty
+  const wallSquares = getWallSquaresBetween(rook1Pos, rook2Pos, color);
+  if (wallSquares.length > 0) {
+    const wallPos = wallSquares[0];
+    const wallPiece = board[wallPos.row][wallPos.col];
+    if (wallPiece) {
+      return { valid: false, reason: 'Space between rooks must be empty' };
+    }
+  }
+  
+  return { valid: true, reason: '' };
+}
+
+/**
+ * Check if two rooks are still within linking distance (2 spaces apart)
+ * @param {Object} pos1 - First rook position {row, col}
+ * @param {Object} pos2 - Second rook position {row, col}
+ * @returns {boolean} True if rooks are within linking distance
+ */
+function areRooksWithinLinkDistance(pos1, pos2) {
+  const rowDiff = Math.abs(pos2.row - pos1.row);
+  const colDiff = Math.abs(pos2.col - pos1.col);
+  
+  // Check if exactly 2 spaces apart in any valid direction
+  const isHorizontal = rowDiff === 0 && colDiff === 2;
+  const isVertical = colDiff === 0 && rowDiff === 2;
+  const isDiagonal = rowDiff === 2 && colDiff === 2;
+  
+  return isHorizontal || isVertical || isDiagonal;
+}
+
+/**
+ * Update rook links after a move, breaking links that are now too far apart
+ * @param {Array} rookLinks - Current rook links
+ * @param {Object} movedFrom - Position piece moved from {row, col}
+ * @param {Object} movedTo - Position piece moved to {row, col}
+ * @param {Array} board - Current board state
+ * @returns {Array} Updated rook links
+ */
+function updateRookLinksAfterMove(rookLinks, movedFrom, movedTo, board) {
+  if (!rookLinks || rookLinks.length === 0) {
+    return [];
+  }
+  
+  const updatedLinks = [];
+  
+  rookLinks.forEach(link => {
+    let { rookPosition, linkedRookPositions, color } = link;
+    
+    // Check if this rook was moved
+    if (rookPosition.row === movedFrom.row && rookPosition.col === movedFrom.col) {
+      // Update the rook's position
+      rookPosition = { row: movedTo.row, col: movedTo.col };
+      
+      // Filter out links that are now too far apart
+      linkedRookPositions = linkedRookPositions.filter(linkedPos => 
+        areRooksWithinLinkDistance(rookPosition, linkedPos)
+      );
+    } else {
+      // Check if any of the linked rooks were moved
+      linkedRookPositions = linkedRookPositions.map(linkedPos => {
+        if (linkedPos.row === movedFrom.row && linkedPos.col === movedFrom.col) {
+          return { row: movedTo.row, col: movedTo.col };
+        }
+        return linkedPos;
+      }).filter(linkedPos => 
+        areRooksWithinLinkDistance(rookPosition, linkedPos)
+      );
+    }
+    
+    // Only keep this link if it still has at least one linked rook
+    if (linkedRookPositions.length > 0) {
+      updatedLinks.push({ rookPosition, linkedRookPositions, color });
+    }
+  });
+  
+  return updatedLinks;
+}
+
+/**
+ * Remove links for a captured rook
+ * @param {Array} rookLinks - Current rook links
+ * @param {Object} capturedPosition - Position of captured rook {row, col}
+ * @returns {Array} Updated rook links
+ */
+function removeLinksForCapturedRook(rookLinks, capturedPosition) {
+  if (!rookLinks || rookLinks.length === 0) {
+    return [];
+  }
+  
+  return rookLinks.filter(link => {
+    // Remove if this is the captured rook
+    if (link.rookPosition.row === capturedPosition.row && 
+        link.rookPosition.col === capturedPosition.col) {
+      return false;
+    }
+    
+    // Remove the captured rook from linked positions
+    link.linkedRookPositions = link.linkedRookPositions.filter(linkedPos =>
+      linkedPos.row !== capturedPosition.row || linkedPos.col !== capturedPosition.col
+    );
+    
+    // Keep the link only if it still has linked rooks
+    return link.linkedRookPositions.length > 0;
+  });
+}
+
+/**
+ * Add a new rook link or update existing link
+ * @param {Array} rookLinks - Current rook links
+ * @param {Object} rook1Pos - First rook position {row, col}
+ * @param {Object} rook2Pos - Second rook position {row, col}
+ * @param {string} color - Player color
+ * @returns {Array} Updated rook links
+ */
+function addRookLink(rookLinks, rook1Pos, rook2Pos, color) {
+  const updatedLinks = [...rookLinks];
+  
+  // Find existing link for rook1
+  let rook1Link = updatedLinks.find(link => 
+    link.rookPosition.row === rook1Pos.row && link.rookPosition.col === rook1Pos.col
+  );
+  
+  if (rook1Link) {
+    // Check if rook2 is already linked
+    const alreadyLinked = rook1Link.linkedRookPositions.some(pos =>
+      pos.row === rook2Pos.row && pos.col === rook2Pos.col
+    );
+    
+    if (!alreadyLinked) {
+      rook1Link.linkedRookPositions.push({ row: rook2Pos.row, col: rook2Pos.col });
+    }
+  } else {
+    // Create new link for rook1
+    updatedLinks.push({
+      rookPosition: { row: rook1Pos.row, col: rook1Pos.col },
+      linkedRookPositions: [{ row: rook2Pos.row, col: rook2Pos.col }],
+      color
+    });
+  }
+  
+  // Find existing link for rook2
+  let rook2Link = updatedLinks.find(link => 
+    link.rookPosition.row === rook2Pos.row && link.rookPosition.col === rook2Pos.col
+  );
+  
+  if (rook2Link) {
+    // Check if rook1 is already linked
+    const alreadyLinked = rook2Link.linkedRookPositions.some(pos =>
+      pos.row === rook1Pos.row && pos.col === rook1Pos.col
+    );
+    
+    if (!alreadyLinked) {
+      rook2Link.linkedRookPositions.push({ row: rook1Pos.row, col: rook1Pos.col });
+    }
+  } else {
+    // Create new link for rook2
+    updatedLinks.push({
+      rookPosition: { row: rook2Pos.row, col: rook2Pos.col },
+      linkedRookPositions: [{ row: rook1Pos.row, col: rook1Pos.col }],
+      color
+    });
+  }
+  
+  return updatedLinks;
+}
+
+module.exports = {
+  calculateWallSquares,
+  isWallSquare,
+  validateRookLink,
+  areRooksWithinLinkDistance,
+  updateRookLinksAfterMove,
+  removeLinksForCapturedRook,
+  addRookLink,
+  getWallSquaresBetween
+};
+

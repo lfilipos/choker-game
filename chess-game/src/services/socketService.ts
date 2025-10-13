@@ -54,6 +54,8 @@ export interface MatchState {
     moveHistory?: Move[];
     controlZones?: any[];
     controlZoneStatuses?: ControlZoneStatus[];
+    rookLinks?: any[];
+    lastRookLink?: any;
     isPlayerTurn: boolean;
   };
   chessGameInfo?: {

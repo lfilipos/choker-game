@@ -94,3 +94,79 @@
   box-shadow: inset 0 0 0 3px rgba(255, 215, 0, 0.6);
   background-color: rgba(255, 215, 0, 0.15) !important;
 }
+
+/* Rook Wall Styling */
+.chess-square.rook-wall {
+  position: relative;
+}
+
+.wall-indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.wall-pattern {
+  width: 90%;
+  height: 90%;
+  background: repeating-linear-gradient(
+    45deg,
+    rgba(139, 69, 19, 0.8),
+    rgba(139, 69, 19, 0.8) 5px,
+    rgba(160, 82, 45, 0.8) 5px,
+    rgba(160, 82, 45, 0.8) 10px
+  );
+  border: 3px solid rgba(101, 67, 33, 0.9);
+  border-radius: 4px;
+  box-shadow: 
+    inset 0 0 10px rgba(0, 0, 0, 0.5),
+    0 0 10px rgba(139, 69, 19, 0.5);
+}
+
+.chess-square.rook-wall-white .wall-pattern {
+  background: repeating-linear-gradient(
+    45deg,
+    rgba(200, 200, 200, 0.85),
+    rgba(200, 200, 200, 0.85) 5px,
+    rgba(220, 220, 220, 0.85) 5px,
+    rgba(220, 220, 220, 0.85) 10px
+  );
+  border: 3px solid rgba(150, 150, 150, 0.9);
+  box-shadow: 
+    inset 0 0 10px rgba(0, 0, 0, 0.3),
+    0 0 10px rgba(200, 200, 200, 0.5);
+}
+
+.chess-square.rook-wall-black .wall-pattern {
+  background: repeating-linear-gradient(
+    45deg,
+    rgba(50, 50, 50, 0.85),
+    rgba(50, 50, 50, 0.85) 5px,
+    rgba(70, 70, 70, 0.85) 5px,
+    rgba(70, 70, 70, 0.85) 10px
+  );
+  border: 3px solid rgba(30, 30, 30, 0.9);
+  box-shadow: 
+    inset 0 0 10px rgba(255, 255, 255, 0.3),
+    0 0 10px rgba(50, 50, 50, 0.5);
+}
+
+/* Last rook link indicator - matches last move styling */
+.chess-square.last-rook-link {
+  box-shadow: inset 0 0 0 3px rgba(255, 215, 0, 0.6);
+  background-color: rgba(255, 215, 0, 0.15) !important;
+}
+
+.chess-square.last-rook-link .wall-pattern {
+  border-color: rgba(255, 215, 0, 0.9);
+  box-shadow: 
+    inset 0 0 10px rgba(255, 215, 0, 0.5),
+    0 0 15px rgba(255, 215, 0, 0.6);
+}

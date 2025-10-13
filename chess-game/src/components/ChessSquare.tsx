@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChessPiece, Position, ControlZone, Board } from '../types';
+import { ChessPiece, Position, ControlZone, Board, WallSquare } from '../types';
 import { UpgradeState } from '../types/upgrades';
 import { ChessPieceComponent } from './ChessPieceComponent';
 import './ChessSquare.css';
@@ -16,6 +16,8 @@ interface ChessSquareProps {
   onClick: (position: Position) => void;
   upgrades?: UpgradeState;
   board?: Board;
+  wallSquare?: WallSquare | null;
+  isLastRookLink?: boolean;
 }
 
 export const ChessSquare: React.FC<ChessSquareProps> = ({
@@ -30,6 +32,8 @@ export const ChessSquare: React.FC<ChessSquareProps> = ({
   onClick,
   upgrades,
   board,
+  wallSquare,
+  isLastRookLink = false,
 }) => {
   const handleClick = () => {
     onClick(position);
@@ -65,11 +69,24 @@ export const ChessSquare: React.FC<ChessSquareProps> = ({
       classes.push(`control-zone-${controlZone.id.toLowerCase()}`);
     }
     
+    if (wallSquare) {
+      classes.push('rook-wall');
+      classes.push(`rook-wall-${wallSquare.color}`);
+      if (isLastRookLink) {
+        classes.push('last-rook-link');
+      }
+    }
+    
     return classes.join(' ');
   };
 
   return (
     <div className={getSquareClasses()} onClick={handleClick}>
+      {wallSquare && (
+        <div className="wall-indicator" title={`${wallSquare.color} team wall`}>
+          <div className="wall-pattern"></div>
+        </div>
+      )}
       {piece && <ChessPieceComponent piece={piece} upgrades={upgrades} board={board} position={position} />}
     </div>
   );

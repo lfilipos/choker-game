@@ -386,7 +386,8 @@ io.on('connection', (socket) => {
         game.board, 
         position, 
         upgradeState, 
-        match.sharedState.upgradeManager
+        match.sharedState.upgradeManager,
+        game.rookLinks || []
       );
       
       console.log(`Found ${possibleMoves.length} possible moves`);
@@ -936,6 +937,32 @@ io.on('connection', (socket) => {
       socket.emit('unlocked_piece_types', { 
         unlockedPieceTypes: teamData.unlockedPieceTypes 
       });
+    } catch (error) {
+      socket.emit('error', { message: error.message });
+    }
+  });
+
+  // Link two rooks to create a wall
+  socket.on('link_rooks', (data) => {
+    try {
+      const { rook1Pos, rook2Pos } = data;
+      const result = matchManager.linkRooks(socket.id, rook1Pos, rook2Pos);
+      
+      // Send updated match state to all players in the match
+      const playerInfo = matchManager.playerSockets.get(socket.id);
+      const matchId = playerInfo.matchId;
+      
+      for (const [socketId] of matchManager.playerSockets) {
+        if (matchManager.playerSockets.get(socketId)?.matchId === matchId) {
+          const playerMatchState = matchManager.getMatchState(matchId, socketId);
+          io.to(socketId).emit('rook_links_updated', {
+            rookLinks: result.rookLinks,
+            matchState: playerMatchState
+          });
+        }
+      }
+      
+      console.log(`Rooks linked in match ${matchId}`);
     } catch (error) {
       socket.emit('error', { message: error.message });
     }

@@ -53,15 +53,15 @@ Rooks
   * Functional requirements:  
     * Rook level 1 upgrade is still in effect  
     * On the player’s turn, they may select two rooks that are within two spaces of each other (one space in between) to link with each other  
-    * When two rooks are linked, other enemy pieces cannot pass through the linkage, effectively creating a wall.  
+    * When two rooks are linked, the single space between them becomes invalid to move on or through for the enemy, effectively creating a wall.  
     * The only pieces that can pass through the wall are the player’s other friendly pieces, or enemy knights.  
     * When a player links two rooks, that counts as their move for their turn.  
     * Linked rooks can still move.  
     * When this upgrade is purchased the rooks moveset is reduced so that it can only move a maximum of 5 spaces across the board at a time.  
-    * If a linked rook moves more than 2 spaces away (more than 1 space in between) from its linked pair, the wall breaks.  
+    * If a linked rook moves more than 2 spaces away (more than 1 space in between) from its linked pair, the wall effectively breaks and that blocked space becomes passable again.  
     * If a rook is captured, the wall breaks.  
-    * Some sort of UI indicator will be necessary for showing the wall to both players, as well as for the player to link the two rooks.  
-    * Additionally, the UI for showing a player their potential moves must be updated to account for moves blocked by the wall  
+    * Some sort of UI indicator will be necessary for showing the blocked space (the wall) to both players, as well as for the player to link the two rooks.  
+    * Additionally, the UI for showing an enemy player their potential moves must be updated to account for moves blocked by the wall space 
     * The idea behind this upgrade is that the rooks will become less mobile, but more versatile in being able to defend positions.  
 * Level 3  
   * Summary: Link with one other rook 3 spaces away  

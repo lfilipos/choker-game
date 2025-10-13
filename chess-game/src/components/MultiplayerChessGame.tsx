@@ -50,12 +50,20 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
   const [gameWinner, setGameWinner] = useState<'white' | 'black' | null>(null);
   const [winReason, setWinReason] = useState<string | undefined>(undefined);
   const [controlZonePokerEffects, setControlZonePokerEffects] = useState<Record<string, any>>({});
+  const [linkingMode, setLinkingMode] = useState(false);
+  const [selectedRook, setSelectedRook] = useState<Position | null>(null);
+  const [rookLinks, setRookLinks] = useState<any[]>([]);
+  const [lastRookLink, setLastRookLink] = useState<any>(null);
 
   // Convert match state to game state format
   const convertMatchStateToGameState = useCallback((matchState: MatchState): MultiplayerGameState | null => {
     if (!matchState || !matchState.currentGame) return null;
     
     const { currentGame, playerTeam, teams } = matchState;
+    
+    // Always update rookLinks when match state changes (even if empty array)
+    setRookLinks(currentGame.rookLinks || []);
+    setLastRookLink(currentGame.lastRookLink || null);
     
     return {
       id: matchState.id,
@@ -76,7 +84,8 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
       },
       players: {},
       playerColor: playerTeam as PieceColor,
-      isPlayerTurn: currentGame.isPlayerTurn
+      isPlayerTurn: currentGame.isPlayerTurn,
+      rookLinks: currentGame.rookLinks || []
     };
   }, []);
 
@@ -227,6 +236,21 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
       setPossibleMoves(data.moves);
     });
 
+    socket.on('rook_links_updated', (data: { rookLinks: any[]; matchState: MatchState }) => {
+      console.log('Rook links updated:', data);
+      // rookLinks will be set by convertMatchStateToGameState
+      if (data.matchState) {
+        setMatchState(data.matchState);
+        const gameState = convertMatchStateToGameState(data.matchState);
+        if (gameState) {
+          setGameState(gameState);
+        }
+      }
+      // Clear linking mode after successful link
+      setLinkingMode(false);
+      setSelectedRook(null);
+    });
+
     socket.on('error', (error: { message: string }) => {
       console.error('Socket error:', error);
       setError(error.message);
@@ -356,6 +380,33 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
   const handleSquareClick = useCallback((position: Position) => {
     console.log('handleSquareClick called:', { position, gameState: gameState?.status, isPlayerTurn: gameState?.isPlayerTurn, playerColor: gameState?.playerColor });
     
+    // Handle rook linking mode
+    if (linkingMode && gameState) {
+      const clickedPiece = gameState.board[position.row][position.col];
+      
+      // Must be a rook of the player's color
+      if (clickedPiece && clickedPiece.type === 'rook' && clickedPiece.color === gameState.playerColor) {
+        if (!selectedRook) {
+          // First rook selected
+          setSelectedRook(position);
+          setError('Select second rook to link with (must be within 2 spaces)');
+        } else {
+          // Second rook selected - link them
+          const socket = socketService.getSocket();
+          if (socket) {
+            socket.emit('link_rooks', {
+              rook1Pos: selectedRook,
+              rook2Pos: position
+            });
+            setError('Linking rooks...');
+          }
+        }
+      } else {
+        setError('Please select a rook of your color');
+      }
+      return;
+    }
+    
     // Handle barracks placement mode
     if (placementMode && selectedBarracksPiece !== null) {
       const backRow = gameState?.playerColor === 'white' ? 9 : 0;
@@ -450,7 +501,7 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
       setPossibleMoves([]);
       setError("Invalid move!");
     }
-  }, [gameState, selectedSquare, possibleMoves, placementMode, selectedBarracksPiece, gameId]);
+  }, [gameState, selectedSquare, possibleMoves, placementMode, selectedBarracksPiece, gameId, linkingMode, selectedRook]);
 
   const handleLeaveGame = () => {
     socketService.disconnect();
@@ -599,6 +650,23 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
             </button>
             {gameState.status === 'active' && (
               <>
+                {/* Show Link Rooks button if player has the upgrade and it's their turn */}
+                {gameState.playerColor && 
+                 gameState.upgrades[gameState.playerColor].rook && 
+                 gameState.upgrades[gameState.playerColor].rook.includes('rook_wall') &&
+                 gameState.isPlayerTurn && (
+                  <button 
+                    onClick={() => {
+                      setLinkingMode(!linkingMode);
+                      setSelectedRook(null);
+                      setError(linkingMode ? null : 'Click two rooks to link them');
+                    }} 
+                    className={`link-rooks-button ${linkingMode ? 'active' : ''}`}
+                    title="Link two rooks to create a wall"
+                  >
+                    {linkingMode ? '❌ Cancel Linking' : '🔗 Link Rooks'}
+                  </button>
+                )}
                 <button 
                   onClick={() => setShowAdminPanel(!showAdminPanel)} 
                   className="admin-panel-button"
@@ -704,6 +772,8 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
               controlZones={gameState.controlZones}
               onSquareClick={handleSquareClick}
               upgrades={gameState.upgrades}
+              rookLinks={rookLinks}
+              lastRookLink={lastRookLink}
               highlightedSquares={placementMode ? 
                 Array.from({length: 16}, (_, col) => ({
                   row: gameState.playerColor === 'white' ? 9 : 0,

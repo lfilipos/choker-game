@@ -1,5 +1,6 @@
 const { PieceType, PieceColor, CONTROL_ZONES } = require('./types');
 const { applyUpgradesToMoves, isProtectedByQueenAura, isProtectedByRook } = require('./upgradeLogic');
+const { calculateWallSquares, isWallSquare } = require('./rookWallLogic');
 
 // Create initial chess board (16x10)
 function createInitialBoard() {
@@ -31,7 +32,7 @@ function isValidPosition(pos) {
 }
 
 // Get possible moves for a piece
-function getPossibleMoves(board, position, upgrades = null, upgradeManager = null) {
+function getPossibleMoves(board, position, upgrades = null, upgradeManager = null, rookLinks = null) {
   const piece = board[position.row][position.col];
   if (!piece) return [];
   
@@ -39,22 +40,22 @@ function getPossibleMoves(board, position, upgrades = null, upgradeManager = nul
   
   switch (piece.type) {
     case PieceType.PAWN:
-      standardMoves = getPawnMoves(board, position, piece.color);
+      standardMoves = getPawnMoves(board, position, piece.color, rookLinks);
       break;
     case PieceType.ROOK:
-      standardMoves = getRookMoves(board, position, piece.color);
+      standardMoves = getRookMoves(board, position, piece.color, rookLinks);
       break;
     case PieceType.BISHOP:
-      standardMoves = getBishopMoves(board, position, piece.color);
+      standardMoves = getBishopMoves(board, position, piece.color, rookLinks);
       break;
     case PieceType.QUEEN:
-      standardMoves = getQueenMoves(board, position, piece.color);
+      standardMoves = getQueenMoves(board, position, piece.color, rookLinks);
       break;
     case PieceType.KING:
-      standardMoves = getKingMoves(board, position, piece.color);
+      standardMoves = getKingMoves(board, position, piece.color, rookLinks);
       break;
     case PieceType.KNIGHT:
-      standardMoves = getKnightMoves(board, position, piece.color);
+      standardMoves = getKnightMoves(board, position, piece.color, rookLinks);
       break;
     default:
       return [];
@@ -85,20 +86,31 @@ function getPossibleMoves(board, position, upgrades = null, upgradeManager = nul
   return standardMoves;
 }
 
-function getPawnMoves(board, position, color) {
+function getPawnMoves(board, position, color, rookLinks = null) {
   const moves = [];
   const direction = color === PieceColor.WHITE ? -1 : 1;
   const startRow = color === PieceColor.WHITE ? 8 : 1;
   
+  // Calculate wall squares
+  const wallSquares = rookLinks ? calculateWallSquares(rookLinks) : [];
+  
   // Forward move
   const oneStep = { row: position.row + direction, col: position.col };
-  if (isValidPosition(oneStep) && !board[oneStep.row][oneStep.col]) {
+  const oneStepWall = isWallSquare(oneStep, wallSquares);
+  
+  // Can't move onto a wall square, unless it's our own wall
+  if (isValidPosition(oneStep) && !board[oneStep.row][oneStep.col] && 
+      (!oneStepWall || oneStepWall.color === color)) {
     moves.push(oneStep);
     
     // Two steps from starting position
     if (position.row === startRow) {
       const twoSteps = { row: position.row + 2 * direction, col: position.col };
-      if (isValidPosition(twoSteps) && !board[twoSteps.row][twoSteps.col]) {
+      const twoStepsWall = isWallSquare(twoSteps, wallSquares);
+      
+      if (isValidPosition(twoSteps) && !board[twoSteps.row][twoSteps.col] &&
+          (!twoStepsWall || twoStepsWall.color === color) &&
+          (!oneStepWall || oneStepWall.color === color)) { // Can't move through enemy wall
         moves.push(twoSteps);
       }
     }
@@ -111,7 +123,10 @@ function getPawnMoves(board, position, color) {
   ];
   
   diagonals.forEach(pos => {
-    if (isValidPosition(pos) && board[pos.row][pos.col] && board[pos.row][pos.col].color !== color) {
+    const wall = isWallSquare(pos, wallSquares);
+    // Can capture through own wall but not enemy wall
+    if (isValidPosition(pos) && board[pos.row][pos.col] && board[pos.row][pos.col].color !== color &&
+        (!wall || wall.color === color)) {
       moves.push(pos);
     }
   });
@@ -119,14 +134,21 @@ function getPawnMoves(board, position, color) {
   return moves;
 }
 
-function getRookMoves(board, position, color) {
+function getRookMoves(board, position, color, rookLinks = null) {
   const moves = [];
   const directions = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+  const wallSquares = rookLinks ? calculateWallSquares(rookLinks) : [];
   
   directions.forEach(([dRow, dCol]) => {
     for (let i = 1; i < 16; i++) {
       const newPos = { row: position.row + i * dRow, col: position.col + i * dCol };
       if (!isValidPosition(newPos)) break;
+      
+      const wall = isWallSquare(newPos, wallSquares);
+      // Can't move to or through enemy wall
+      if (wall && wall.color !== color) {
+        break;
+      }
       
       const targetPiece = board[newPos.row][newPos.col];
       if (!targetPiece) {
@@ -143,14 +165,21 @@ function getRookMoves(board, position, color) {
   return moves;
 }
 
-function getBishopMoves(board, position, color) {
+function getBishopMoves(board, position, color, rookLinks = null) {
   const moves = [];
   const directions = [[-1, -1], [-1, 1], [1, -1], [1, 1]];
+  const wallSquares = rookLinks ? calculateWallSquares(rookLinks) : [];
   
   directions.forEach(([dRow, dCol]) => {
     for (let i = 1; i < 16; i++) {
       const newPos = { row: position.row + i * dRow, col: position.col + i * dCol };
       if (!isValidPosition(newPos)) break;
+      
+      const wall = isWallSquare(newPos, wallSquares);
+      // Can't move to or through enemy wall
+      if (wall && wall.color !== color) {
+        break;
+      }
       
       const targetPiece = board[newPos.row][newPos.col];
       if (!targetPiece) {
@@ -167,17 +196,24 @@ function getBishopMoves(board, position, color) {
   return moves;
 }
 
-function getQueenMoves(board, position, color) {
-  return [...getRookMoves(board, position, color), ...getBishopMoves(board, position, color)];
+function getQueenMoves(board, position, color, rookLinks = null) {
+  return [...getRookMoves(board, position, color, rookLinks), ...getBishopMoves(board, position, color, rookLinks)];
 }
 
-function getKingMoves(board, position, color) {
+function getKingMoves(board, position, color, rookLinks = null) {
   const moves = [];
   const directions = [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1]];
+  const wallSquares = rookLinks ? calculateWallSquares(rookLinks) : [];
   
   directions.forEach(([dRow, dCol]) => {
     const newPos = { row: position.row + dRow, col: position.col + dCol };
     if (isValidPosition(newPos)) {
+      const wall = isWallSquare(newPos, wallSquares);
+      // Can't move onto enemy wall
+      if (wall && wall.color !== color) {
+        return;
+      }
+      
       const targetPiece = board[newPos.row][newPos.col];
       if (!targetPiece || targetPiece.color !== color) {
         moves.push(newPos);
@@ -188,9 +224,10 @@ function getKingMoves(board, position, color) {
   return moves;
 }
 
-function getKnightMoves(board, position, color) {
+function getKnightMoves(board, position, color, rookLinks = null) {
   const moves = [];
   const knightMoves = [[-2, -1], [-2, 1], [-1, -2], [-1, 2], [1, -2], [1, 2], [2, -1], [2, 1]];
+  // Knights can jump over walls, so we don't need to check wall squares
   
   knightMoves.forEach(([dRow, dCol]) => {
     const newPos = { row: position.row + dRow, col: position.col + dCol };
@@ -262,11 +299,11 @@ function isPieceProtected(board, position, color, upgrades) {
 }
 
 // Validate if a move is legal
-function isValidMove(board, from, to, color, upgrades = null, upgradeManager = null) {
+function isValidMove(board, from, to, color, upgrades = null, upgradeManager = null, rookLinks = null) {
   const piece = board[from.row][from.col];
   if (!piece || piece.color !== color) return false;
   
-  const possibleMoves = getPossibleMoves(board, from, upgrades, upgradeManager);
+  const possibleMoves = getPossibleMoves(board, from, upgrades, upgradeManager, rookLinks);
   return possibleMoves.some(move => move.row === to.row && move.col === to.col);
 }
 

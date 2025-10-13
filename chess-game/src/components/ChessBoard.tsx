@@ -1,9 +1,10 @@
 import React from 'react';
-import { Board, Position, ControlZone } from '../types';
+import { Board, Position, ControlZone, RookLink } from '../types';
 import { UpgradeState } from '../types/upgrades';
 import { ChessSquare } from './ChessSquare';
 import { MoveArrow } from './MoveArrow';
 import { isSquareInControlZone } from '../utils/controlZones';
+import { calculateWallSquares, isWallSquare } from '../utils/rookWallLogic';
 import './ChessBoard.css';
 
 interface ChessBoardProps {
@@ -15,6 +16,8 @@ interface ChessBoardProps {
   upgrades?: UpgradeState;
   highlightedSquares?: Position[];
   lastMove?: { from: Position; to: Position; piece: { type: string; color: string } } | null;
+  rookLinks?: RookLink[];
+  lastRookLink?: any;
   // Dual movement checkmark button props
   showDualMoveCheckmark?: boolean;
   firstPawnPosition?: { row: number; col: number } | null;
@@ -30,10 +33,29 @@ export const ChessBoard: React.FC<ChessBoardProps> = ({
   upgrades,
   highlightedSquares = [],
   lastMove,
+  rookLinks = [],
+  lastRookLink,
   showDualMoveCheckmark,
   firstPawnPosition,
   onEndTurn,
 }) => {
+  // Calculate wall squares from rook links
+  const wallSquares = React.useMemo(() => calculateWallSquares(rookLinks), [rookLinks]);
+  
+  // Check if a wall square is from the last rook link
+  const isLastRookLinkWall = React.useCallback((position: Position): boolean => {
+    if (!lastRookLink) return false;
+    
+    const { rook1Pos, rook2Pos } = lastRookLink;
+    const rowDiff = rook2Pos.row - rook1Pos.row;
+    const colDiff = rook2Pos.col - rook1Pos.col;
+    
+    // Calculate wall position (the square between the two rooks)
+    const wallRow = rook1Pos.row + Math.sign(rowDiff);
+    const wallCol = rook1Pos.col + Math.sign(colDiff);
+    
+    return position.row === wallRow && position.col === wallCol;
+  }, [lastRookLink]);
   const isSquareSelected = (row: number, col: number): boolean => {
     return selectedSquare !== null && selectedSquare.row === row && selectedSquare.col === col;
   };
@@ -79,8 +101,8 @@ export const ChessBoard: React.FC<ChessBoardProps> = ({
 
         {/* Chess board */}
         <div className="chess-board">
-          {/* Move arrow overlay */}
-          {lastMove && (
+          {/* Move arrow overlay - only show if there's no recent rook link */}
+          {lastMove && !lastRookLink && (
             <MoveArrow
               from={lastMove.from}
               to={lastMove.to}
@@ -91,6 +113,8 @@ export const ChessBoard: React.FC<ChessBoardProps> = ({
             row.map((piece, colIndex) => {
               const position = { row: rowIndex, col: colIndex };
               const controlZone = isSquareInControlZone(position, controlZones);
+              const wallSquare = isWallSquare(position, wallSquares);
+              const isLastRookLinkSquare = isLastRookLinkWall(position);
               
               return (
                 <ChessSquare
@@ -106,6 +130,8 @@ export const ChessBoard: React.FC<ChessBoardProps> = ({
                   onClick={onSquareClick}
                   upgrades={upgrades}
                   board={board}
+                  wallSquare={wallSquare}
+                  isLastRookLink={isLastRookLinkSquare}
                 />
               );
             })

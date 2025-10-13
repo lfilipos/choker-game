@@ -2,6 +2,7 @@ const { v4: uuidv4 } = require('uuid');
 const { GameStatus, PieceColor, CONTROL_ZONES } = require('./types');
 const { createInitialBoard, makeMove, isValidMove, calculateAllControlZoneStatuses } = require('./gameLogic');
 const UpgradeManager = require('./upgradeManager');
+const { updateRookLinksAfterMove, removeLinksForCapturedRook, addRookLink, validateRookLink } = require('./rookWallLogic');
 
 class GameManager {
   constructor() {
@@ -32,6 +33,7 @@ class GameManager {
       upgrades: upgradeState.upgrades,
       economy: upgradeState.economy,
       upgradeManager: upgradeManager, // Store the manager instance
+      rookLinks: [], // Array to track rook wall links
       createdAt: new Date(),
       lastActivity: new Date()
     };
@@ -103,7 +105,7 @@ class GameManager {
       throw new Error('Not your turn');
     }
 
-    if (!isValidMove(game.board, from, to, player.color, game.upgrades, game.upgradeManager)) {
+    if (!isValidMove(game.board, from, to, player.color, game.upgrades, game.upgradeManager, game.rookLinks)) {
       throw new Error('Invalid move');
     }
 
@@ -113,9 +115,14 @@ class GameManager {
     
     game.board = makeMove(game.board, from, to);
     
+    // Update rook links after move
+    game.rookLinks = updateRookLinksAfterMove(game.rookLinks, from, to, game.board);
+    
     // Award capture income if a piece was captured
     if (capturedPiece) {
       game.upgradeManager.awardCaptureIncome(player.color);
+      // Remove links for captured rook
+      game.rookLinks = removeLinksForCapturedRook(game.rookLinks, to);
     }
     
     // Add to move history
@@ -232,6 +239,7 @@ class GameManager {
       moveHistory: game.moveHistory,
       upgrades: game.upgrades,
       economy: game.economy,
+      rookLinks: game.rookLinks || [],
       playerColor: player?.color || null,
       isPlayerTurn: player?.color === game.currentPlayer
     };
@@ -315,6 +323,53 @@ class GameManager {
     }
     
     return game.upgradeManager.getAvailableUpgrades(player.color);
+  }
+
+  // Link two rooks to create a wall
+  linkRooks(socketId, rook1Pos, rook2Pos) {
+    const gameId = this.playerSockets.get(socketId);
+    const game = this.games.get(gameId);
+    
+    if (!game) {
+      throw new Error('Game not found');
+    }
+    
+    if (game.status !== GameStatus.ACTIVE) {
+      throw new Error('Game is not active');
+    }
+
+    const player = game.players[socketId];
+    if (!player) {
+      throw new Error('Player not in this game');
+    }
+
+    if (player.color !== game.currentPlayer) {
+      throw new Error('Not your turn');
+    }
+
+    // Check if player has rook_wall upgrade
+    const pieceType = 'rook';
+    if (!game.upgrades[player.color][pieceType] || !game.upgrades[player.color][pieceType].includes('rook_wall')) {
+      throw new Error('Rook Wall upgrade not purchased');
+    }
+
+    // Validate the link
+    const validation = validateRookLink(game.board, rook1Pos, rook2Pos, player.color);
+    if (!validation.valid) {
+      throw new Error(validation.reason);
+    }
+
+    // Add the link
+    game.rookLinks = addRookLink(game.rookLinks, rook1Pos, rook2Pos, player.color);
+
+    // Switch turns (linking consumes the player's entire turn)
+    game.currentPlayer = game.currentPlayer === PieceColor.WHITE ? PieceColor.BLACK : PieceColor.WHITE;
+    game.lastActivity = new Date();
+
+    return {
+      game,
+      rookLinks: game.rookLinks
+    };
   }
 }
 

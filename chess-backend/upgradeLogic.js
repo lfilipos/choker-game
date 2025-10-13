@@ -161,13 +161,23 @@ function getUpgradedBishopMoves(board, position, color, upgrades, standardMoves,
 
 // Get upgraded rook moves
 function getUpgradedRookMoves(board, position, color, upgrades, standardMoves) {
-  const moves = [...standardMoves];
+  let moves = [...standardMoves];
   const pieceUpgrades = upgrades[color][PieceType.ROOK] || [];
   
   // Pawn Protection upgrade - no additional movement abilities, just protection effect
   // The protection logic is handled in move validation, not in move generation
   if (pieceUpgrades.includes('rook_pawn_protection')) {
     console.log('Rook has pawn protection upgrade!');
+  }
+  
+  // Rook Wall upgrade - limits movement to 5 spaces maximum
+  if (pieceUpgrades.includes('rook_wall')) {
+    console.log('Rook has wall upgrade - limiting movement to 5 spaces!');
+    // Filter moves to only include those within 5 spaces
+    moves = moves.filter(move => {
+      const distance = Math.abs(move.row - position.row) + Math.abs(move.col - position.col);
+      return distance <= 5;
+    });
   }
   
   return moves;

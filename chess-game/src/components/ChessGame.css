@@ -503,6 +503,43 @@
   background-color: #c82333;
 }
 
+.link-rooks-button {
+  background-color: #8b4513;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 600;
+  transition: all 0.3s;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.link-rooks-button:hover {
+  background-color: #a0522d;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+.link-rooks-button.active {
+  background-color: #dc143c;
+  animation: pulse-link 1.5s ease-in-out infinite;
+}
+
+.link-rooks-button.active:hover {
+  background-color: #ff1744;
+}
+
+@keyframes pulse-link {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(220, 20, 60, 0.7);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(220, 20, 60, 0);
+  }
+}
+
 .skip-second-move-button {
   background-color: #ff9800;
   color: white;

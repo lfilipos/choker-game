@@ -112,6 +112,19 @@ const UPGRADE_DEFINITIONS = {
     }],
     activationMethod: ActivationMethod.PURCHASE
   },
+  rook_wall: {
+    id: 'rook_wall',
+    name: 'Rook Wall',
+    description: 'Link two rooks to create an impassable wall. Rooks can only move 5 spaces max.',
+    cost: 200,
+    pieceType: PieceType.ROOK,
+    effects: [{
+      type: UpgradeType.SPECIAL,
+      value: 'wall_link',
+      description: 'Can link rooks to create walls, movement limited to 5 spaces'
+    }],
+    activationMethod: ActivationMethod.PURCHASE
+  },
 
   // QUEEN UPGRADES
   queen_teleport: {

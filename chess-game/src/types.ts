@@ -70,6 +70,18 @@ export interface TeamEconomy {
   black: number;
 }
 
+export interface RookLink {
+  rookPosition: Position;
+  linkedRookPositions: Position[];
+  color: PieceColor;
+}
+
+export interface WallSquare {
+  row: number;
+  col: number;
+  color: PieceColor;
+}
+
 export interface BarracksPiece {
   type: PieceType;
   color: PieceColor;
@@ -98,6 +110,7 @@ export interface GameState {
   controlZones: ControlZone[];
   upgrades: UpgradeState;
   economy: TeamEconomy;
+  rookLinks?: RookLink[];
   barracks?: {
     white: BarracksPiece[];
     black: BarracksPiece[];
