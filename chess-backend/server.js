@@ -411,6 +411,178 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Initiate Royal Command
+  socket.on('initiate_royal_command', (data) => {
+    try {
+      const playerInfo = matchManager.playerSockets.get(socket.id);
+      if (!playerInfo) {
+        throw new Error('Player not found');
+      }
+
+      const { matchId, role } = playerInfo;
+      const match = matchManager.matches.get(matchId);
+      
+      if (!match) {
+        throw new Error('Match not found');
+      }
+
+      const playerTeam = getTeamFromRole(role);
+      const game = match.games.A; // Chess game
+      
+      // Verify it's player's turn
+      if (game.currentPlayer !== playerTeam) {
+        throw new Error('Not your turn');
+      }
+
+      const { kingPosition, controlledPiecePosition } = data;
+      const royalCommandState = match.sharedState.royalCommandState;
+
+      // Verify the king position has a king of the player's color
+      const kingPiece = game.board[kingPosition.row][kingPosition.col];
+      if (!kingPiece || kingPiece.type !== 'king' || kingPiece.color !== playerTeam) {
+        throw new Error('Invalid king position');
+      }
+
+      // Verify there's a piece at the controlled position
+      const controlledPiece = game.board[controlledPiecePosition.row][controlledPiecePosition.col];
+      if (!controlledPiece) {
+        throw new Error('No piece at controlled position');
+      }
+
+      // Verify the controlled piece is within range (2 squares)
+      const rowDiff = Math.abs(controlledPiecePosition.row - kingPosition.row);
+      const colDiff = Math.abs(controlledPiecePosition.col - kingPosition.col);
+      if (rowDiff > 2 || colDiff > 2) {
+        throw new Error('Piece is too far from king');
+      }
+
+      console.log(`${playerTeam} initiating Royal Command: king at (${kingPosition.row},${kingPosition.col}) controlling piece at (${controlledPiecePosition.row},${controlledPiecePosition.col})`);
+
+      // Set Royal Command state
+      royalCommandState.active = true;
+      royalCommandState.kingPosition = kingPosition;
+      royalCommandState.controlledPiecePosition = controlledPiecePosition;
+      royalCommandState.playerTeam = playerTeam;
+
+      match.lastActivity = new Date();
+
+      // Send updated match state to all players in the match
+      for (const [socketId] of matchManager.playerSockets) {
+        if (matchManager.playerSockets.get(socketId)?.matchId === match.id) {
+          const playerMatchState = matchManager.getMatchState(match.id, socketId);
+          io.to(socketId).emit('match_state_updated', {
+            matchState: playerMatchState,
+            reason: 'royal_command_initiated'
+          });
+        }
+      }
+    } catch (error) {
+      socket.emit('error', { message: error.message });
+    }
+  });
+
+  // Cancel Royal Command (reset state without ending turn)
+  socket.on('cancel_royal_command', () => {
+    try {
+      const playerInfo = matchManager.playerSockets.get(socket.id);
+      if (!playerInfo) {
+        throw new Error('Player not found');
+      }
+
+      const { matchId, role } = playerInfo;
+      const match = matchManager.matches.get(matchId);
+      
+      if (!match) {
+        throw new Error('Match not found');
+      }
+
+      const playerTeam = getTeamFromRole(role);
+      const royalCommandState = match.sharedState.royalCommandState;
+
+      // Verify the player is in Royal Command state
+      if (!royalCommandState.active || royalCommandState.playerTeam !== playerTeam) {
+        throw new Error('Not in Royal Command mode');
+      }
+
+      console.log(`${playerTeam} canceled Royal Command (without ending turn)`);
+
+      // Reset Royal Command state BUT DON'T switch turns
+      royalCommandState.active = false;
+      royalCommandState.kingPosition = null;
+      royalCommandState.controlledPiecePosition = null;
+      royalCommandState.playerTeam = null;
+
+      // Don't switch turns - player can still make their move
+      
+      match.lastActivity = new Date();
+
+      // Send updated match state to all players in the match
+      for (const [socketId] of matchManager.playerSockets) {
+        if (matchManager.playerSockets.get(socketId)?.matchId === match.id) {
+          const playerMatchState = matchManager.getMatchState(match.id, socketId);
+          io.to(socketId).emit('match_state_updated', {
+            matchState: playerMatchState,
+            reason: 'royal_command_canceled'
+          });
+        }
+      }
+    } catch (error) {
+      socket.emit('error', { message: error.message });
+    }
+  });
+
+  // Skip Royal Command second move (ends turn)
+  socket.on('skip_royal_command', () => {
+    try {
+      const playerInfo = matchManager.playerSockets.get(socket.id);
+      if (!playerInfo) {
+        throw new Error('Player not found');
+      }
+
+      const { matchId, role } = playerInfo;
+      const match = matchManager.matches.get(matchId);
+      
+      if (!match) {
+        throw new Error('Match not found');
+      }
+
+      const playerTeam = getTeamFromRole(role);
+      const royalCommandState = match.sharedState.royalCommandState;
+
+      // Verify the player is in Royal Command state
+      if (!royalCommandState.active || royalCommandState.playerTeam !== playerTeam) {
+        throw new Error('Not in Royal Command mode');
+      }
+
+      console.log(`${playerTeam} skipped Royal Command move`);
+
+      // Reset Royal Command state
+      royalCommandState.active = false;
+      royalCommandState.kingPosition = null;
+      royalCommandState.controlledPiecePosition = null;
+      royalCommandState.playerTeam = null;
+
+      // Switch turns
+      const game = match.games.A; // Chess game
+      game.currentPlayer = game.currentPlayer === 'white' ? 'black' : 'white';
+      
+      match.lastActivity = new Date();
+
+      // Send updated match state to all players in the match
+      for (const [socketId] of matchManager.playerSockets) {
+        if (matchManager.playerSockets.get(socketId)?.matchId === match.id) {
+          const playerMatchState = matchManager.getMatchState(match.id, socketId);
+          io.to(socketId).emit('match_state_updated', {
+            matchState: playerMatchState,
+            reason: 'royal_command_skipped'
+          });
+        }
+      }
+    } catch (error) {
+      socket.emit('error', { message: error.message });
+    }
+  });
+
   // Get current match state
   socket.on('get_match_state', (data) => {
     try {
@@ -492,7 +664,8 @@ io.on('connection', (socket) => {
         match.sharedState.upgradeManager,
         game.rookLinks || [],
         match.sharedState.nimbleKnightState,
-        match.sharedState.knightDoubleJumpState
+        match.sharedState.knightDoubleJumpState,
+        match.sharedState.royalCommandState
       );
       
       // Filter moves for knight double jump restrictions

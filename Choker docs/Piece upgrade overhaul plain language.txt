@@ -210,11 +210,11 @@ King
   * Cost:  
     * 350  
   * Functional requirements:  
-    * Instead of moving, a king has the option to make any piece, friendly or enemy, that is within 2 squares of it (1 square in between), move 1 square in any direction  
+    * Instead of moving, a king has the option to make any piece, friendly or enemy, that is within 2 squares of it, move 1 square in any direction  
     * If the piece they are moving is an enemy piece, they can only move it to an open square. They cannot move it into a friendly piece or another enemy piece  
     * If the piece they are moving is a friendly piece, they can move it to an open square, or onto an enemy piece, which would capture it  
     * Moving this other piece counts as the king’s move  
-    * In order to select the other piece, the player must first select the king, and then select an eligible piece within range, and then make the piece move one space in any eligible direction.  
+    * In order to select the other piece, the player must first select the king, then choose to do Royal Command (the name of this move) and then select an eligible piece within range, and then make the piece move one space in any eligible direction.  
     * If the king selects clicks on the selected other piece again, it will effectively deselect that piece and the king can either move or select another piece.  
     * The UI should effectively communicate when a piece is selected, deselected, and when appropriate, what its eligible moves are.  
 * Level 3  

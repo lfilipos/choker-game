@@ -32,9 +32,22 @@ function isValidPosition(pos) {
 }
 
 // Get possible moves for a piece
-function getPossibleMoves(board, position, upgrades = null, upgradeManager = null, rookLinks = null, nimbleKnightState = null, knightDoubleJumpState = null) {
+function getPossibleMoves(board, position, upgrades = null, upgradeManager = null, rookLinks = null, nimbleKnightState = null, knightDoubleJumpState = null, royalCommandState = null) {
   const piece = board[position.row][position.col];
   if (!piece) return [];
+  
+  // Check if this piece is being controlled by Royal Command
+  const isControlledPiece = royalCommandState && royalCommandState.active &&
+                            royalCommandState.controlledPiecePosition &&
+                            royalCommandState.controlledPiecePosition.row === position.row &&
+                            royalCommandState.controlledPiecePosition.col === position.col;
+  
+  if (isControlledPiece) {
+    // Get the controlling king's color (from playerTeam/color)
+    const controllingColor = royalCommandState.playerTeam;
+    const { getRoyalCommandControlledMoves } = require('./upgradeLogic');
+    return getRoyalCommandControlledMoves(board, position, piece, controllingColor);
+  }
   
   let standardMoves = [];
   
@@ -64,7 +77,7 @@ function getPossibleMoves(board, position, upgrades = null, upgradeManager = nul
   // Apply upgrades if available
   if (upgrades && upgradeManager) {
     console.log(`Standard moves for ${piece.type}: ${standardMoves.length} moves`);
-    const upgradedMoves = applyUpgradesToMoves(board, position, piece, standardMoves, upgrades, upgradeManager, nimbleKnightState, knightDoubleJumpState);
+    const upgradedMoves = applyUpgradesToMoves(board, position, piece, standardMoves, upgrades, upgradeManager, nimbleKnightState, knightDoubleJumpState, royalCommandState);
     console.log(`Upgraded moves: ${upgradedMoves.length} moves`);
     
     // Filter out moves that would capture protected pieces
@@ -299,11 +312,22 @@ function isPieceProtected(board, position, color, upgrades) {
 }
 
 // Validate if a move is legal
-function isValidMove(board, from, to, color, upgrades = null, upgradeManager = null, rookLinks = null, nimbleKnightState = null, knightDoubleJumpState = null) {
+function isValidMove(board, from, to, color, upgrades = null, upgradeManager = null, rookLinks = null, nimbleKnightState = null, knightDoubleJumpState = null, royalCommandState = null) {
   const piece = board[from.row][from.col];
-  if (!piece || piece.color !== color) return false;
+  if (!piece) return false;
   
-  const possibleMoves = getPossibleMoves(board, from, upgrades, upgradeManager, rookLinks, nimbleKnightState, knightDoubleJumpState);
+  // Check if this is a Royal Command move
+  const isRoyalCommandMove = royalCommandState && royalCommandState.active && 
+                             royalCommandState.playerTeam === color &&
+                             royalCommandState.controlledPiecePosition &&
+                             royalCommandState.controlledPiecePosition.row === from.row &&
+                             royalCommandState.controlledPiecePosition.col === from.col;
+  
+  // Normal validation: piece must belong to current player
+  // Exception: Royal Command allows moving enemy pieces
+  if (!isRoyalCommandMove && piece.color !== color) return false;
+  
+  const possibleMoves = getPossibleMoves(board, from, upgrades, upgradeManager, rookLinks, nimbleKnightState, knightDoubleJumpState, royalCommandState);
   return possibleMoves.some(move => move.row === to.row && move.col === to.col);
 }
 

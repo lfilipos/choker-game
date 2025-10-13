@@ -54,6 +54,18 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
   const [selectedRook, setSelectedRook] = useState<Position | null>(null);
   const [rookLinks, setRookLinks] = useState<any[]>([]);
   const [lastRookLink, setLastRookLink] = useState<any>(null);
+  const [royalCommandMode, setRoyalCommandMode] = useState(false);
+  const [royalCommandState, setRoyalCommandState] = useState<{
+    active: boolean;
+    kingPosition: Position | null;
+    controlledPiecePosition: Position | null;
+    playerTeam: PieceColor | null;
+  }>({
+    active: false,
+    kingPosition: null,
+    controlledPiecePosition: null,
+    playerTeam: null
+  });
 
   // Convert match state to game state format
   const convertMatchStateToGameState = useCallback((matchState: MatchState): MultiplayerGameState | null => {
@@ -208,6 +220,21 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
       // Update control zone poker effects
       if (data.matchState.controlZonePokerEffects) {
         setControlZonePokerEffects(data.matchState.controlZonePokerEffects);
+      }
+      // Update Royal Command state
+      if (data.matchState.royalCommandState) {
+        setRoyalCommandState({
+          active: data.matchState.royalCommandState.active,
+          kingPosition: data.matchState.royalCommandState.kingPosition,
+          controlledPiecePosition: data.matchState.royalCommandState.controlledPiecePosition,
+          playerTeam: data.matchState.royalCommandState.playerTeam as PieceColor | null
+        });
+        
+        // If Royal Command is no longer active, exit Royal Command mode
+        if (!data.matchState.royalCommandState.active && royalCommandMode) {
+          setRoyalCommandMode(false);
+          setError(null);
+        }
       }
     });
 
@@ -380,6 +407,86 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
   const handleSquareClick = useCallback((position: Position) => {
     console.log('handleSquareClick called:', { position, gameState: gameState?.status, isPlayerTurn: gameState?.isPlayerTurn, playerColor: gameState?.playerColor });
     
+    // Handle Royal Command mode
+    if (royalCommandMode && gameState) {
+      // Check if we have Royal Command state from backend
+      const backendRoyalCommandActive = royalCommandState.active && 
+                                        royalCommandState.playerTeam === gameState.playerColor;
+      
+      if (backendRoyalCommandActive && royalCommandState.controlledPiecePosition) {
+        // A piece is already being controlled - check if clicking on it to deselect
+        if (selectedSquare && 
+            selectedSquare.row === royalCommandState.controlledPiecePosition.row &&
+            selectedSquare.col === royalCommandState.controlledPiecePosition.col &&
+            position.row === selectedSquare.row && 
+            position.col === selectedSquare.col) {
+          // User clicked the controlled piece again to deselect it
+          console.log('Deselecting controlled piece, going back to king selection');
+          
+          // Cancel the backend Royal Command state (without ending turn)
+          socketService.cancelRoyalCommand().catch((error) => {
+            console.error('Error canceling Royal Command:', error);
+          });
+          
+          // Go back to selecting the king
+          if (royalCommandState.kingPosition) {
+            setSelectedSquare(royalCommandState.kingPosition);
+            setPossibleMoves([]);
+            setError('Royal Command: Select a piece within 2 squares to control');
+          }
+          return;
+        }
+        // Otherwise, fall through to normal move logic to move the controlled piece
+      } else if (selectedSquare) {
+        // No piece controlled yet, in initial selection phase
+        const selectedPiece = gameState.board[selectedSquare.row][selectedSquare.col];
+        
+        // Only handle Royal Command piece selection if a king is currently selected
+        if (selectedPiece && selectedPiece.type === 'king' && selectedPiece.color === gameState.playerColor) {
+          const clickedPiece = gameState.board[position.row][position.col];
+          
+          // Check if clicking the king again (do nothing, keep it selected)
+          if (position.row === selectedSquare.row && position.col === selectedSquare.col) {
+            setError('Royal Command active: Select a piece within 2 squares to control, or click Cancel to exit');
+            return;
+          }
+          
+          // Check if clicking on a piece within range (2 squares)
+          const rowDiff = Math.abs(position.row - selectedSquare.row);
+          const colDiff = Math.abs(position.col - selectedSquare.col);
+          const withinRange = rowDiff <= 2 && colDiff <= 2 && (rowDiff > 0 || colDiff > 0);
+          
+          if (clickedPiece && withinRange) {
+            // Piece selected for control - tell backend and get its possible moves
+            setError(`Controlling ${clickedPiece.color} ${clickedPiece.type}. Select where to move it (1 square in any direction) or click it again to choose a different piece.`);
+            
+            // Notify backend that we're controlling this piece
+            socketService.initiateRoyalCommand(selectedSquare, position).catch((error) => {
+              console.error('Error initiating Royal Command:', error);
+              setError(error.message);
+            });
+            
+            // Request possible moves for the controlled piece
+            // Wait a bit for the backend to process the Royal Command initiation
+            setTimeout(() => {
+              socketService.getPossibleMoves(position, 'A');
+            }, 100);
+            
+            // Keep the controlled piece position selected
+            setSelectedSquare(position);
+            return;
+          } else if (!clickedPiece && withinRange) {
+            setError('Select a piece to control with Royal Command');
+            return;
+          } else {
+            setError('Piece is too far away (must be within 2 squares of king)');
+            return;
+          }
+        }
+        // If a non-king piece is selected in Royal Command mode, fall through to normal move logic
+      }
+    }
+
     // Handle rook linking mode
     if (linkingMode && gameState) {
       const clickedPiece = gameState.board[position.row][position.col];
@@ -517,6 +624,14 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
         setError("You must complete the nimble knight move or skip the second move!");
         return;
       }
+      // During Royal Command second move, only allow selecting the controlled piece
+      if (matchState?.isSecondRoyalCommand) {
+        const controlledPos = matchState.royalCommandState?.controlledPiecePosition;
+        if (!controlledPos || position.row !== controlledPos.row || position.col !== controlledPos.col) {
+          setError("You can only move the controlled piece during Royal Command or skip!");
+          return;
+        }
+      }
       setSelectedSquare(position);
       setPossibleMoves([]); // Clear moves while we wait for server response
       socketService.getPossibleMoves(position, 'A'); // Request moves from server for chess game
@@ -538,6 +653,12 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
       // Clear selection (will be updated when server responds)
       setSelectedSquare(null);
       setPossibleMoves([]);
+      
+      // Exit Royal Command mode after a successful move
+      if (royalCommandMode) {
+        setRoyalCommandMode(false);
+        setError(null);
+      }
     } else {
       console.log('Invalid move - possibleMoves:', possibleMoves);
       // Invalid move, just deselect
@@ -545,7 +666,7 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
       setPossibleMoves([]);
       setError("Invalid move!");
     }
-  }, [gameState, selectedSquare, possibleMoves, placementMode, selectedBarracksPiece, gameId, linkingMode, selectedRook]);
+  }, [gameState, selectedSquare, possibleMoves, placementMode, selectedBarracksPiece, gameId, linkingMode, selectedRook, royalCommandMode, royalCommandState]);
 
   const handleLeaveGame = () => {
     socketService.disconnect();
@@ -571,6 +692,65 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
       console.error('Skip second nimble move error:', error);
       setError(error.message);
     });
+  };
+
+  const handleSkipRoyalCommand = () => {
+    socketService.skipRoyalCommand().catch((error) => {
+      console.error('Skip Royal Command error:', error);
+      setError(error.message);
+    });
+  };
+
+  const handleToggleRoyalCommand = () => {
+    if (!gameState || !matchState) return;
+    
+    // If turning off Royal Command, use cancel handler
+    if (royalCommandMode) {
+      handleCancelRoyalCommand();
+      return;
+    }
+    
+    // Check if player has Royal Command upgrade
+    const playerTeam = gameState.playerColor;
+    if (!playerTeam) return;
+    
+    const hasRoyalCommand = matchState.teams[playerTeam]?.upgrades?.king?.includes('king_royal_command');
+    
+    if (!hasRoyalCommand) {
+      setError('Royal Command upgrade not purchased');
+      return;
+    }
+    
+    // Check if a king is selected
+    if (!selectedSquare) {
+      setError('Select your king first to use Royal Command');
+      return;
+    }
+    
+    const selectedPiece = gameState.board[selectedSquare.row][selectedSquare.col];
+    if (!selectedPiece || selectedPiece.type !== 'king' || selectedPiece.color !== playerTeam) {
+      setError('Select your king to use Royal Command');
+      return;
+    }
+    
+    // Activate Royal Command mode
+    setRoyalCommandMode(true);
+    setError('Royal Command active: Click on a piece within 2 squares to control it');
+    setPossibleMoves([]); // Clear possible moves
+  };
+
+  const handleCancelRoyalCommand = () => {
+    // If a piece was already being controlled, tell backend to cancel (without ending turn)
+    if (royalCommandState.active) {
+      socketService.cancelRoyalCommand().catch((error) => {
+        console.error('Error canceling Royal Command:', error);
+      });
+    }
+    
+    setRoyalCommandMode(false);
+    setError(null);
+    setSelectedSquare(null);
+    setPossibleMoves([]);
   };
 
   const handlePurchaseUpgrade = (upgradeId: string) => {
@@ -751,6 +931,19 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
                     title="Link two rooks to create a wall"
                   >
                     {linkingMode ? '❌ Cancel Linking' : '🔗 Link Rooks'}
+                  </button>
+                )}
+                {/* Show Royal Command button if player has the upgrade and it's their turn */}
+                {gameState.playerColor && 
+                 gameState.upgrades[gameState.playerColor].king && 
+                 gameState.upgrades[gameState.playerColor].king.includes('king_royal_command') &&
+                 gameState.isPlayerTurn && (
+                  <button 
+                    onClick={handleToggleRoyalCommand} 
+                    className={`royal-command-button ${royalCommandMode ? 'active' : ''}`}
+                    title="Use Royal Command to control a nearby piece"
+                  >
+                    {royalCommandMode ? '❌ Cancel Royal Command' : '👑 Royal Command'}
                   </button>
                 )}
                 <button 

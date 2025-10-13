@@ -89,6 +89,13 @@ export interface MatchState {
     playerTeam: string | null;
   };
   isSecondNimbleMove?: boolean;
+  royalCommandState?: {
+    active: boolean;
+    kingPosition: { row: number; col: number } | null;
+    controlledPiecePosition: { row: number; col: number } | null;
+    playerTeam: string | null;
+  };
+  isSecondRoyalCommand?: boolean;
 }
 
 class SocketService {
@@ -312,6 +319,51 @@ class SocketService {
       }
 
       this.socket.emit('skip_second_nimble_move');
+
+      // The response will come through the 'match_state_updated' event listener
+      resolve();
+    });
+  }
+
+  skipRoyalCommand(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if (!this.socket) {
+        reject(new Error('Not connected'));
+        return;
+      }
+
+      this.socket.emit('skip_royal_command');
+
+      // The response will come through the 'match_state_updated' event listener
+      resolve();
+    });
+  }
+
+  initiateRoyalCommand(kingPosition: Position, controlledPiecePosition: Position): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if (!this.socket) {
+        reject(new Error('Not connected'));
+        return;
+      }
+
+      this.socket.emit('initiate_royal_command', {
+        kingPosition,
+        controlledPiecePosition
+      });
+
+      // The response will come through the 'match_state_updated' event listener
+      resolve();
+    });
+  }
+
+  cancelRoyalCommand(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if (!this.socket) {
+        reject(new Error('Not connected'));
+        return;
+      }
+
+      this.socket.emit('cancel_royal_command');
 
       // The response will come through the 'match_state_updated' event listener
       resolve();

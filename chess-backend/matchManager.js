@@ -101,7 +101,13 @@ class MatchManager {
           active: false,
           knightPosition: null,
           playerTeam: null
-        } // Track nimble knight two-step move state
+        }, // Track nimble knight two-step move state
+        royalCommandState: {
+          active: false,
+          kingPosition: null,
+          controlledPiecePosition: null,
+          playerTeam: null
+        } // Track Royal Command state when king controls a piece
       },
       createdAt: new Date(),
       lastActivity: new Date()
@@ -241,7 +247,7 @@ class MatchManager {
       [TeamColor.BLACK]: match.teams[TeamColor.BLACK].upgrades
     };
     
-    if (!isValidMove(game.board, from, to, playerTeam, upgradesForValidation, match.sharedState.upgradeManager, game.rookLinks, match.sharedState.nimbleKnightState, match.sharedState.knightDoubleJumpState)) {
+    if (!isValidMove(game.board, from, to, playerTeam, upgradesForValidation, match.sharedState.upgradeManager, game.rookLinks, match.sharedState.nimbleKnightState, match.sharedState.knightDoubleJumpState, match.sharedState.royalCommandState)) {
       throw new Error('Invalid move');
     }
 
@@ -552,6 +558,25 @@ class MatchManager {
       nimbleKnightState.knightPosition = null;
       nimbleKnightState.playerTeam = null;
       shouldSwitchTurns = true;
+    }
+
+    // Handle Royal Command completion
+    const royalCommandState = match.sharedState.royalCommandState;
+    if (royalCommandState.active && royalCommandState.playerTeam === playerTeam) {
+      // Check if the piece being moved is the controlled piece
+      const isControlledPiece = royalCommandState.controlledPiecePosition &&
+                                from.row === royalCommandState.controlledPiecePosition.row &&
+                                from.col === royalCommandState.controlledPiecePosition.col;
+      
+      if (isControlledPiece) {
+        // Royal Command move completed - reset state
+        console.log(`${playerTeam} completed Royal Command move`);
+        royalCommandState.active = false;
+        royalCommandState.kingPosition = null;
+        royalCommandState.controlledPiecePosition = null;
+        royalCommandState.playerTeam = null;
+        // Turn will switch normally
+      }
     }
 
     // Switch turns (only if game is still active and we should switch)
@@ -1149,6 +1174,10 @@ class MatchManager {
     const nimbleKnightState = match.sharedState.nimbleKnightState;
     const isSecondNimbleMove = nimbleKnightState.active && nimbleKnightState.playerTeam === playerTeam;
 
+    // Check if this player is in Royal Command mode
+    const royalCommandState = match.sharedState.royalCommandState;
+    const isSecondRoyalCommand = royalCommandState.active && royalCommandState.playerTeam === playerTeam;
+
     return {
       id: match.id,
       status: match.status,
@@ -1196,6 +1225,13 @@ class MatchManager {
         playerTeam: nimbleKnightState.playerTeam
       },
       isSecondNimbleMove: isSecondNimbleMove,
+      royalCommandState: {
+        active: royalCommandState.active,
+        kingPosition: royalCommandState.kingPosition,
+        controlledPiecePosition: royalCommandState.controlledPiecePosition,
+        playerTeam: royalCommandState.playerTeam
+      },
+      isSecondRoyalCommand: isSecondRoyalCommand,
       // Include poker effect definitions for each zone
       controlZonePokerEffects: Object.entries(CONTROL_ZONE_POKER_EFFECTS).reduce((acc, [zoneId, effectId]) => {
         const effect = POKER_EFFECTS[effectId];

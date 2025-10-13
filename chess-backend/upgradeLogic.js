@@ -260,7 +260,7 @@ function getUpgradedQueenMoves(board, position, color, upgrades, standardMoves, 
 }
 
 // Get upgraded king moves
-function getUpgradedKingMoves(board, position, color, upgrades, standardMoves, upgradeManager) {
+function getUpgradedKingMoves(board, position, color, upgrades, standardMoves, upgradeManager, royalCommandState) {
   const moves = [...standardMoves];
   const pieceUpgrades = upgrades[color][PieceType.KING] || [];
   
@@ -299,11 +299,47 @@ function getUpgradedKingMoves(board, position, color, upgrades, standardMoves, u
     }
   }
   
+  // Royal Command is handled separately via frontend mode, not as king moves
+  // The king just has its normal movement options
+  
+  return moves;
+}
+
+// Get moves for a piece controlled by Royal Command
+function getRoyalCommandControlledMoves(board, position, piece, controllingColor) {
+  const moves = [];
+  
+  // Get all positions 1 square away in any direction (8 directions)
+  for (let dRow = -1; dRow <= 1; dRow++) {
+    for (let dCol = -1; dCol <= 1; dCol++) {
+      if (dRow === 0 && dCol === 0) continue;
+      
+      const newPos = { row: position.row + dRow, col: position.col + dCol };
+      if (newPos.row >= 0 && newPos.row < 10 && newPos.col >= 0 && newPos.col < 16) {
+        const targetPiece = board[newPos.row][newPos.col];
+        
+        // If the controlled piece is friendly to the king
+        if (piece.color === controllingColor) {
+          // Can move to empty squares or capture enemy pieces
+          if (!targetPiece || targetPiece.color !== controllingColor) {
+            moves.push(newPos);
+          }
+        } else {
+          // If the controlled piece is an enemy
+          // Can only move to empty squares
+          if (!targetPiece) {
+            moves.push(newPos);
+          }
+        }
+      }
+    }
+  }
+  
   return moves;
 }
 
 // Apply upgrades to possible moves
-function applyUpgradesToMoves(board, position, piece, standardMoves, upgrades, upgradeManager, nimbleKnightState, knightDoubleJumpState) {
+function applyUpgradesToMoves(board, position, piece, standardMoves, upgrades, upgradeManager, nimbleKnightState, knightDoubleJumpState, royalCommandState) {
   console.log('applyUpgradesToMoves called for', piece.type, 'at', position);
   console.log('Upgrades:', upgrades);
   
@@ -324,7 +360,7 @@ function applyUpgradesToMoves(board, position, piece, standardMoves, upgrades, u
     case PieceType.QUEEN:
       return getUpgradedQueenMoves(board, position, piece.color, upgrades, standardMoves, upgradeManager);
     case PieceType.KING:
-      return getUpgradedKingMoves(board, position, piece.color, upgrades, standardMoves, upgradeManager);
+      return getUpgradedKingMoves(board, position, piece.color, upgrades, standardMoves, upgradeManager, royalCommandState);
     default:
       return standardMoves;
   }
@@ -453,5 +489,6 @@ module.exports = {
   isProtectedByQueenAura,
   isProtectedByRook,
   getBishopsAdjacentToKing,
-  isKingProtectedByBishop
+  isKingProtectedByBishop,
+  getRoyalCommandControlledMoves
 };

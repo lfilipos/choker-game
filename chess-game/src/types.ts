@@ -82,6 +82,13 @@ export interface WallSquare {
   color: PieceColor;
 }
 
+export interface RoyalCommandState {
+  active: boolean;
+  kingPosition: Position | null;
+  controlledPiecePosition: Position | null;
+  playerTeam: PieceColor | null;
+}
+
 export interface BarracksPiece {
   type: PieceType;
   color: PieceColor;

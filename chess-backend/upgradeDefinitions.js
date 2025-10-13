@@ -220,6 +220,19 @@ const UPGRADE_DEFINITIONS = {
       description: 'Swap with any ally once'
     }],
     activationMethod: ActivationMethod.ACHIEVEMENT
+  },
+  king_royal_command: {
+    id: 'king_royal_command',
+    name: 'Royal Command',
+    description: 'King can command any piece within 2 squares to move 1 square',
+    cost: 400,
+    pieceType: PieceType.KING,
+    effects: [{
+      type: UpgradeType.SPECIAL,
+      value: 'royal_command',
+      description: 'Control nearby pieces to move them'
+    }],
+    activationMethod: ActivationMethod.PURCHASE
   }
 };
 

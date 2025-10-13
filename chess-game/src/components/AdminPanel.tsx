@@ -21,7 +21,7 @@ const availableUpgradeIds: Record<PieceType, string[]> = {
   bishop: ['bishop_color_break', 'bishop_piercing'],
   rook: ['rook_castle_anywhere', 'rook_siege_mode'],
   queen: ['queen_teleport', 'queen_aura'],
-  king: ['king_double_step', 'king_swap']
+  king: ['king_double_step', 'king_swap', 'king_royal_command']
 };
 
 const AdminPanel: React.FC<AdminPanelProps> = ({
