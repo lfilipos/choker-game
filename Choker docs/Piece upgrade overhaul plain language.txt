@@ -85,6 +85,7 @@ Knights
   * Functional requirements:  
     * When the player selects the knight to move, the knight should have the added ability to move 1 square adjacent to it in any direction  
     * The knight will still have the ability to move in its normal pattern if it desires  
+    * This can combine with any other knight upgrades
 * Level 2  
   * Summary: 3-2 move  
   * Game requirements to be eligible for purchase:  

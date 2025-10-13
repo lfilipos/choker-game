@@ -462,6 +462,17 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
           setError("You must complete the knight's double jump or skip the second move!");
           return;
         }
+        // During nimble knight second move, only allow selecting the knight that moved
+        if (matchState?.isSecondNimbleMove && clickedPiece.type === 'knight') {
+          const knightPos = matchState.nimbleKnightState?.knightPosition;
+          if (!knightPos || position.row !== knightPos.row || position.col !== knightPos.col) {
+            setError("You can only move the same knight during nimble move!");
+            return;
+          }
+        } else if (matchState?.isSecondNimbleMove && clickedPiece.type !== 'knight') {
+          setError("You must complete the nimble knight move or skip the second move!");
+          return;
+        }
         setSelectedSquare(position);
         setPossibleMoves([]); // Clear moves while we wait for server response
         socketService.getPossibleMoves(position, 'A'); // Request moves from server for chess game
@@ -493,6 +504,17 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
         }
       } else if (matchState?.isSecondKnightMove && clickedPiece.type !== 'knight') {
         setError("You must complete the knight's double jump or skip the second move!");
+        return;
+      }
+      // During nimble knight second move, only allow selecting the knight that moved
+      if (matchState?.isSecondNimbleMove && clickedPiece.type === 'knight') {
+        const knightPos = matchState.nimbleKnightState?.knightPosition;
+        if (!knightPos || position.row !== knightPos.row || position.col !== knightPos.col) {
+          setError("You can only move the same knight during nimble move!");
+          return;
+        }
+      } else if (matchState?.isSecondNimbleMove && clickedPiece.type !== 'knight') {
+        setError("You must complete the nimble knight move or skip the second move!");
         return;
       }
       setSelectedSquare(position);
@@ -540,6 +562,13 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
   const handleSkipSecondKnightMove = () => {
     socketService.skipSecondKnightMove().catch((error) => {
       console.error('Skip second knight move error:', error);
+      setError(error.message);
+    });
+  };
+
+  const handleSkipSecondNimbleMove = () => {
+    socketService.skipSecondNimbleMove().catch((error) => {
+      console.error('Skip second nimble move error:', error);
       setError(error.message);
     });
   };
@@ -635,6 +664,11 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
       return 'Your turn - Knight Second Jump Available';
     }
 
+    // Check for nimble knight mode
+    if (matchState?.isSecondNimbleMove) {
+      return 'Your turn - Nimble Knight Second Move Available';
+    }
+
     return gameState.isPlayerTurn ? 'Your turn' : 'Opponent\'s turn';
   };
 
@@ -677,6 +711,15 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
                 title="Skip the knight's second jump and end your turn"
               >
                 Skip Second Knight Move
+              </button>
+            )}
+            {matchState?.isSecondNimbleMove && (
+              <button 
+                onClick={handleSkipSecondNimbleMove} 
+                className="skip-second-move-button"
+                title="Skip the nimble knight's second move and end your turn"
+              >
+                Skip Nimble Knight Second Move
               </button>
             )}
           </div>

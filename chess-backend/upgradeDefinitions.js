@@ -69,6 +69,19 @@ const UPGRADE_DEFINITIONS = {
     }],
     activationMethod: ActivationMethod.PURCHASE
   },
+  nimble_knight: {
+    id: 'nimble_knight',
+    name: 'Nimble Knight',
+    description: 'Knights can move 1 square adjacent then make normal move',
+    cost: 150,
+    pieceType: PieceType.KNIGHT,
+    effects: [{
+      type: UpgradeType.SPECIAL,
+      value: 'nimble_move',
+      description: 'Move 1 adjacent square, then make normal knight move'
+    }],
+    activationMethod: ActivationMethod.PURCHASE
+  },
 
   // BISHOP UPGRADES
   bishop_color_break: {

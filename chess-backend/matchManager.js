@@ -95,7 +95,12 @@ class MatchManager {
           firstKnightPosition: null,
           playerTeam: null,
           hasCaptured: false
-        } // Track knight double jump state
+        }, // Track knight double jump state
+        nimbleKnightState: {
+          active: false,
+          knightPosition: null,
+          playerTeam: null
+        } // Track nimble knight two-step move state
       },
       createdAt: new Date(),
       lastActivity: new Date()
@@ -235,7 +240,7 @@ class MatchManager {
       [TeamColor.BLACK]: match.teams[TeamColor.BLACK].upgrades
     };
     
-    if (!isValidMove(game.board, from, to, playerTeam, upgradesForValidation, match.sharedState.upgradeManager, game.rookLinks)) {
+    if (!isValidMove(game.board, from, to, playerTeam, upgradesForValidation, match.sharedState.upgradeManager, game.rookLinks, match.sharedState.nimbleKnightState, match.sharedState.knightDoubleJumpState)) {
       throw new Error('Invalid move');
     }
 
@@ -383,9 +388,11 @@ class MatchManager {
     let shouldSwitchTurns = true;
     const dualMovementState = match.sharedState.dualMovementState;
     const knightDoubleJumpState = match.sharedState.knightDoubleJumpState;
+    const nimbleKnightState = match.sharedState.nimbleKnightState;
     const playerUpgrades = match.teams[playerTeam].upgrades;
     const hasDualMovement = playerUpgrades.pawn && playerUpgrades.pawn.includes('pawn_dual_movement');
     const hasKnightDoubleJump = playerUpgrades.knight && playerUpgrades.knight.includes('knight_double_jump');
+    const hasNimbleKnight = playerUpgrades.knight && playerUpgrades.knight.includes('nimble_knight');
     
     if (match.status === MatchStatus.ACTIVE && piece.type === PieceType.PAWN && hasDualMovement) {
       if (!dualMovementState.active) {
@@ -473,6 +480,52 @@ class MatchManager {
       knightDoubleJumpState.firstKnightPosition = null;
       knightDoubleJumpState.playerTeam = null;
       knightDoubleJumpState.hasCaptured = false;
+      shouldSwitchTurns = true;
+    }
+    
+    // Handle nimble knight logic (move 1 adjacent square, then normal knight move)
+    // Only process nimble knight if NOT in double jump mode (they are mutually exclusive)
+    if (match.status === MatchStatus.ACTIVE && piece.type === PieceType.KNIGHT && hasNimbleKnight && !knightDoubleJumpState.active) {
+      // Check if this was an adjacent move (distance of 1 in any direction)
+      const rowDiff = Math.abs(to.row - from.row);
+      const colDiff = Math.abs(to.col - from.col);
+      const isAdjacentMove = (rowDiff <= 1 && colDiff <= 1 && (rowDiff + colDiff) > 0);
+      
+      // Check if this is a normal knight L-shape move (not adjacent)
+      const isNormalKnightMove = (rowDiff === 2 && colDiff === 1) || (rowDiff === 1 && colDiff === 2) ||
+                                 (rowDiff === 3 && colDiff === 2) || (rowDiff === 2 && colDiff === 3); // Include extended leap
+      
+      if (!nimbleKnightState.active && isAdjacentMove && !isNormalKnightMove) {
+        // First move (adjacent) - enter nimble knight mode
+        console.log(`${playerTeam} entering nimble knight mode after adjacent move from (${from.row},${from.col}) to (${to.row},${to.col})`);
+        nimbleKnightState.active = true;
+        nimbleKnightState.knightPosition = { row: to.row, col: to.col };
+        nimbleKnightState.playerTeam = playerTeam;
+        shouldSwitchTurns = false; // Don't switch turns yet
+      } else if (nimbleKnightState.active && nimbleKnightState.playerTeam === playerTeam) {
+        // Second move (normal knight move) - verify it's the same knight
+        const isSameKnight = (from.row === nimbleKnightState.knightPosition.row && 
+                             from.col === nimbleKnightState.knightPosition.col);
+        
+        if (!isSameKnight) {
+          console.error(`${playerTeam} tried to move a different knight during nimble knight mode!`);
+          throw new Error('Can only move the same knight twice with nimble knight');
+        }
+        
+        console.log(`${playerTeam} completed nimble knight move from (${from.row},${from.col}) to (${to.row},${to.col})`);
+        // Reset nimble knight state and allow turn switch
+        nimbleKnightState.active = false;
+        nimbleKnightState.knightPosition = null;
+        nimbleKnightState.playerTeam = null;
+        shouldSwitchTurns = true;
+      }
+    } else if (nimbleKnightState.active && nimbleKnightState.playerTeam === playerTeam) {
+      // Player moved a non-knight piece during nimble knight mode - this shouldn't happen
+      // Reset the nimble knight state and switch turns normally
+      console.log(`${playerTeam} moved non-knight during nimble knight mode, resetting state`);
+      nimbleKnightState.active = false;
+      nimbleKnightState.knightPosition = null;
+      nimbleKnightState.playerTeam = null;
       shouldSwitchTurns = true;
     }
 
@@ -1067,6 +1120,10 @@ class MatchManager {
     const knightDoubleJumpState = match.sharedState.knightDoubleJumpState;
     const isSecondKnightMove = knightDoubleJumpState.active && knightDoubleJumpState.playerTeam === playerTeam;
 
+    // Check if this player is in nimble knight mode
+    const nimbleKnightState = match.sharedState.nimbleKnightState;
+    const isSecondNimbleMove = nimbleKnightState.active && nimbleKnightState.playerTeam === playerTeam;
+
     return {
       id: match.id,
       status: match.status,
@@ -1108,6 +1165,12 @@ class MatchManager {
         hasCaptured: knightDoubleJumpState.hasCaptured
       },
       isSecondKnightMove: isSecondKnightMove,
+      nimbleKnightState: {
+        active: nimbleKnightState.active,
+        knightPosition: nimbleKnightState.knightPosition,
+        playerTeam: nimbleKnightState.playerTeam
+      },
+      isSecondNimbleMove: isSecondNimbleMove,
       // Include poker effect definitions for each zone
       controlZonePokerEffects: Object.entries(CONTROL_ZONE_POKER_EFFECTS).reduce((acc, [zoneId, effectId]) => {
         const effect = POKER_EFFECTS[effectId];

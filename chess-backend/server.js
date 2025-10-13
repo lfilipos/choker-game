@@ -360,6 +360,57 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Skip second nimble knight move
+  socket.on('skip_second_nimble_move', () => {
+    try {
+      const playerInfo = matchManager.playerSockets.get(socket.id);
+      if (!playerInfo) {
+        throw new Error('Player not found');
+      }
+
+      const { matchId, role } = playerInfo;
+      const match = matchManager.matches.get(matchId);
+      
+      if (!match) {
+        throw new Error('Match not found');
+      }
+
+      const playerTeam = getTeamFromRole(role);
+      const nimbleKnightState = match.sharedState.nimbleKnightState;
+
+      // Verify the player is in nimble knight state
+      if (!nimbleKnightState.active || nimbleKnightState.playerTeam !== playerTeam) {
+        throw new Error('Not in nimble knight mode');
+      }
+
+      console.log(`${playerTeam} skipped second nimble knight move`);
+
+      // Reset nimble knight state
+      nimbleKnightState.active = false;
+      nimbleKnightState.knightPosition = null;
+      nimbleKnightState.playerTeam = null;
+
+      // Switch turns
+      const game = match.games.A; // Chess game
+      game.currentPlayer = game.currentPlayer === 'white' ? 'black' : 'white';
+      
+      match.lastActivity = new Date();
+
+      // Send updated match state to all players in the match
+      for (const [socketId] of matchManager.playerSockets) {
+        if (matchManager.playerSockets.get(socketId)?.matchId === match.id) {
+          const playerMatchState = matchManager.getMatchState(match.id, socketId);
+          io.to(socketId).emit('match_state_updated', {
+            matchState: playerMatchState,
+            reason: 'second_nimble_move_skipped'
+          });
+        }
+      }
+    } catch (error) {
+      socket.emit('error', { message: error.message });
+    }
+  });
+
   // Get current match state
   socket.on('get_match_state', (data) => {
     try {
@@ -439,7 +490,9 @@ io.on('connection', (socket) => {
         position, 
         upgradeState, 
         match.sharedState.upgradeManager,
-        game.rookLinks || []
+        game.rookLinks || [],
+        match.sharedState.nimbleKnightState,
+        match.sharedState.knightDoubleJumpState
       );
       
       // Filter moves for knight double jump restrictions

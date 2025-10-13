@@ -71,9 +71,47 @@ function getUpgradedPawnMoves(board, position, color, upgrades, standardMoves) {
 }
 
 // Get upgraded knight moves
-function getUpgradedKnightMoves(board, position, color, upgrades, standardMoves) {
+function getUpgradedKnightMoves(board, position, color, upgrades, standardMoves, nimbleKnightState, knightDoubleJumpState) {
   const moves = [...standardMoves];
   const pieceUpgrades = upgrades[color][PieceType.KNIGHT] || [];
+  
+  // Check for nimble knight upgrade (1 square adjacent movement then normal move)
+  const hasNimbleKnight = pieceUpgrades.includes('nimble_knight');
+  const isInNimbleState = nimbleKnightState && nimbleKnightState.active && 
+                          nimbleKnightState.playerTeam === color &&
+                          nimbleKnightState.knightPosition &&
+                          nimbleKnightState.knightPosition.row === position.row &&
+                          nimbleKnightState.knightPosition.col === position.col;
+  
+  // Check if in double jump state
+  const isInDoubleJumpState = knightDoubleJumpState && knightDoubleJumpState.active && 
+                               knightDoubleJumpState.playerTeam === color;
+  
+  // Adjacent moves are ONLY available as the first move of the turn
+  // Don't show them if already in nimble state OR in double jump state
+  if (hasNimbleKnight && !isInNimbleState && !isInDoubleJumpState) {
+    // Not in any special state yet - show adjacent moves as first move option
+    const adjacentMoves = [
+      { row: position.row - 1, col: position.col },     // Up
+      { row: position.row + 1, col: position.col },     // Down
+      { row: position.row, col: position.col - 1 },     // Left
+      { row: position.row, col: position.col + 1 },     // Right
+      { row: position.row - 1, col: position.col - 1 }, // Up-Left
+      { row: position.row - 1, col: position.col + 1 }, // Up-Right
+      { row: position.row + 1, col: position.col - 1 }, // Down-Left
+      { row: position.row + 1, col: position.col + 1 }  // Down-Right
+    ];
+    
+    adjacentMoves.forEach(pos => {
+      if (pos.row >= 0 && pos.row < 10 && pos.col >= 0 && pos.col < 16) {
+        const targetPiece = board[pos.row][pos.col];
+        if (!targetPiece || targetPiece.color !== color) {
+          moves.push(pos);
+        }
+      }
+    });
+  }
+  // If in nimble state or double jump state, don't add adjacent moves - only show normal knight moves
   
   // Check for extended leap upgrade
   if (pieceUpgrades.includes('knight_extended_leap')) {
@@ -258,7 +296,7 @@ function getUpgradedKingMoves(board, position, color, upgrades, standardMoves, u
 }
 
 // Apply upgrades to possible moves
-function applyUpgradesToMoves(board, position, piece, standardMoves, upgrades, upgradeManager) {
+function applyUpgradesToMoves(board, position, piece, standardMoves, upgrades, upgradeManager, nimbleKnightState, knightDoubleJumpState) {
   console.log('applyUpgradesToMoves called for', piece.type, 'at', position);
   console.log('Upgrades:', upgrades);
   
@@ -271,7 +309,7 @@ function applyUpgradesToMoves(board, position, piece, standardMoves, upgrades, u
     case PieceType.PAWN:
       return getUpgradedPawnMoves(board, position, piece.color, upgrades, standardMoves);
     case PieceType.KNIGHT:
-      return getUpgradedKnightMoves(board, position, piece.color, upgrades, standardMoves);
+      return getUpgradedKnightMoves(board, position, piece.color, upgrades, standardMoves, nimbleKnightState, knightDoubleJumpState);
     case PieceType.BISHOP:
       return getUpgradedBishopMoves(board, position, piece.color, upgrades, standardMoves, upgradeManager);
     case PieceType.ROOK:

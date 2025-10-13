@@ -85,7 +85,7 @@ function isSquareUnderAttack(board, position, byColor, upgrades = null, upgradeM
       if (piece && piece.color === byColor) {
         // Use getPossibleMoves from gameLogic to check if this piece can attack the position
         const { getPossibleMoves } = require('./gameLogic');
-        const moves = getPossibleMoves(board, { row, col }, upgrades, upgradeManager);
+        const moves = getPossibleMoves(board, { row, col }, upgrades, upgradeManager, null, null, null);
         if (moves.some(move => move.row === position.row && move.col === position.col)) {
           return true;
         }

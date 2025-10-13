@@ -32,7 +32,7 @@ function isValidPosition(pos) {
 }
 
 // Get possible moves for a piece
-function getPossibleMoves(board, position, upgrades = null, upgradeManager = null, rookLinks = null) {
+function getPossibleMoves(board, position, upgrades = null, upgradeManager = null, rookLinks = null, nimbleKnightState = null, knightDoubleJumpState = null) {
   const piece = board[position.row][position.col];
   if (!piece) return [];
   
@@ -64,7 +64,7 @@ function getPossibleMoves(board, position, upgrades = null, upgradeManager = nul
   // Apply upgrades if available
   if (upgrades && upgradeManager) {
     console.log(`Standard moves for ${piece.type}: ${standardMoves.length} moves`);
-    const upgradedMoves = applyUpgradesToMoves(board, position, piece, standardMoves, upgrades, upgradeManager);
+    const upgradedMoves = applyUpgradesToMoves(board, position, piece, standardMoves, upgrades, upgradeManager, nimbleKnightState, knightDoubleJumpState);
     console.log(`Upgraded moves: ${upgradedMoves.length} moves`);
     
     // Filter out moves that would capture protected pieces
@@ -299,11 +299,11 @@ function isPieceProtected(board, position, color, upgrades) {
 }
 
 // Validate if a move is legal
-function isValidMove(board, from, to, color, upgrades = null, upgradeManager = null, rookLinks = null) {
+function isValidMove(board, from, to, color, upgrades = null, upgradeManager = null, rookLinks = null, nimbleKnightState = null, knightDoubleJumpState = null) {
   const piece = board[from.row][from.col];
   if (!piece || piece.color !== color) return false;
   
-  const possibleMoves = getPossibleMoves(board, from, upgrades, upgradeManager, rookLinks);
+  const possibleMoves = getPossibleMoves(board, from, upgrades, upgradeManager, rookLinks, nimbleKnightState, knightDoubleJumpState);
   return possibleMoves.some(move => move.row === to.row && move.col === to.col);
 }
 
