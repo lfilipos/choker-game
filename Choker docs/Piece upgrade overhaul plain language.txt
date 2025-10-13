@@ -122,14 +122,19 @@ Bishop
   * Functional requirements:  
     * When the bishop is selected to make a move, in addition to its normal moveset, it can move up, down, left, or right one square  
 * Level 2  
-  * Summary: Bishops are cheaper  
+  * Summary: King protection from knight
   * Game requirements to be eligible for purchase:  
     * Purchase bishop level 1  
     * Capture 2 bishops  
   * Cost:  
     * 450  
   * Functional requirements:  
-    * The player’s teams bishops receive a 50% discount from their normal price when purchased in the shop  
+    * When the bishop is within 1 square of their king, when the king is captured the bishop swaps places with the king and is captured instead.
+    * If multiple bishops are within 1 square of their king, this effect goes away.
+    * There should be a visual UI element on the bishop and king, indicating that the king is protected.
+    * That UI element/indicator should disappear when multiple bishops are within 1 square, indicating that the effect has been lost.
+
+!*!*!*!*! Not implemented !*!*!*!*!
 * Level 3  
   * Summary: Every X squares moved by any bishop \= \+Y to team bank (or invested?)  
   * Game requirements to be eligible for purchase:  
@@ -140,6 +145,8 @@ Bishop
   * Functional requirements:  
     * The game should now keep track of the cumulative number of squares that all of that team’s bishops move.  
     * For every 10 squares that that team’s bishops move, deposit 25 into the team’s treasury. This is in addition to any other money the team receives on that player’s turn.
+!*!*!*!*!
+
 
 Queen
 

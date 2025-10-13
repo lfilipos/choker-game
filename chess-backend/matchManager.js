@@ -17,6 +17,7 @@ const { canAffordPiece, getPiecePrice } = require('./pieceDefinitions');
 const { checkGameStatus } = require('./winConditions');
 const { getPokerEffectForZone, getActivePokerEffects, POKER_EFFECT_TYPES, applyPokerEffects, CONTROL_ZONE_POKER_EFFECTS, POKER_EFFECTS } = require('./pokerEffects');
 const { updateRookLinksAfterMove, removeLinksForCapturedRook, addRookLink, validateRookLink } = require('./rookWallLogic');
+const { isKingProtectedByBishop } = require('./upgradeLogic');
 
 class MatchManager {
   constructor() {
@@ -246,10 +247,34 @@ class MatchManager {
 
     // Make the move
     const piece = game.board[from.row][from.col];
-    const capturedPiece = game.board[to.row][to.col];
+    let capturedPiece = game.board[to.row][to.col];
     
     // Store the unlocked piece types BEFORE this move
     const unlockedBeforeMove = [...match.teams[playerTeam].unlockedPieceTypes];
+    
+    // Check for Royal Protection (bishop protecting king)
+    let bishopProtectionSwap = null;
+    if (capturedPiece && capturedPiece.type === PieceType.KING) {
+      const protectingBishopPos = isKingProtectedByBishop(game.board, to, capturedPiece.color, upgradesForValidation);
+      if (protectingBishopPos) {
+        // Bishop is protecting the king - swap them
+        console.log(`Royal Protection activated! Bishop at (${protectingBishopPos.row},${protectingBishopPos.col}) protecting king at (${to.row},${to.col})`);
+        
+        // Get the bishop piece
+        const protectingBishop = game.board[protectingBishopPos.row][protectingBishopPos.col];
+        
+        // Swap the king and bishop on the board
+        game.board[protectingBishopPos.row][protectingBishopPos.col] = capturedPiece; // King moves to bishop position
+        game.board[to.row][to.col] = protectingBishop; // Bishop moves to king position (will be captured)
+        
+        // Update the captured piece to be the bishop instead of the king
+        capturedPiece = protectingBishop;
+        bishopProtectionSwap = {
+          bishopPos: protectingBishopPos,
+          kingPos: to
+        };
+      }
+    }
     
     // Check for siege mode capture (rook passing through enemy piece)
     let siegeCapture = null;

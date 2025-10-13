@@ -1,8 +1,9 @@
 const { v4: uuidv4 } = require('uuid');
-const { GameStatus, PieceColor, CONTROL_ZONES } = require('./types');
+const { GameStatus, PieceColor, PieceType, CONTROL_ZONES } = require('./types');
 const { createInitialBoard, makeMove, isValidMove, calculateAllControlZoneStatuses } = require('./gameLogic');
 const UpgradeManager = require('./upgradeManager');
 const { updateRookLinksAfterMove, removeLinksForCapturedRook, addRookLink, validateRookLink } = require('./rookWallLogic');
+const { isKingProtectedByBishop } = require('./upgradeLogic');
 
 class GameManager {
   constructor() {
@@ -111,7 +112,31 @@ class GameManager {
 
     // Make the move
     const piece = game.board[from.row][from.col];
-    const capturedPiece = game.board[to.row][to.col];
+    let capturedPiece = game.board[to.row][to.col];
+    
+    // Check for Royal Protection (bishop protecting king)
+    let bishopProtectionSwap = null;
+    if (capturedPiece && capturedPiece.type === PieceType.KING) {
+      const protectingBishopPos = isKingProtectedByBishop(game.board, to, capturedPiece.color, game.upgrades);
+      if (protectingBishopPos) {
+        // Bishop is protecting the king - swap them
+        console.log(`Royal Protection activated! Bishop at (${protectingBishopPos.row},${protectingBishopPos.col}) protecting king at (${to.row},${to.col})`);
+        
+        // Get the bishop piece
+        const protectingBishop = game.board[protectingBishopPos.row][protectingBishopPos.col];
+        
+        // Swap the king and bishop on the board
+        game.board[protectingBishopPos.row][protectingBishopPos.col] = capturedPiece; // King moves to bishop position
+        game.board[to.row][to.col] = protectingBishop; // Bishop moves to king position (will be captured)
+        
+        // Update the captured piece to be the bishop instead of the king
+        capturedPiece = protectingBishop;
+        bishopProtectionSwap = {
+          bishopPos: protectingBishopPos,
+          kingPos: to
+        };
+      }
+    }
     
     game.board = makeMove(game.board, from, to);
     

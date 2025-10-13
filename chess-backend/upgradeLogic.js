@@ -166,7 +166,7 @@ function getUpgradedBishopMoves(board, position, color, upgrades, standardMoves,
     });
   }
   
-  // Check for piercing upgrade (jump over one piece)
+  // Check for piercing upgrade (jump over one friendly piece)
   if (pieceUpgrades.includes('bishop_piercing')) {
     const directions = [[1, 1], [1, -1], [-1, 1], [-1, -1]];
     
@@ -179,8 +179,15 @@ function getUpgradedBishopMoves(board, position, color, upgrades, standardMoves,
         const targetPiece = board[newPos.row][newPos.col];
         if (targetPiece) {
           if (!jumped) {
-            jumped = true; // Jump over this piece
-            continue;
+            if (targetPiece.color === color) {
+              // Friendly piece - can jump over it
+              jumped = true;
+              continue;
+            } else {
+              // Enemy piece - can capture normally (no jump)
+              moves.push(newPos);
+              break;
+            }
           } else if (targetPiece.color !== color) {
             moves.push(newPos); // Can capture after jumping
             break;
@@ -394,9 +401,57 @@ function isProtectedByRook(board, position, color, upgrades) {
   return false;
 }
 
+// Find all bishops adjacent to a king (within 1 square)
+function getBishopsAdjacentToKing(board, kingPosition, color) {
+  const adjacentBishops = [];
+  
+  // Check all 8 adjacent squares
+  for (let dRow = -1; dRow <= 1; dRow++) {
+    for (let dCol = -1; dCol <= 1; dCol++) {
+      if (dRow === 0 && dCol === 0) continue; // Skip the king's position
+      
+      const checkRow = kingPosition.row + dRow;
+      const checkCol = kingPosition.col + dCol;
+      
+      // Check if position is valid
+      if (checkRow >= 0 && checkRow < 10 && checkCol >= 0 && checkCol < 16) {
+        const piece = board[checkRow][checkCol];
+        if (piece && piece.type === PieceType.BISHOP && piece.color === color) {
+          adjacentBishops.push({ row: checkRow, col: checkCol });
+        }
+      }
+    }
+  }
+  
+  return adjacentBishops;
+}
+
+// Check if a king is protected by the Royal Protection upgrade
+// Returns the protecting bishop's position if protected, null otherwise
+function isKingProtectedByBishop(board, kingPosition, color, upgrades) {
+  // Safety check for upgrades structure
+  if (!upgrades || !upgrades[color] || !upgrades[color][PieceType.BISHOP] || 
+      !upgrades[color][PieceType.BISHOP].includes('bishop_royal_protection')) {
+    return null;
+  }
+  
+  // Find all bishops adjacent to the king
+  const adjacentBishops = getBishopsAdjacentToKing(board, kingPosition, color);
+  
+  // Protection only works if exactly ONE bishop is adjacent
+  if (adjacentBishops.length === 1) {
+    return adjacentBishops[0];
+  }
+  
+  // No protection if 0 or multiple bishops are adjacent
+  return null;
+}
+
 module.exports = {
   applyUpgradesToMoves,
   hasUpgradeEffect,
   isProtectedByQueenAura,
-  isProtectedByRook
+  isProtectedByRook,
+  getBishopsAdjacentToKing,
+  isKingProtectedByBishop
 };

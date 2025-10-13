@@ -100,15 +100,28 @@ const UPGRADE_DEFINITIONS = {
   bishop_piercing: {
     id: 'bishop_piercing',
     name: 'Piercing Gaze',
-    description: 'Bishops can jump over one piece per move',
+    description: 'Bishops can jump over one friendly piece per move',
     cost: 300,
     pieceType: PieceType.BISHOP,
     effects: [{
       type: UpgradeType.MOVEMENT,
       value: 'jump_one',
-      description: 'Can jump over one piece'
+      description: 'Can jump over one friendly piece'
     }],
     activationMethod: ActivationMethod.CONTROL_ZONE
+  },
+  bishop_royal_protection: {
+    id: 'bishop_royal_protection',
+    name: 'Royal Protection',
+    description: 'Bishop within 1 square of king can sacrifice itself when king is captured',
+    cost: 200,
+    pieceType: PieceType.BISHOP,
+    effects: [{
+      type: UpgradeType.DEFENSE,
+      value: 'royal_protection',
+      description: 'Protects king by swapping places when captured'
+    }],
+    activationMethod: ActivationMethod.PURCHASE
   },
 
   // ROOK UPGRADES
