@@ -170,8 +170,18 @@ function getUpgradedRookMoves(board, position, color, upgrades, standardMoves) {
     console.log('Rook has pawn protection upgrade!');
   }
   
-  // Rook Wall upgrade - limits movement to 5 spaces maximum
-  if (pieceUpgrades.includes('rook_wall')) {
+  // Enhanced Rook Wall upgrade - limits movement to 3 spaces maximum
+  // If player has enhanced_rook_wall but not rook_wall, treat as having both upgrades functionally
+  if (pieceUpgrades.includes('enhanced_rook_wall')) {
+    console.log('Rook has enhanced wall upgrade - limiting movement to 3 spaces!');
+    // Filter moves to only include those within 3 spaces
+    moves = moves.filter(move => {
+      const distance = Math.abs(move.row - position.row) + Math.abs(move.col - position.col);
+      return distance <= 3;
+    });
+  }
+  // Rook Wall upgrade - limits movement to 5 spaces maximum (only if enhanced is not present)
+  else if (pieceUpgrades.includes('rook_wall')) {
     console.log('Rook has wall upgrade - limiting movement to 5 spaces!');
     // Filter moves to only include those within 5 spaces
     moves = moves.filter(move => {

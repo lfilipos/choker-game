@@ -116,7 +116,11 @@ class GameManager {
     game.board = makeMove(game.board, from, to);
     
     // Update rook links after move
-    game.rookLinks = updateRookLinksAfterMove(game.rookLinks, from, to, game.board);
+    // Check if player has enhanced rook wall upgrade
+    const pieceType = 'rook';
+    const hasEnhancedWall = game.upgrades[player.color][pieceType] && 
+                            game.upgrades[player.color][pieceType].includes('enhanced_rook_wall');
+    game.rookLinks = updateRookLinksAfterMove(game.rookLinks, from, to, game.board, hasEnhancedWall);
     
     // Award capture income if a piece was captured
     if (capturedPiece) {
@@ -347,14 +351,19 @@ class GameManager {
       throw new Error('Not your turn');
     }
 
-    // Check if player has rook_wall upgrade
+    // Check if player has rook_wall or enhanced_rook_wall upgrade
     const pieceType = 'rook';
-    if (!game.upgrades[player.color][pieceType] || !game.upgrades[player.color][pieceType].includes('rook_wall')) {
+    const hasRookWall = game.upgrades[player.color][pieceType] && 
+                        game.upgrades[player.color][pieceType].includes('rook_wall');
+    const hasEnhancedWall = game.upgrades[player.color][pieceType] && 
+                            game.upgrades[player.color][pieceType].includes('enhanced_rook_wall');
+    
+    if (!hasRookWall && !hasEnhancedWall) {
       throw new Error('Rook Wall upgrade not purchased');
     }
 
     // Validate the link
-    const validation = validateRookLink(game.board, rook1Pos, rook2Pos, player.color);
+    const validation = validateRookLink(game.board, rook1Pos, rook2Pos, player.color, hasEnhancedWall);
     if (!validation.valid) {
       throw new Error(validation.reason);
     }

@@ -39,20 +39,27 @@ function getWallSquaresBetween(pos1, pos2, color) {
   const rowDiff = pos2.row - pos1.row;
   const colDiff = pos2.col - pos1.col;
   
-  // Only create wall if exactly 2 spaces apart (1 space between)
-  const distance = Math.abs(rowDiff) + Math.abs(colDiff);
+  // Calculate number of spaces between rooks
+  const rowDistance = Math.abs(rowDiff);
+  const colDistance = Math.abs(colDiff);
   
-  // For orthogonal movement (horizontal or vertical)
-  if ((rowDiff === 0 && Math.abs(colDiff) === 2) || (colDiff === 0 && Math.abs(rowDiff) === 2)) {
-    const wallRow = pos1.row + Math.sign(rowDiff);
-    const wallCol = pos1.col + Math.sign(colDiff);
-    walls.push({ row: wallRow, col: wallCol, color });
-  }
-  // For diagonal movement
-  else if (Math.abs(rowDiff) === 2 && Math.abs(colDiff) === 2) {
-    const wallRow = pos1.row + Math.sign(rowDiff);
-    const wallCol = pos1.col + Math.sign(colDiff);
-    walls.push({ row: wallRow, col: wallCol, color });
+  // Determine if this is a valid orthogonal or diagonal link (2-4 spaces apart, 1-3 spaces between)
+  const isOrthogonal = (rowDiff === 0 && colDistance >= 2 && colDistance <= 4) || 
+                       (colDiff === 0 && rowDistance >= 2 && rowDistance <= 4);
+  const isDiagonal = (rowDistance >= 2 && rowDistance <= 4) && (colDistance >= 2 && colDistance <= 4) && 
+                     (rowDistance === colDistance);
+  
+  if (isOrthogonal || isDiagonal) {
+    // Create wall squares for ALL spaces between the rooks
+    const rowStep = Math.sign(rowDiff);
+    const colStep = Math.sign(colDiff);
+    const numWalls = Math.max(rowDistance, colDistance) - 1; // Number of spaces between
+    
+    for (let i = 1; i <= numWalls; i++) {
+      const wallRow = pos1.row + (i * rowStep);
+      const wallCol = pos1.col + (i * colStep);
+      walls.push({ row: wallRow, col: wallCol, color });
+    }
   }
   
   return walls;
@@ -80,9 +87,10 @@ function isWallSquare(position, wallSquares) {
  * @param {Object} rook1Pos - First rook position {row, col}
  * @param {Object} rook2Pos - Second rook position {row, col}
  * @param {string} color - Player color
+ * @param {boolean} hasEnhancedWall - Whether the player has enhanced rook wall upgrade
  * @returns {Object} {valid: boolean, reason: string}
  */
-function validateRookLink(board, rook1Pos, rook2Pos, color) {
+function validateRookLink(board, rook1Pos, rook2Pos, color, hasEnhancedWall = false) {
   // Check if both positions are valid
   if (!board[rook1Pos.row] || !board[rook2Pos.row]) {
     return { valid: false, reason: 'Invalid position' };
@@ -104,46 +112,48 @@ function validateRookLink(board, rook1Pos, rook2Pos, color) {
     return { valid: false, reason: 'Both rooks must belong to the player' };
   }
   
-  // Check if rooks are exactly 2 spaces apart (1 space between)
+  // Check if rooks are within valid linking distance
   const rowDiff = Math.abs(rook2Pos.row - rook1Pos.row);
   const colDiff = Math.abs(rook2Pos.col - rook1Pos.col);
   
-  // Valid configurations: horizontal, vertical, or diagonal with exactly 1 space between
-  const isHorizontal = rowDiff === 0 && colDiff === 2;
-  const isVertical = colDiff === 0 && rowDiff === 2;
-  const isDiagonal = rowDiff === 2 && colDiff === 2;
+  // Determine max distance based on upgrade level
+  const maxDistance = hasEnhancedWall ? 4 : 2; // 1-3 spaces between for enhanced, 1 space between for basic
+  const minDistance = 2; // Always at least 2 spaces apart (1 space between)
+  
+  // Valid configurations: horizontal, vertical, or diagonal within the allowed distance
+  const isHorizontal = rowDiff === 0 && colDiff >= minDistance && colDiff <= maxDistance;
+  const isVertical = colDiff === 0 && rowDiff >= minDistance && rowDiff <= maxDistance;
+  const isDiagonal = rowDiff >= minDistance && rowDiff <= maxDistance && colDiff >= minDistance && colDiff <= maxDistance && rowDiff === colDiff;
   
   if (!isHorizontal && !isVertical && !isDiagonal) {
-    return { valid: false, reason: 'Rooks must be exactly 2 spaces apart (1 space between)' };
+    const distanceDesc = hasEnhancedWall ? '2-4 spaces apart (1-3 spaces between)' : 'exactly 2 spaces apart (1 space between)';
+    return { valid: false, reason: `Rooks must be ${distanceDesc}` };
   }
   
-  // Check if the space between is empty
-  const wallSquares = getWallSquaresBetween(rook1Pos, rook2Pos, color);
-  if (wallSquares.length > 0) {
-    const wallPos = wallSquares[0];
-    const wallPiece = board[wallPos.row][wallPos.col];
-    if (wallPiece) {
-      return { valid: false, reason: 'Space between rooks must be empty' };
-    }
-  }
+  // Note: We no longer check if spaces between are empty - friendly pieces can be in wall spaces
   
   return { valid: true, reason: '' };
 }
 
 /**
- * Check if two rooks are still within linking distance (2 spaces apart)
+ * Check if two rooks are still within linking distance
  * @param {Object} pos1 - First rook position {row, col}
  * @param {Object} pos2 - Second rook position {row, col}
+ * @param {boolean} hasEnhancedWall - Whether the player has enhanced rook wall upgrade
  * @returns {boolean} True if rooks are within linking distance
  */
-function areRooksWithinLinkDistance(pos1, pos2) {
+function areRooksWithinLinkDistance(pos1, pos2, hasEnhancedWall = false) {
   const rowDiff = Math.abs(pos2.row - pos1.row);
   const colDiff = Math.abs(pos2.col - pos1.col);
   
-  // Check if exactly 2 spaces apart in any valid direction
-  const isHorizontal = rowDiff === 0 && colDiff === 2;
-  const isVertical = colDiff === 0 && rowDiff === 2;
-  const isDiagonal = rowDiff === 2 && colDiff === 2;
+  // Determine max distance based on upgrade level
+  const maxDistance = hasEnhancedWall ? 4 : 2;
+  const minDistance = 2;
+  
+  // Check if within valid distance in any valid direction
+  const isHorizontal = rowDiff === 0 && colDiff >= minDistance && colDiff <= maxDistance;
+  const isVertical = colDiff === 0 && rowDiff >= minDistance && rowDiff <= maxDistance;
+  const isDiagonal = rowDiff >= minDistance && rowDiff <= maxDistance && colDiff >= minDistance && colDiff <= maxDistance && rowDiff === colDiff;
   
   return isHorizontal || isVertical || isDiagonal;
 }
@@ -154,9 +164,10 @@ function areRooksWithinLinkDistance(pos1, pos2) {
  * @param {Object} movedFrom - Position piece moved from {row, col}
  * @param {Object} movedTo - Position piece moved to {row, col}
  * @param {Array} board - Current board state
+ * @param {boolean} hasEnhancedWall - Whether the player has enhanced rook wall upgrade
  * @returns {Array} Updated rook links
  */
-function updateRookLinksAfterMove(rookLinks, movedFrom, movedTo, board) {
+function updateRookLinksAfterMove(rookLinks, movedFrom, movedTo, board, hasEnhancedWall = false) {
   if (!rookLinks || rookLinks.length === 0) {
     return [];
   }
@@ -173,7 +184,7 @@ function updateRookLinksAfterMove(rookLinks, movedFrom, movedTo, board) {
       
       // Filter out links that are now too far apart
       linkedRookPositions = linkedRookPositions.filter(linkedPos => 
-        areRooksWithinLinkDistance(rookPosition, linkedPos)
+        areRooksWithinLinkDistance(rookPosition, linkedPos, hasEnhancedWall)
       );
     } else {
       // Check if any of the linked rooks were moved
@@ -183,7 +194,7 @@ function updateRookLinksAfterMove(rookLinks, movedFrom, movedTo, board) {
         }
         return linkedPos;
       }).filter(linkedPos => 
-        areRooksWithinLinkDistance(rookPosition, linkedPos)
+        areRooksWithinLinkDistance(rookPosition, linkedPos, hasEnhancedWall)
       );
     }
     

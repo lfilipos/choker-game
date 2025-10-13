@@ -125,6 +125,19 @@ const UPGRADE_DEFINITIONS = {
     }],
     activationMethod: ActivationMethod.PURCHASE
   },
+  enhanced_rook_wall: {
+    id: 'enhanced_rook_wall',
+    name: 'Enhanced Rook Wall',
+    description: 'Link rooks from 2-4 spaces apart to create extended walls. Rooks can only move 3 spaces max.',
+    cost: 600,
+    pieceType: PieceType.ROOK,
+    effects: [{
+      type: UpgradeType.SPECIAL,
+      value: 'enhanced_wall_link',
+      description: 'Can link rooks from extended distances (2-4 spaces), movement limited to 3 spaces'
+    }],
+    activationMethod: ActivationMethod.PURCHASE
+  },
 
   // QUEEN UPGRADES
   queen_teleport: {

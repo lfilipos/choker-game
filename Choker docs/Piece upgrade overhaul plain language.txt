@@ -71,7 +71,7 @@ Rooks
   * Cost: 600  
   * Functional requirements:  
     * Same behavior as rook level 2 with a few changes  
-    * The rooks can now link from 3 spaces away (2 spaces between them)  
+    * The rooks can now link from 4 spaces away (3 spaces between them)  
     * Their moveset is reduced so they can only move a maximum of 3 spaces across the board at a time.
 
 Knights

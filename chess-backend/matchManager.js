@@ -271,7 +271,11 @@ class MatchManager {
     game.board = makeMove(game.board, from, to);
     
     // Update rook links after move
-    game.rookLinks = updateRookLinksAfterMove(game.rookLinks, from, to, game.board);
+    // Check if player has enhanced rook wall upgrade
+    const pieceType = 'rook';
+    const hasEnhancedWall = match.teams[playerTeam].upgrades[pieceType] && 
+                            match.teams[playerTeam].upgrades[pieceType].includes('enhanced_rook_wall');
+    game.rookLinks = updateRookLinksAfterMove(game.rookLinks, from, to, game.board, hasEnhancedWall);
     
     // Clear lastRookLink when a regular move is made
     game.lastRookLink = null;
@@ -1462,14 +1466,19 @@ class MatchManager {
       throw new Error('Not your turn');
     }
 
-    // Check if player has rook_wall upgrade
+    // Check if player has rook_wall or enhanced_rook_wall upgrade
     const pieceType = 'rook';
-    if (!match.teams[playerTeam].upgrades[pieceType] || !match.teams[playerTeam].upgrades[pieceType].includes('rook_wall')) {
+    const hasRookWall = match.teams[playerTeam].upgrades[pieceType] && 
+                        match.teams[playerTeam].upgrades[pieceType].includes('rook_wall');
+    const hasEnhancedWall = match.teams[playerTeam].upgrades[pieceType] && 
+                            match.teams[playerTeam].upgrades[pieceType].includes('enhanced_rook_wall');
+    
+    if (!hasRookWall && !hasEnhancedWall) {
       throw new Error('Rook Wall upgrade not purchased');
     }
 
     // Validate the link
-    const validation = validateRookLink(game.board, rook1Pos, rook2Pos, playerTeam);
+    const validation = validateRookLink(game.board, rook1Pos, rook2Pos, playerTeam, hasEnhancedWall);
     if (!validation.valid) {
       throw new Error(validation.reason);
     }

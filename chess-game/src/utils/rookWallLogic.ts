@@ -33,18 +33,27 @@ function getWallSquaresBetween(pos1: Position, pos2: Position, color: PieceColor
   const rowDiff = pos2.row - pos1.row;
   const colDiff = pos2.col - pos1.col;
   
-  // Only create wall if exactly 2 spaces apart (1 space between)
-  // For orthogonal movement (horizontal or vertical)
-  if ((rowDiff === 0 && Math.abs(colDiff) === 2) || (colDiff === 0 && Math.abs(rowDiff) === 2)) {
-    const wallRow = pos1.row + Math.sign(rowDiff);
-    const wallCol = pos1.col + Math.sign(colDiff);
-    walls.push({ row: wallRow, col: wallCol, color });
-  }
-  // For diagonal movement
-  else if (Math.abs(rowDiff) === 2 && Math.abs(colDiff) === 2) {
-    const wallRow = pos1.row + Math.sign(rowDiff);
-    const wallCol = pos1.col + Math.sign(colDiff);
-    walls.push({ row: wallRow, col: wallCol, color });
+  // Calculate number of spaces between rooks
+  const rowDistance = Math.abs(rowDiff);
+  const colDistance = Math.abs(colDiff);
+  
+  // Determine if this is a valid orthogonal or diagonal link (2-4 spaces apart, 1-3 spaces between)
+  const isOrthogonal = (rowDiff === 0 && colDistance >= 2 && colDistance <= 4) || 
+                       (colDiff === 0 && rowDistance >= 2 && rowDistance <= 4);
+  const isDiagonal = (rowDistance >= 2 && rowDistance <= 4) && (colDistance >= 2 && colDistance <= 4) && 
+                     (rowDistance === colDistance);
+  
+  if (isOrthogonal || isDiagonal) {
+    // Create wall squares for ALL spaces between the rooks
+    const rowStep = Math.sign(rowDiff);
+    const colStep = Math.sign(colDiff);
+    const numWalls = Math.max(rowDistance, colDistance) - 1; // Number of spaces between
+    
+    for (let i = 1; i <= numWalls; i++) {
+      const wallRow = pos1.row + (i * rowStep);
+      const wallCol = pos1.col + (i * colStep);
+      walls.push({ row: wallRow, col: wallCol, color });
+    }
   }
   
   return walls;
@@ -66,14 +75,18 @@ export function isWallSquare(position: Position, wallSquares: WallSquare[]): Wal
 /**
  * Check if a rook can be linked with another rook
  */
-export function canLinkRooks(pos1: Position, pos2: Position): boolean {
+export function canLinkRooks(pos1: Position, pos2: Position, hasEnhancedWall: boolean = false): boolean {
   const rowDiff = Math.abs(pos2.row - pos1.row);
   const colDiff = Math.abs(pos2.col - pos1.col);
   
-  // Valid configurations: horizontal, vertical, or diagonal with exactly 1 space between
-  const isHorizontal = rowDiff === 0 && colDiff === 2;
-  const isVertical = colDiff === 0 && rowDiff === 2;
-  const isDiagonal = rowDiff === 2 && colDiff === 2;
+  // Determine max distance based on upgrade level
+  const maxDistance = hasEnhancedWall ? 4 : 2;
+  const minDistance = 2;
+  
+  // Valid configurations: horizontal, vertical, or diagonal within the allowed distance
+  const isHorizontal = rowDiff === 0 && colDiff >= minDistance && colDiff <= maxDistance;
+  const isVertical = colDiff === 0 && rowDiff >= minDistance && rowDiff <= maxDistance;
+  const isDiagonal = rowDiff >= minDistance && rowDiff <= maxDistance && colDiff >= minDistance && colDiff <= maxDistance && rowDiff === colDiff;
   
   return isHorizontal || isVertical || isDiagonal;
 }
