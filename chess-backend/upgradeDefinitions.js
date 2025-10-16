@@ -179,16 +179,16 @@ const UPGRADE_DEFINITIONS = {
     }],
     activationMethod: ActivationMethod.PURCHASE
   },
-  queen_teleport: {
-    id: 'queen_teleport',
-    name: 'Royal Teleport',
-    description: 'Queen can teleport to any empty square once per game',
-    cost: 500,
+  enhanced_queens_hook: {
+    id: 'enhanced_queens_hook',
+    name: "Enhanced Queen's Hook",
+    description: 'Queen can move up to three squares in any direction after completing normal move',
+    cost: 600,
     pieceType: PieceType.QUEEN,
     effects: [{
       type: UpgradeType.SPECIAL,
-      value: 'teleport_once',
-      description: 'One teleport per game'
+      value: 'enhanced_hook_move',
+      description: 'Optional 3-square move after normal move'
     }],
     activationMethod: ActivationMethod.PURCHASE
   },

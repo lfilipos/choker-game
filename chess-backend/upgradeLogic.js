@@ -250,15 +250,28 @@ function getUpgradedQueenMoves(board, position, color, upgrades, standardMoves, 
                         queensHookState.firstMovePosition.to.row === position.row &&
                         queensHookState.firstMovePosition.to.col === position.col;
   
-  // If in hook state, only show 1-square moves in all directions
-  if (isInHookState && pieceUpgrades.includes('queens_hook')) {
+  // Determine hook distance: enhanced gets 3, regular gets 1
+  const hasEnhanced = pieceUpgrades.includes('enhanced_queens_hook');
+  const hasRegular = pieceUpgrades.includes('queens_hook');
+  const maxHookDistance = hasEnhanced ? 3 : (hasRegular ? 1 : 0);
+  
+  // If in hook state, show moves based on upgrade level
+  if (isInHookState && maxHookDistance > 0) {
     const hookMoves = [];
-    // Get all 8 adjacent squares (orthogonal + diagonal)
-    for (let dRow = -1; dRow <= 1; dRow++) {
-      for (let dCol = -1; dCol <= 1; dCol++) {
-        if (dRow === 0 && dCol === 0) continue; // Skip current position
-        
-        const newPos = { row: position.row + dRow, col: position.col + dCol };
+    
+    // Get moves in all 8 directions up to maxHookDistance
+    const directions = [
+      [-1, -1], [-1, 0], [-1, 1],
+      [0, -1],           [0, 1],
+      [1, -1],  [1, 0],  [1, 1]
+    ];
+    
+    for (const [dRow, dCol] of directions) {
+      for (let distance = 1; distance <= maxHookDistance; distance++) {
+        const newPos = { 
+          row: position.row + dRow * distance, 
+          col: position.col + dCol * distance 
+        };
         
         // Check if position is valid
         if (newPos.row >= 0 && newPos.row < 10 && newPos.col >= 0 && newPos.col < 16) {
@@ -268,28 +281,32 @@ function getUpgradedQueenMoves(board, position, color, upgrades, standardMoves, 
           
           if (!isOriginalPosition) {
             const targetPiece = board[newPos.row][newPos.col];
-            // Can move to empty squares or capture enemy pieces
-            if (!targetPiece || targetPiece.color !== color) {
-              hookMoves.push(newPos);
+            
+            // Check if already captured and this would be a capture
+            const wouldCapture = targetPiece && targetPiece.color !== color;
+            if (queensHookState.hasCaptured && wouldCapture) {
+              // Already captured once, can't capture again - stop in this direction
+              break;
             }
+            
+            // Can move to empty squares or capture enemy pieces (if not already captured)
+            if (!targetPiece) {
+              hookMoves.push(newPos);
+            } else if (targetPiece.color !== color) {
+              hookMoves.push(newPos);
+              break; // Stop after potential capture
+            } else {
+              break; // Blocked by friendly piece
+            }
+          } else {
+            break; // Original position blocks this direction
           }
+        } else {
+          break; // Out of bounds, stop in this direction
         }
       }
     }
     return hookMoves;
-  }
-  
-  // Check for teleport upgrade (once per game)
-  if (pieceUpgrades.includes('queen_teleport') && 
-      !upgradeManager.hasUsedOnceUpgrade(color, PieceType.QUEEN, 'queen_teleport', position)) {
-    // Can teleport to any empty square
-    for (let row = 0; row < 10; row++) {
-      for (let col = 0; col < 16; col++) {
-        if (!board[row][col] && (row !== position.row || col !== position.col)) {
-          moves.push({ row, col });
-        }
-      }
-    }
   }
   
   return moves;

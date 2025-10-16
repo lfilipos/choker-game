@@ -119,7 +119,8 @@ class MatchManager {
         queensHookState: {
           active: false,
           firstMovePosition: null,
-          playerTeam: null
+          playerTeam: null,
+          hasCaptured: false
         } // Track Queen's Hook state for two-step movement
       },
       createdAt: new Date(),
@@ -610,7 +611,9 @@ class MatchManager {
 
     // Handle Queen's Hook logic (optional second move after initial queen move)
     const queensHookState = match.sharedState.queensHookState;
-    const hasQueensHook = playerUpgrades.queen && playerUpgrades.queen.includes('queens_hook');
+    const hasQueensHook = playerUpgrades.queen && 
+      (playerUpgrades.queen.includes('queens_hook') || 
+       playerUpgrades.queen.includes('enhanced_queens_hook'));
     
     if (match.status === MatchStatus.ACTIVE && piece.type === PieceType.QUEEN && hasQueensHook) {
       if (!queensHookState.active) {
@@ -619,6 +622,7 @@ class MatchManager {
         queensHookState.active = true;
         queensHookState.firstMovePosition = { from: { ...from }, to: { ...to } };
         queensHookState.playerTeam = playerTeam;
+        queensHookState.hasCaptured = capturedPiece !== null;
         shouldSwitchTurns = false; // Don't switch turns yet
       } else if (queensHookState.playerTeam === playerTeam) {
         // Second queen move (hook move) - verify it's the same queen
@@ -639,11 +643,18 @@ class MatchManager {
           throw new Error('Queen cannot return to starting position during hook move');
         }
         
+        // Verify capture restriction (only one capture per turn)
+        if (queensHookState.hasCaptured && capturedPiece) {
+          console.error(`${playerTeam} tried to capture twice with queen's hook!`);
+          throw new Error('Queen can only capture once per turn with Queen\'s Hook');
+        }
+        
         console.log(`${playerTeam} completed Queen's Hook by moving queen from (${from.row},${from.col}) to (${to.row},${to.col})`);
         // Reset Queen's Hook state and allow turn switch
         queensHookState.active = false;
         queensHookState.firstMovePosition = null;
         queensHookState.playerTeam = null;
+        queensHookState.hasCaptured = false;
         shouldSwitchTurns = true;
       }
     } else if (queensHookState.active && queensHookState.playerTeam === playerTeam) {
@@ -653,6 +664,7 @@ class MatchManager {
       queensHookState.active = false;
       queensHookState.firstMovePosition = null;
       queensHookState.playerTeam = null;
+      queensHookState.hasCaptured = false;
       shouldSwitchTurns = true;
     }
 
@@ -1345,7 +1357,8 @@ class MatchManager {
       queensHookState: {
         active: queensHookState.active,
         firstMovePosition: queensHookState.firstMovePosition,
-        playerTeam: queensHookState.playerTeam
+        playerTeam: queensHookState.playerTeam,
+        hasCaptured: queensHookState.hasCaptured
       },
       isSecondQueenMove: isSecondQueenMove,
       // Include poker effect definitions for each zone

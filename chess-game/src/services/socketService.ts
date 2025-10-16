@@ -106,6 +106,7 @@ export interface MatchState {
     active: boolean;
     firstMovePosition: { from: { row: number; col: number }; to: { row: number; col: number } } | null;
     playerTeam: string | null;
+    hasCaptured: boolean;
   };
   isSecondQueenMove?: boolean;
 }

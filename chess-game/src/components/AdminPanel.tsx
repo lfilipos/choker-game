@@ -20,7 +20,7 @@ const availableUpgradeIds: Record<PieceType, string[]> = {
   knight: ['knight_extended_leap', 'knight_double_jump'],
   bishop: ['bishop_color_break', 'bishop_piercing'],
   rook: ['rook_castle_anywhere', 'rook_siege_mode'],
-  queen: ['queen_teleport', 'queen_aura'],
+  queen: ['queen_aura'],
   king: ['king_double_step', 'king_swap', 'king_royal_command']
 };
 
