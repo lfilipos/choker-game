@@ -32,7 +32,7 @@ function isValidPosition(pos) {
 }
 
 // Get possible moves for a piece
-function getPossibleMoves(board, position, upgrades = null, upgradeManager = null, rookLinks = null, nimbleKnightState = null, knightDoubleJumpState = null, royalCommandState = null) {
+function getPossibleMoves(board, position, upgrades = null, upgradeManager = null, rookLinks = null, nimbleKnightState = null, knightDoubleJumpState = null, royalCommandState = null, queensHookState = null) {
   const piece = board[position.row][position.col];
   if (!piece) return [];
   
@@ -77,7 +77,7 @@ function getPossibleMoves(board, position, upgrades = null, upgradeManager = nul
   // Apply upgrades if available
   if (upgrades && upgradeManager) {
     console.log(`Standard moves for ${piece.type}: ${standardMoves.length} moves`);
-    const upgradedMoves = applyUpgradesToMoves(board, position, piece, standardMoves, upgrades, upgradeManager, nimbleKnightState, knightDoubleJumpState, royalCommandState);
+    const upgradedMoves = applyUpgradesToMoves(board, position, piece, standardMoves, upgrades, upgradeManager, nimbleKnightState, knightDoubleJumpState, royalCommandState, queensHookState);
     console.log(`Upgraded moves: ${upgradedMoves.length} moves`);
     
     // Filter out moves that would capture rook-protected pieces
@@ -312,7 +312,7 @@ function isPieceProtected(board, position, color, upgrades) {
 }
 
 // Validate if a move is legal
-function isValidMove(board, from, to, color, upgrades = null, upgradeManager = null, rookLinks = null, nimbleKnightState = null, knightDoubleJumpState = null, royalCommandState = null) {
+function isValidMove(board, from, to, color, upgrades = null, upgradeManager = null, rookLinks = null, nimbleKnightState = null, knightDoubleJumpState = null, royalCommandState = null, queensHookState = null) {
   const piece = board[from.row][from.col];
   if (!piece) return false;
   
@@ -327,7 +327,7 @@ function isValidMove(board, from, to, color, upgrades = null, upgradeManager = n
   // Exception: Royal Command allows moving enemy pieces
   if (!isRoyalCommandMove && piece.color !== color) return false;
   
-  const possibleMoves = getPossibleMoves(board, from, upgrades, upgradeManager, rookLinks, nimbleKnightState, knightDoubleJumpState, royalCommandState);
+  const possibleMoves = getPossibleMoves(board, from, upgrades, upgradeManager, rookLinks, nimbleKnightState, knightDoubleJumpState, royalCommandState, queensHookState);
   return possibleMoves.some(move => move.row === to.row && move.col === to.col);
 }
 

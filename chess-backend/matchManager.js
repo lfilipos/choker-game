@@ -40,6 +40,7 @@ class MatchManager {
           upgrades: upgradeState.upgrades.white,
           barracks: [], // Array of pieces waiting to be placed
           unlockedPieceTypes: [], // Array of piece types that can be purchased
+          captureCount: {}, // Track captures by piece type for upgrade unlocking
           players: {
             [GameSlot.A]: null,
             [GameSlot.B]: null
@@ -50,6 +51,7 @@ class MatchManager {
           upgrades: upgradeState.upgrades.black,
           barracks: [], // Array of pieces waiting to be placed
           unlockedPieceTypes: [], // Array of piece types that can be purchased
+          captureCount: {}, // Track captures by piece type for upgrade unlocking
           players: {
             [GameSlot.A]: null,
             [GameSlot.B]: null
@@ -113,7 +115,12 @@ class MatchManager {
           kingPosition: null,
           selectedRookPosition: null,
           playerTeam: null
-        } // Track Royal Exchange state when king swaps with rook
+        }, // Track Royal Exchange state when king swaps with rook
+        queensHookState: {
+          active: false,
+          firstMovePosition: null,
+          playerTeam: null
+        } // Track Queen's Hook state for two-step movement
       },
       createdAt: new Date(),
       lastActivity: new Date()
@@ -253,7 +260,7 @@ class MatchManager {
       [TeamColor.BLACK]: match.teams[TeamColor.BLACK].upgrades
     };
     
-    if (!isValidMove(game.board, from, to, playerTeam, upgradesForValidation, match.sharedState.upgradeManager, game.rookLinks, match.sharedState.nimbleKnightState, match.sharedState.knightDoubleJumpState, match.sharedState.royalCommandState)) {
+    if (!isValidMove(game.board, from, to, playerTeam, upgradesForValidation, match.sharedState.upgradeManager, game.rookLinks, match.sharedState.nimbleKnightState, match.sharedState.knightDoubleJumpState, match.sharedState.royalCommandState, match.sharedState.queensHookState)) {
       throw new Error('Invalid move');
     }
 
@@ -360,6 +367,13 @@ class MatchManager {
       // Update team economy
       const upgradeState = match.sharedState.upgradeManager.getUpgradeState();
       match.teams[playerTeam].economy = upgradeState.economy[playerTeam];
+      
+      // Track capture count by piece type
+      if (!match.teams[playerTeam].captureCount[capturedPiece.type]) {
+        match.teams[playerTeam].captureCount[capturedPiece.type] = 0;
+      }
+      match.teams[playerTeam].captureCount[capturedPiece.type]++;
+      console.log(`${playerTeam} has now captured ${match.teams[playerTeam].captureCount[capturedPiece.type]} ${capturedPiece.type}(s)`);
       
       // Remove links for captured rook
       game.rookLinks = removeLinksForCapturedRook(game.rookLinks, to);
@@ -591,6 +605,54 @@ class MatchManager {
       nimbleKnightState.active = false;
       nimbleKnightState.knightPosition = null;
       nimbleKnightState.playerTeam = null;
+      shouldSwitchTurns = true;
+    }
+
+    // Handle Queen's Hook logic (optional second move after initial queen move)
+    const queensHookState = match.sharedState.queensHookState;
+    const hasQueensHook = playerUpgrades.queen && playerUpgrades.queen.includes('queens_hook');
+    
+    if (match.status === MatchStatus.ACTIVE && piece.type === PieceType.QUEEN && hasQueensHook) {
+      if (!queensHookState.active) {
+        // First queen move - enter hook state
+        console.log(`${playerTeam} entering Queen's Hook mode after moving queen from (${from.row},${from.col}) to (${to.row},${to.col})`);
+        queensHookState.active = true;
+        queensHookState.firstMovePosition = { from: { ...from }, to: { ...to } };
+        queensHookState.playerTeam = playerTeam;
+        shouldSwitchTurns = false; // Don't switch turns yet
+      } else if (queensHookState.playerTeam === playerTeam) {
+        // Second queen move (hook move) - verify it's the same queen
+        const isSameQueen = (from.row === queensHookState.firstMovePosition.to.row && 
+                            from.col === queensHookState.firstMovePosition.to.col);
+        
+        if (!isSameQueen) {
+          console.error(`${playerTeam} tried to move a different queen during hook move!`);
+          throw new Error('Can only move the same queen twice with Queen\'s Hook');
+        }
+        
+        // Verify queen didn't return to original starting position
+        const returnedToStart = (to.row === queensHookState.firstMovePosition.from.row &&
+                                to.col === queensHookState.firstMovePosition.from.col);
+        
+        if (returnedToStart) {
+          console.error(`${playerTeam} tried to return queen to starting position!`);
+          throw new Error('Queen cannot return to starting position during hook move');
+        }
+        
+        console.log(`${playerTeam} completed Queen's Hook by moving queen from (${from.row},${from.col}) to (${to.row},${to.col})`);
+        // Reset Queen's Hook state and allow turn switch
+        queensHookState.active = false;
+        queensHookState.firstMovePosition = null;
+        queensHookState.playerTeam = null;
+        shouldSwitchTurns = true;
+      }
+    } else if (queensHookState.active && queensHookState.playerTeam === playerTeam) {
+      // Player moved a non-queen piece during hook mode - this shouldn't happen
+      // Reset the Queen's Hook state and switch turns normally
+      console.log(`${playerTeam} moved non-queen during Queen's Hook mode, resetting state`);
+      queensHookState.active = false;
+      queensHookState.firstMovePosition = null;
+      queensHookState.playerTeam = null;
       shouldSwitchTurns = true;
     }
 
@@ -990,6 +1052,10 @@ class MatchManager {
     const playerTeam = getTeamFromRole(role);
     
     try {
+      // Check for specific upgrade requirements
+      // Note: Capture requirements can be added here later if needed
+      // Example: if (upgradeId === 'queens_hook') { check pawn captures }
+      
       match.sharedState.upgradeManager.purchaseUpgrade(playerTeam, upgradeId);
       
       // Update match state with latest upgrade/economy info
@@ -1212,6 +1278,10 @@ class MatchManager {
     const royalCommandState = match.sharedState.royalCommandState;
     const isSecondRoyalCommand = royalCommandState.active && royalCommandState.playerTeam === playerTeam;
 
+    // Check if this player is in Queen's Hook mode
+    const queensHookState = match.sharedState.queensHookState;
+    const isSecondQueenMove = queensHookState.active && queensHookState.playerTeam === playerTeam;
+
     return {
       id: match.id,
       status: match.status,
@@ -1272,6 +1342,12 @@ class MatchManager {
         selectedRookPosition: match.sharedState.royalExchangeState.selectedRookPosition,
         playerTeam: match.sharedState.royalExchangeState.playerTeam
       },
+      queensHookState: {
+        active: queensHookState.active,
+        firstMovePosition: queensHookState.firstMovePosition,
+        playerTeam: queensHookState.playerTeam
+      },
+      isSecondQueenMove: isSecondQueenMove,
       // Include poker effect definitions for each zone
       controlZonePokerEffects: Object.entries(CONTROL_ZONE_POKER_EFFECTS).reduce((acc, [zoneId, effectId]) => {
         const effect = POKER_EFFECTS[effectId];

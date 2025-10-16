@@ -411,6 +411,57 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Skip second queen move (Queen's Hook)
+  socket.on('skip_second_queen_move', () => {
+    try {
+      const playerInfo = matchManager.playerSockets.get(socket.id);
+      if (!playerInfo) {
+        throw new Error('Player not found');
+      }
+
+      const { matchId, role } = playerInfo;
+      const match = matchManager.matches.get(matchId);
+      
+      if (!match) {
+        throw new Error('Match not found');
+      }
+
+      const playerTeam = getTeamFromRole(role);
+      const queensHookState = match.sharedState.queensHookState;
+
+      // Verify the player is in Queen's Hook state
+      if (!queensHookState.active || queensHookState.playerTeam !== playerTeam) {
+        throw new Error('Not in Queen\'s Hook mode');
+      }
+
+      console.log(`${playerTeam} finalized queen position (skipped second move)`);
+
+      // Reset Queen's Hook state
+      queensHookState.active = false;
+      queensHookState.firstMovePosition = null;
+      queensHookState.playerTeam = null;
+
+      // Switch turns
+      const game = match.games.A; // Chess game
+      game.currentPlayer = game.currentPlayer === 'white' ? 'black' : 'white';
+      
+      match.lastActivity = new Date();
+
+      // Send updated match state to all players in the match
+      for (const [socketId] of matchManager.playerSockets) {
+        if (matchManager.playerSockets.get(socketId)?.matchId === match.id) {
+          const playerMatchState = matchManager.getMatchState(match.id, socketId);
+          io.to(socketId).emit('match_state_updated', {
+            matchState: playerMatchState,
+            reason: 'second_queen_move_skipped'
+          });
+        }
+      }
+    } catch (error) {
+      socket.emit('error', { message: error.message });
+    }
+  });
+
   // Initiate Royal Command
   socket.on('initiate_royal_command', (data) => {
     try {
@@ -870,7 +921,8 @@ io.on('connection', (socket) => {
         game.rookLinks || [],
         match.sharedState.nimbleKnightState,
         match.sharedState.knightDoubleJumpState,
-        match.sharedState.royalCommandState
+        match.sharedState.royalCommandState,
+        match.sharedState.queensHookState
       );
       
       // Filter moves for knight double jump restrictions

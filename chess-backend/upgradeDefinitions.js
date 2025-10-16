@@ -166,6 +166,19 @@ const UPGRADE_DEFINITIONS = {
   },
 
   // QUEEN UPGRADES
+  queens_hook: {
+    id: 'queens_hook',
+    name: "Queen's Hook",
+    description: 'Queen can move one square in any direction after completing normal move',
+    cost: 300,
+    pieceType: PieceType.QUEEN,
+    effects: [{
+      type: UpgradeType.SPECIAL,
+      value: 'hook_move',
+      description: 'Optional 1-square move after normal move'
+    }],
+    activationMethod: ActivationMethod.PURCHASE
+  },
   queen_teleport: {
     id: 'queen_teleport',
     name: 'Royal Teleport',

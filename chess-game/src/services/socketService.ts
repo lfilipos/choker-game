@@ -102,6 +102,12 @@ export interface MatchState {
     selectedRookPosition: { row: number; col: number } | null;
     playerTeam: string | null;
   };
+  queensHookState?: {
+    active: boolean;
+    firstMovePosition: { from: { row: number; col: number }; to: { row: number; col: number } } | null;
+    playerTeam: string | null;
+  };
+  isSecondQueenMove?: boolean;
 }
 
 class SocketService {
@@ -325,6 +331,20 @@ class SocketService {
       }
 
       this.socket.emit('skip_second_nimble_move');
+
+      // The response will come through the 'match_state_updated' event listener
+      resolve();
+    });
+  }
+
+  skipSecondQueenMove(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if (!this.socket) {
+        reject(new Error('Not connected'));
+        return;
+      }
+
+      this.socket.emit('skip_second_queen_move');
 
       // The response will come through the 'match_state_updated' event listener
       resolve();

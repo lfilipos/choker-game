@@ -632,6 +632,17 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
           setError("You must complete the nimble knight move or skip the second move!");
           return;
         }
+        // During queen hook second move, only allow selecting the queen that moved
+        if (matchState?.isSecondQueenMove && clickedPiece.type === 'queen') {
+          const queenPos = matchState.queensHookState?.firstMovePosition?.to;
+          if (!queenPos || position.row !== queenPos.row || position.col !== queenPos.col) {
+            setError("You can only move the same queen during hook move!");
+            return;
+          }
+        } else if (matchState?.isSecondQueenMove && clickedPiece.type !== 'queen') {
+          setError("You must complete the queen's hook move or finalize position!");
+          return;
+        }
         setSelectedSquare(position);
         setPossibleMoves([]); // Clear moves while we wait for server response
         socketService.getPossibleMoves(position, 'A'); // Request moves from server for chess game
@@ -674,6 +685,17 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
         }
       } else if (matchState?.isSecondNimbleMove && clickedPiece.type !== 'knight') {
         setError("You must complete the nimble knight move or skip the second move!");
+        return;
+      }
+      // During queen hook second move, only allow selecting the queen that moved
+      if (matchState?.isSecondQueenMove && clickedPiece.type === 'queen') {
+        const queenPos = matchState.queensHookState?.firstMovePosition?.to;
+        if (!queenPos || position.row !== queenPos.row || position.col !== queenPos.col) {
+          setError("You can only move the same queen during hook move!");
+          return;
+        }
+      } else if (matchState?.isSecondQueenMove && clickedPiece.type !== 'queen') {
+        setError("You must complete the queen's hook move or finalize position!");
         return;
       }
       // During Royal Command second move, only allow selecting the controlled piece
@@ -742,6 +764,13 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
   const handleSkipSecondNimbleMove = () => {
     socketService.skipSecondNimbleMove().catch((error) => {
       console.error('Skip second nimble move error:', error);
+      setError(error.message);
+    });
+  };
+
+  const handleSkipSecondQueenMove = () => {
+    socketService.skipSecondQueenMove().catch((error) => {
+      console.error('Skip second queen move error:', error);
       setError(error.message);
     });
   };
@@ -966,6 +995,11 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
       return 'Your turn - Nimble Knight Second Move Available';
     }
 
+    // Check for Queen's Hook mode
+    if (matchState?.isSecondQueenMove) {
+      return 'Your turn - Queen\'s Hook Second Move Available';
+    }
+
     return gameState.isPlayerTurn ? 'Your turn' : 'Opponent\'s turn';
   };
 
@@ -1017,6 +1051,15 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
                 title="Skip the nimble knight's second move and end your turn"
               >
                 Skip Nimble Knight Second Move
+              </button>
+            )}
+            {matchState?.isSecondQueenMove && (
+              <button 
+                onClick={handleSkipSecondQueenMove} 
+                className="skip-second-move-button"
+                title="Finalize the queen's position and end your turn"
+              >
+                Finalize Queen Position
               </button>
             )}
           </div>

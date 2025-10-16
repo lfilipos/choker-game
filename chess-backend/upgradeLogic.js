@@ -239,9 +239,45 @@ function getUpgradedRookMoves(board, position, color, upgrades, standardMoves) {
 }
 
 // Get upgraded queen moves
-function getUpgradedQueenMoves(board, position, color, upgrades, standardMoves, upgradeManager) {
+function getUpgradedQueenMoves(board, position, color, upgrades, standardMoves, upgradeManager, queensHookState) {
   const moves = [...standardMoves];
   const pieceUpgrades = upgrades[color][PieceType.QUEEN] || [];
+  
+  // Check if in Queen's Hook state (second move)
+  const isInHookState = queensHookState && queensHookState.active && 
+                        queensHookState.playerTeam === color &&
+                        queensHookState.firstMovePosition &&
+                        queensHookState.firstMovePosition.to.row === position.row &&
+                        queensHookState.firstMovePosition.to.col === position.col;
+  
+  // If in hook state, only show 1-square moves in all directions
+  if (isInHookState && pieceUpgrades.includes('queens_hook')) {
+    const hookMoves = [];
+    // Get all 8 adjacent squares (orthogonal + diagonal)
+    for (let dRow = -1; dRow <= 1; dRow++) {
+      for (let dCol = -1; dCol <= 1; dCol++) {
+        if (dRow === 0 && dCol === 0) continue; // Skip current position
+        
+        const newPos = { row: position.row + dRow, col: position.col + dCol };
+        
+        // Check if position is valid
+        if (newPos.row >= 0 && newPos.row < 10 && newPos.col >= 0 && newPos.col < 16) {
+          // Cannot return to original starting position
+          const isOriginalPosition = (newPos.row === queensHookState.firstMovePosition.from.row &&
+                                     newPos.col === queensHookState.firstMovePosition.from.col);
+          
+          if (!isOriginalPosition) {
+            const targetPiece = board[newPos.row][newPos.col];
+            // Can move to empty squares or capture enemy pieces
+            if (!targetPiece || targetPiece.color !== color) {
+              hookMoves.push(newPos);
+            }
+          }
+        }
+      }
+    }
+    return hookMoves;
+  }
   
   // Check for teleport upgrade (once per game)
   if (pieceUpgrades.includes('queen_teleport') && 
@@ -329,7 +365,7 @@ function getRoyalCommandControlledMoves(board, position, piece, controllingColor
 }
 
 // Apply upgrades to possible moves
-function applyUpgradesToMoves(board, position, piece, standardMoves, upgrades, upgradeManager, nimbleKnightState, knightDoubleJumpState, royalCommandState) {
+function applyUpgradesToMoves(board, position, piece, standardMoves, upgrades, upgradeManager, nimbleKnightState, knightDoubleJumpState, royalCommandState, queensHookState) {
   console.log('applyUpgradesToMoves called for', piece.type, 'at', position);
   console.log('Upgrades:', upgrades);
   
@@ -348,7 +384,7 @@ function applyUpgradesToMoves(board, position, piece, standardMoves, upgrades, u
     case PieceType.ROOK:
       return getUpgradedRookMoves(board, position, piece.color, upgrades, standardMoves);
     case PieceType.QUEEN:
-      return getUpgradedQueenMoves(board, position, piece.color, upgrades, standardMoves, upgradeManager);
+      return getUpgradedQueenMoves(board, position, piece.color, upgrades, standardMoves, upgradeManager, queensHookState);
     case PieceType.KING:
       return getUpgradedKingMoves(board, position, piece.color, upgrades, standardMoves, upgradeManager, royalCommandState);
     default:
