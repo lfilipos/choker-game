@@ -96,6 +96,12 @@ export interface MatchState {
     playerTeam: string | null;
   };
   isSecondRoyalCommand?: boolean;
+  royalExchangeState?: {
+    active: boolean;
+    kingPosition: { row: number; col: number } | null;
+    selectedRookPosition: { row: number; col: number } | null;
+    playerTeam: string | null;
+  };
 }
 
 class SocketService {
@@ -364,6 +370,53 @@ class SocketService {
       }
 
       this.socket.emit('cancel_royal_command');
+
+      // The response will come through the 'match_state_updated' event listener
+      resolve();
+    });
+  }
+
+  initiateRoyalExchange(kingPosition: Position): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if (!this.socket) {
+        reject(new Error('Not connected'));
+        return;
+      }
+
+      this.socket.emit('initiate_royal_exchange', {
+        kingPosition
+      });
+
+      // The response will come through the 'match_state_updated' event listener
+      resolve();
+    });
+  }
+
+  executeRoyalExchange(kingPosition: Position, rookPosition: Position): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if (!this.socket) {
+        reject(new Error('Not connected'));
+        return;
+      }
+
+      this.socket.emit('execute_royal_exchange', {
+        kingPosition,
+        rookPosition
+      });
+
+      // The response will come through the 'match_state_updated' event listener
+      resolve();
+    });
+  }
+
+  cancelRoyalExchange(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if (!this.socket) {
+        reject(new Error('Not connected'));
+        return;
+      }
+
+      this.socket.emit('cancel_royal_exchange');
 
       // The response will come through the 'match_state_updated' event listener
       resolve();

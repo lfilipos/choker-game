@@ -66,6 +66,18 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
     controlledPiecePosition: null,
     playerTeam: null
   });
+  const [royalExchangeMode, setRoyalExchangeMode] = useState(false);
+  const [royalExchangeState, setRoyalExchangeState] = useState<{
+    active: boolean;
+    kingPosition: Position | null;
+    selectedRookPosition: Position | null;
+    playerTeam: PieceColor | null;
+  }>({
+    active: false,
+    kingPosition: null,
+    selectedRookPosition: null,
+    playerTeam: null
+  });
 
   // Convert match state to game state format
   const convertMatchStateToGameState = useCallback((matchState: MatchState): MultiplayerGameState | null => {
@@ -233,6 +245,21 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
         // If Royal Command is no longer active, exit Royal Command mode
         if (!data.matchState.royalCommandState.active && royalCommandMode) {
           setRoyalCommandMode(false);
+          setError(null);
+        }
+      }
+      // Update Royal Exchange state
+      if (data.matchState.royalExchangeState) {
+        setRoyalExchangeState({
+          active: data.matchState.royalExchangeState.active,
+          kingPosition: data.matchState.royalExchangeState.kingPosition,
+          selectedRookPosition: data.matchState.royalExchangeState.selectedRookPosition,
+          playerTeam: data.matchState.royalExchangeState.playerTeam as PieceColor | null
+        });
+        
+        // If Royal Exchange is no longer active, exit Royal Exchange mode
+        if (!data.matchState.royalExchangeState.active && royalExchangeMode) {
+          setRoyalExchangeMode(false);
           setError(null);
         }
       }
@@ -406,6 +433,31 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
 
   const handleSquareClick = useCallback((position: Position) => {
     console.log('handleSquareClick called:', { position, gameState: gameState?.status, isPlayerTurn: gameState?.isPlayerTurn, playerColor: gameState?.playerColor });
+    
+    // Handle Royal Exchange mode
+    if (royalExchangeMode && gameState && royalExchangeState.active) {
+      const clickedPiece = gameState.board[position.row][position.col];
+      
+      // Check if clicking on a friendly rook
+      if (clickedPiece && clickedPiece.type === 'rook' && clickedPiece.color === gameState.playerColor) {
+        // Execute the swap
+        if (royalExchangeState.kingPosition) {
+          console.log('Executing Royal Exchange swap');
+          socketService.executeRoyalExchange(royalExchangeState.kingPosition, position).catch((error) => {
+            console.error('Error executing Royal Exchange:', error);
+            setError(error.message);
+          });
+          
+          // Clear UI state (backend will update via match_state_updated)
+          setRoyalExchangeMode(false);
+          setSelectedSquare(null);
+          setPossibleMoves([]);
+        }
+      } else {
+        setError('Please click on a friendly rook to swap with');
+      }
+      return;
+    }
     
     // Handle Royal Command mode
     if (royalCommandMode && gameState) {
@@ -753,6 +805,71 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
     setPossibleMoves([]);
   };
 
+  const handleToggleRoyalExchange = () => {
+    if (!gameState || !matchState) return;
+    
+    // If turning off Royal Exchange, use cancel handler
+    if (royalExchangeMode) {
+      handleCancelRoyalExchange();
+      return;
+    }
+    
+    // Check if player has Royal Exchange upgrade
+    const playerTeam = gameState.playerColor;
+    if (!playerTeam) return;
+    
+    const hasRoyalExchange = matchState.teams[playerTeam]?.upgrades?.king?.includes('king_swap');
+    
+    if (!hasRoyalExchange) {
+      setError('Royal Exchange upgrade not purchased');
+      return;
+    }
+    
+    // Check if player has enough money (400)
+    const playerBalance = matchState.teams[playerTeam]?.economy || 0;
+    if (playerBalance < 400) {
+      setError('Insufficient funds. Royal Exchange costs 400');
+      return;
+    }
+    
+    // Check if a king is selected
+    if (!selectedSquare) {
+      setError('Select your king first to use Royal Exchange');
+      return;
+    }
+    
+    const selectedPiece = gameState.board[selectedSquare.row][selectedSquare.col];
+    if (!selectedPiece || selectedPiece.type !== 'king' || selectedPiece.color !== playerTeam) {
+      setError('Select your king to use Royal Exchange');
+      return;
+    }
+    
+    // Activate Royal Exchange mode
+    setRoyalExchangeMode(true);
+    setError('Royal Exchange active: Click on a friendly rook to swap with (costs 400)');
+    
+    // Notify backend
+    socketService.initiateRoyalExchange(selectedSquare).catch((error) => {
+      console.error('Error initiating Royal Exchange:', error);
+      setError(error.message);
+      setRoyalExchangeMode(false);
+    });
+  };
+
+  const handleCancelRoyalExchange = () => {
+    // If Royal Exchange was initiated, tell backend to cancel (without ending turn or deducting money)
+    if (royalExchangeState.active) {
+      socketService.cancelRoyalExchange().catch((error) => {
+        console.error('Error canceling Royal Exchange:', error);
+      });
+    }
+    
+    setRoyalExchangeMode(false);
+    setError(null);
+    setSelectedSquare(null);
+    setPossibleMoves([]);
+  };
+
   const handlePurchaseUpgrade = (upgradeId: string) => {
     socketService.purchaseUpgrade(upgradeId);
   };
@@ -946,6 +1063,19 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
                     {royalCommandMode ? '❌ Cancel Royal Command' : '👑 Royal Command'}
                   </button>
                 )}
+                {/* Show Royal Exchange button if player has the upgrade and it's their turn */}
+                {gameState.playerColor && 
+                 gameState.upgrades[gameState.playerColor].king && 
+                 gameState.upgrades[gameState.playerColor].king.includes('king_swap') &&
+                 gameState.isPlayerTurn && (
+                  <button 
+                    onClick={handleToggleRoyalExchange} 
+                    className={`royal-exchange-button ${royalExchangeMode ? 'active' : ''}`}
+                    title="Swap king with a friendly rook for 400"
+                  >
+                    {royalExchangeMode ? '❌ Cancel Royal Exchange' : '🏰 Royal Exchange'}
+                  </button>
+                )}
                 <button 
                   onClick={() => setShowAdminPanel(!showAdminPanel)} 
                   className="admin-panel-button"
@@ -1053,11 +1183,27 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
               upgrades={gameState.upgrades}
               rookLinks={rookLinks}
               lastRookLink={lastRookLink}
-              highlightedSquares={placementMode ? 
-                Array.from({length: 16}, (_, col) => ({
-                  row: gameState.playerColor === 'white' ? 9 : 0,
-                  col
-                })).filter(pos => !gameState.board[pos.row][pos.col]) : []
+              highlightedSquares={
+                placementMode ? 
+                  Array.from({length: 16}, (_, col) => ({
+                    row: gameState.playerColor === 'white' ? 9 : 0,
+                    col
+                  })).filter(pos => !gameState.board[pos.row][pos.col]) 
+                : royalExchangeMode && royalExchangeState.active && gameState.playerColor ?
+                  // Highlight all friendly rooks when Royal Exchange is active
+                  (() => {
+                    const rookPositions: Position[] = [];
+                    for (let row = 0; row < gameState.board.length; row++) {
+                      for (let col = 0; col < gameState.board[row].length; col++) {
+                        const piece = gameState.board[row][col];
+                        if (piece && piece.type === 'rook' && piece.color === gameState.playerColor) {
+                          rookPositions.push({ row, col });
+                        }
+                      }
+                    }
+                    return rookPositions;
+                  })()
+                : []
               }
               lastMove={gameState.moveHistory && gameState.moveHistory.length > 0 ? 
                 gameState.moveHistory[gameState.moveHistory.length - 1] : null

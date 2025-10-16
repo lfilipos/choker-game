@@ -107,7 +107,13 @@ class MatchManager {
           kingPosition: null,
           controlledPiecePosition: null,
           playerTeam: null
-        } // Track Royal Command state when king controls a piece
+        }, // Track Royal Command state when king controls a piece
+        royalExchangeState: {
+          active: false,
+          kingPosition: null,
+          selectedRookPosition: null,
+          playerTeam: null
+        } // Track Royal Exchange state when king swaps with rook
       },
       createdAt: new Date(),
       lastActivity: new Date()
@@ -1232,6 +1238,12 @@ class MatchManager {
         playerTeam: royalCommandState.playerTeam
       },
       isSecondRoyalCommand: isSecondRoyalCommand,
+      royalExchangeState: {
+        active: match.sharedState.royalExchangeState.active,
+        kingPosition: match.sharedState.royalExchangeState.kingPosition,
+        selectedRookPosition: match.sharedState.royalExchangeState.selectedRookPosition,
+        playerTeam: match.sharedState.royalExchangeState.playerTeam
+      },
       // Include poker effect definitions for each zone
       controlZonePokerEffects: Object.entries(CONTROL_ZONE_POKER_EFFECTS).reduce((acc, [zoneId, effectId]) => {
         const effect = POKER_EFFECTS[effectId];

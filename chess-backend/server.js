@@ -583,6 +583,211 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Initiate Royal Exchange (king selects a rook to swap with)
+  socket.on('initiate_royal_exchange', (data) => {
+    try {
+      const playerInfo = matchManager.playerSockets.get(socket.id);
+      if (!playerInfo) {
+        throw new Error('Player not found');
+      }
+
+      const { matchId, role } = playerInfo;
+      const match = matchManager.matches.get(matchId);
+      
+      if (!match) {
+        throw new Error('Match not found');
+      }
+
+      const playerTeam = getTeamFromRole(role);
+      const game = match.games.A; // Chess game
+      
+      // Verify it's player's turn
+      if (game.currentPlayer !== playerTeam) {
+        throw new Error('Not your turn');
+      }
+
+      const { kingPosition } = data;
+      const royalExchangeState = match.sharedState.royalExchangeState;
+
+      // Verify the king position has a king of the player's color
+      const kingPiece = game.board[kingPosition.row][kingPosition.col];
+      if (!kingPiece || kingPiece.type !== 'king' || kingPiece.color !== playerTeam) {
+        throw new Error('Invalid king position');
+      }
+
+      // Verify player has the Royal Exchange upgrade
+      const teamData = match.teams[playerTeam];
+      if (!teamData.upgrades.king || !teamData.upgrades.king.includes('king_swap')) {
+        throw new Error('Royal Exchange upgrade not purchased');
+      }
+
+      console.log(`${playerTeam} initiating Royal Exchange: king at (${kingPosition.row},${kingPosition.col})`);
+
+      // Set Royal Exchange state
+      royalExchangeState.active = true;
+      royalExchangeState.kingPosition = kingPosition;
+      royalExchangeState.selectedRookPosition = null;
+      royalExchangeState.playerTeam = playerTeam;
+
+      match.lastActivity = new Date();
+
+      // Send updated match state to all players in the match
+      for (const [socketId] of matchManager.playerSockets) {
+        if (matchManager.playerSockets.get(socketId)?.matchId === match.id) {
+          const playerMatchState = matchManager.getMatchState(match.id, socketId);
+          io.to(socketId).emit('match_state_updated', {
+            matchState: playerMatchState,
+            reason: 'royal_exchange_initiated'
+          });
+        }
+      }
+    } catch (error) {
+      socket.emit('error', { message: error.message });
+    }
+  });
+
+  // Cancel Royal Exchange (reset state without ending turn or deducting money)
+  socket.on('cancel_royal_exchange', () => {
+    try {
+      const playerInfo = matchManager.playerSockets.get(socket.id);
+      if (!playerInfo) {
+        throw new Error('Player not found');
+      }
+
+      const { matchId, role } = playerInfo;
+      const match = matchManager.matches.get(matchId);
+      
+      if (!match) {
+        throw new Error('Match not found');
+      }
+
+      const playerTeam = getTeamFromRole(role);
+      const royalExchangeState = match.sharedState.royalExchangeState;
+
+      // Verify the player is in Royal Exchange state
+      if (!royalExchangeState.active || royalExchangeState.playerTeam !== playerTeam) {
+        throw new Error('Not in Royal Exchange mode');
+      }
+
+      console.log(`${playerTeam} canceled Royal Exchange (without ending turn or deducting money)`);
+
+      // Reset Royal Exchange state BUT DON'T switch turns or deduct money
+      royalExchangeState.active = false;
+      royalExchangeState.kingPosition = null;
+      royalExchangeState.selectedRookPosition = null;
+      royalExchangeState.playerTeam = null;
+
+      match.lastActivity = new Date();
+
+      // Send updated match state to all players in the match
+      for (const [socketId] of matchManager.playerSockets) {
+        if (matchManager.playerSockets.get(socketId)?.matchId === match.id) {
+          const playerMatchState = matchManager.getMatchState(match.id, socketId);
+          io.to(socketId).emit('match_state_updated', {
+            matchState: playerMatchState,
+            reason: 'royal_exchange_canceled'
+          });
+        }
+      }
+    } catch (error) {
+      socket.emit('error', { message: error.message });
+    }
+  });
+
+  // Execute Royal Exchange (swap king with selected rook for 400 cost)
+  socket.on('execute_royal_exchange', (data) => {
+    try {
+      const playerInfo = matchManager.playerSockets.get(socket.id);
+      if (!playerInfo) {
+        throw new Error('Player not found');
+      }
+
+      const { matchId, role } = playerInfo;
+      const match = matchManager.matches.get(matchId);
+      
+      if (!match) {
+        throw new Error('Match not found');
+      }
+
+      const playerTeam = getTeamFromRole(role);
+      const game = match.games.A; // Chess game
+      const teamData = match.teams[playerTeam];
+      
+      // Verify it's player's turn
+      if (game.currentPlayer !== playerTeam) {
+        throw new Error('Not your turn');
+      }
+
+      const { kingPosition, rookPosition } = data;
+      const royalExchangeState = match.sharedState.royalExchangeState;
+
+      // Verify the player is in Royal Exchange state
+      if (!royalExchangeState.active || royalExchangeState.playerTeam !== playerTeam) {
+        throw new Error('Not in Royal Exchange mode');
+      }
+
+      // Verify positions are valid
+      const kingPiece = game.board[kingPosition.row][kingPosition.col];
+      const rookPiece = game.board[rookPosition.row][rookPosition.col];
+
+      if (!kingPiece || kingPiece.type !== 'king' || kingPiece.color !== playerTeam) {
+        throw new Error('Invalid king position');
+      }
+
+      if (!rookPiece || rookPiece.type !== 'rook' || rookPiece.color !== playerTeam) {
+        throw new Error('Invalid rook position');
+      }
+
+      // Check if player has enough money (400 per use)
+      const ROYAL_EXCHANGE_COST = 400;
+      if (teamData.economy < ROYAL_EXCHANGE_COST) {
+        throw new Error(`Insufficient funds. Royal Exchange costs ${ROYAL_EXCHANGE_COST}. Current balance: ${teamData.economy}`);
+      }
+
+      console.log(`${playerTeam} executing Royal Exchange: swapping king at (${kingPosition.row},${kingPosition.col}) with rook at (${rookPosition.row},${rookPosition.col})`);
+
+      // Deduct the cost
+      teamData.economy -= ROYAL_EXCHANGE_COST;
+      match.sharedState.upgradeManager.economy[playerTeam] -= ROYAL_EXCHANGE_COST;
+
+      // Perform the swap
+      game.board[kingPosition.row][kingPosition.col] = rookPiece;
+      game.board[rookPosition.row][rookPosition.col] = kingPiece;
+
+      // Add to move history
+      game.moveHistory.push({
+        from: kingPosition,
+        to: rookPosition,
+        piece: kingPiece,
+        isRoyalExchange: true
+      });
+
+      // Reset Royal Exchange state
+      royalExchangeState.active = false;
+      royalExchangeState.kingPosition = null;
+      royalExchangeState.selectedRookPosition = null;
+      royalExchangeState.playerTeam = null;
+
+      // Switch turns
+      game.currentPlayer = game.currentPlayer === 'white' ? 'black' : 'white';
+      
+      match.lastActivity = new Date();
+
+      // Send updated match state to all players in the match
+      for (const [socketId] of matchManager.playerSockets) {
+        if (matchManager.playerSockets.get(socketId)?.matchId === match.id) {
+          const playerMatchState = matchManager.getMatchState(match.id, socketId);
+          io.to(socketId).emit('match_state_updated', {
+            matchState: playerMatchState,
+            reason: 'royal_exchange_executed'
+          });
+        }
+      }
+    } catch (error) {
+      socket.emit('error', { message: error.message });
+    }
+  });
+
   // Get current match state
   socket.on('get_match_state', (data) => {
     try {

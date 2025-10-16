@@ -89,6 +89,13 @@ export interface RoyalCommandState {
   playerTeam: PieceColor | null;
 }
 
+export interface RoyalExchangeState {
+  active: boolean;
+  kingPosition: Position | null;
+  selectedRookPosition: Position | null;
+  playerTeam: PieceColor | null;
+}
+
 export interface BarracksPiece {
   type: PieceType;
   color: PieceColor;

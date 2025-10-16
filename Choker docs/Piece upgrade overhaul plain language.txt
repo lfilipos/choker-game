@@ -224,7 +224,8 @@ King
     * Your team must have 1250 in their treasury  
   * Cost:  
     * 450  
-  * Functional requirements:  
+  * Functional requirements:
+    * Requires player to pay 400 to use; this amount is subtracted from the bank when used
     * When a player selects a king, that king has the option to swap places with any friendly castle on the board. This is effectively a long range “castle” with the king  
     * When the king is selected, the other available castles should be highlighted.  
-    * If the player clicks on one of the castles, the king will swap places with it.
+    * A UI is needed to give the king the option to select a castle to swap with when the upgrade is active.

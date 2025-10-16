@@ -285,19 +285,9 @@ function getUpgradedKingMoves(board, position, color, upgrades, standardMoves, u
     }
   }
   
-  // Check for swap upgrade (once per game)
-  if (pieceUpgrades.includes('king_swap') && 
-      !upgradeManager.hasUsedOnceUpgrade(color, PieceType.KING, 'king_swap', position)) {
-    // Can swap with any allied piece
-    for (let row = 0; row < 10; row++) {
-      for (let col = 0; col < 16; col++) {
-        const piece = board[row][col];
-        if (piece && piece.color === color && piece.type !== PieceType.KING) {
-          moves.push({ row, col });
-        }
-      }
-    }
-  }
+  // Royal Exchange upgrade - handled via special mode, not as regular moves
+  // The swap is executed through the Royal Exchange socket handlers, not the normal move system
+  // So we don't add rooks to the king's possible moves here
   
   // Royal Command is handled separately via frontend mode, not as king moves
   // The king just has its normal movement options

@@ -87,13 +87,13 @@ const UPGRADE_DEFINITIONS = {
   bishop_color_break: {
     id: 'bishop_color_break',
     name: 'Color Transcendence',
-    description: 'Bishops can move one square orthogonally once per game',
+    description: 'Bishops can move one square orthogonally once per turn',
     cost: 250,
     pieceType: PieceType.BISHOP,
     effects: [{
       type: UpgradeType.SPECIAL,
       value: 'color_change',
-      description: 'One orthogonal move per game'
+      description: 'One orthogonal move per turn'
     }],
     activationMethod: ActivationMethod.PURCHASE
   },
@@ -211,13 +211,13 @@ const UPGRADE_DEFINITIONS = {
   king_swap: {
     id: 'king_swap',
     name: 'Royal Exchange',
-    description: 'King can swap positions with any allied piece once per game',
-    cost: 400,
+    description: 'Select your king, click Royal Exchange button, then click a rook to swap (400 per use)',
+    cost: 450,
     pieceType: PieceType.KING,
     effects: [{
       type: UpgradeType.SPECIAL,
       value: 'swap_position',
-      description: 'Swap with any ally once'
+      description: 'Activate Royal Exchange mode to swap king with any friendly rook for 400'
     }],
     activationMethod: ActivationMethod.ACHIEVEMENT
   },
