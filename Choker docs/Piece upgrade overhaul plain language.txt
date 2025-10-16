@@ -186,11 +186,12 @@ Queen
     * 750  
   * Functional requirements:  
     * Any friendly pieces that are within one square of a friendly queen attempt to evade capture.  
-    * When an enemy piece lands on a friendly piece within one square of the queen and tries to capture it, that friendly piece attempts to move backwards 1 square.  
+    * When an enemy piece tries to capture a friendly piece within one square of the queen, that friendly piece attempts to move backwards 1 square.  
     * If the piece can successfully move back one square, it does so and the attacking enemy piece is now in the position the friendly piece formerly occupied.  
     * If the piece cannot successfully move back one square, either because there is another piece (friendly or enemy) already occupying that square, or if there is no place to move because of the edge of the game board, then that piece is captured.  
     * If a piece within one square of the queen is attacked by an enemy piece, that piece must attempt to evade.  
     * Pieces lose their ability to evade as soon as they are no longer within one square of a queen.
+    * Pieces protected by the queen should have a shield UI element similar to the rook's pawn protection or the bishop's royal protection 
 
 King
 

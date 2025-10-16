@@ -80,13 +80,13 @@ function getPossibleMoves(board, position, upgrades = null, upgradeManager = nul
     const upgradedMoves = applyUpgradesToMoves(board, position, piece, standardMoves, upgrades, upgradeManager, nimbleKnightState, knightDoubleJumpState, royalCommandState);
     console.log(`Upgraded moves: ${upgradedMoves.length} moves`);
     
-    // Filter out moves that would capture protected pieces
+    // Filter out moves that would capture rook-protected pieces
+    // Note: Queen aura protection is now handled as evasion during move execution, not filtering
     const filteredMoves = upgradedMoves.filter(move => {
       const targetPiece = board[move.row][move.col];
       if (targetPiece && targetPiece.color !== piece.color) {
-        // This is a capture move, check if the target is protected
-        const isProtected = isProtectedByQueenAura(board, move, targetPiece.color, upgrades) ||
-                           isProtectedByRook(board, move, targetPiece.color, upgrades);
+        // This is a capture move, check if the target is protected by rook
+        const isProtected = isProtectedByRook(board, move, targetPiece.color, upgrades);
         return !isProtected;
       }
       return true; // Non-capture moves are always valid

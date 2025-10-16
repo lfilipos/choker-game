@@ -1,7 +1,7 @@
 import React from 'react';
 import { ChessPiece, Board, Position } from '../types';
 import { UpgradeState } from '../types/upgrades';
-import { isProtectedByRook } from '../utils/chessLogic';
+import { isProtectedByRook, isProtectedByQueenAura } from '../utils/chessLogic';
 import './ChessPieceComponent.css';
 import './ChessPieceUpgrade.css';
 
@@ -126,9 +126,18 @@ export const ChessPieceComponent: React.FC<ChessPieceComponentProps> = ({ piece,
   const isRoyalProtector = isProvidingRoyalProtection();
   const isRoyalProtected = isProtectedByRoyalProtection();
 
+  // Check if this piece is protected by queen's aura
+  const isQueenProtected = board && position && 
+                          isProtectedByQueenAura(board, position, piece.color, upgrades);
+  
+  // Check if this queen is providing protection
+  const isQueenProtecting = board && position && piece.type === 'queen' && 
+                           upgrades && upgrades[piece.color] && upgrades[piece.color].queen && 
+                           upgrades[piece.color].queen.includes('queen_aura');
+
   return (
-    <div className={`chess-piece ${piece.color} ${upgradeCount > 0 ? 'upgraded-piece' : ''} ${isProtected ? 'protected-piece' : ''} ${isProtecting ? 'protecting-piece' : ''} ${isRoyalProtected ? 'royal-protected-piece' : ''} ${isRoyalProtector ? 'royal-protector-piece' : ''}`}>
-      <span className={`${upgradeCount > 0 ? 'upgrade-glow' : ''} ${isProtected ? 'protection-glow' : ''} ${isProtecting ? 'protecting-glow' : ''} ${isRoyalProtected ? 'royal-protection-glow' : ''} ${isRoyalProtector ? 'royal-protector-glow' : ''}`}>
+    <div className={`chess-piece ${piece.color} ${upgradeCount > 0 ? 'upgraded-piece' : ''} ${isProtected ? 'protected-piece' : ''} ${isProtecting ? 'protecting-piece' : ''} ${isRoyalProtected ? 'royal-protected-piece' : ''} ${isRoyalProtector ? 'royal-protector-piece' : ''} ${isQueenProtected ? 'queen-protected-piece' : ''} ${isQueenProtecting ? 'queen-protecting-piece' : ''}`}>
+      <span className={`${upgradeCount > 0 ? 'upgrade-glow' : ''} ${isProtected ? 'protection-glow' : ''} ${isProtecting ? 'protecting-glow' : ''} ${isRoyalProtected ? 'royal-protection-glow' : ''} ${isRoyalProtector ? 'royal-protector-glow' : ''} ${isQueenProtected ? 'queen-protection-glow' : ''} ${isQueenProtecting ? 'queen-protecting-glow' : ''}`}>
         {getPieceSymbol()}
       </span>
       {upgradeCount > 0 && (
@@ -154,6 +163,16 @@ export const ChessPieceComponent: React.FC<ChessPieceComponentProps> = ({ piece,
       {isRoyalProtector && (
         <div className="royal-protector-indicator">
           👑
+        </div>
+      )}
+      {isQueenProtected && (
+        <div className="queen-protection-indicator">
+          🛡️
+        </div>
+      )}
+      {isQueenProtecting && (
+        <div className="queen-protecting-indicator">
+          ✨
         </div>
       )}
     </div>

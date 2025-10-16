@@ -288,6 +288,32 @@ class MatchManager {
       }
     }
     
+    // Check for Queen Aura Evasion
+    let queenEvasion = null;
+    if (capturedPiece) {
+      const { isProtectedByQueenAura } = require('./upgradeLogic');
+      const evasionResult = isProtectedByQueenAura(game.board, to, capturedPiece.color, upgradesForValidation);
+      if (evasionResult.canEvade) {
+        // Piece evades backwards
+        console.log(`Queen Aura Evasion! Piece at (${to.row},${to.col}) evading to (${evasionResult.evasionPosition.row},${evasionResult.evasionPosition.col})`);
+        
+        // Move the defending piece to evasion position
+        game.board[evasionResult.evasionPosition.row][evasionResult.evasionPosition.col] = capturedPiece;
+        
+        // Clear the target position so the attacker can move there
+        game.board[to.row][to.col] = null;
+        
+        // No capture occurred
+        queenEvasion = {
+          evadedPiece: capturedPiece,
+          fromPos: to,
+          toPos: evasionResult.evasionPosition,
+          queenPos: evasionResult.queenPosition
+        };
+        capturedPiece = null;
+      }
+    }
+    
     // Check for siege mode capture (rook passing through enemy piece)
     let siegeCapture = null;
     if (piece.type === PieceType.ROOK && 
@@ -372,6 +398,8 @@ class MatchManager {
       piece,
       capturedPiece,
       siegeCapture, // Track if this was a siege mode capture
+      bishopProtectionSwap,
+      queenEvasion,
       player: playerTeam,
       timestamp: new Date()
     };

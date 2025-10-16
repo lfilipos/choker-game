@@ -107,3 +107,40 @@
   0%, 100% { transform: scale(1); opacity: 1; }
   50% { transform: scale(1.15); opacity: 0.85; }
 }
+
+/* Queen Aura Protection indicators */
+.queen-protection-indicator {
+  position: absolute;
+  bottom: -8px;
+  right: -8px;
+  font-size: 16px;
+  z-index: 10;
+  animation: queen-protection-pulse 2s ease-in-out infinite;
+}
+
+.queen-protecting-indicator {
+  position: absolute;
+  bottom: -8px;
+  left: -8px;
+  font-size: 16px;
+  z-index: 10;
+  animation: queen-protecting-pulse 2s ease-in-out infinite;
+}
+
+.queen-protection-glow {
+  filter: drop-shadow(0 0 8px #ff69b4) drop-shadow(0 0 12px #ff1493) drop-shadow(0 0 16px #ff69b4);
+}
+
+.queen-protecting-glow {
+  filter: drop-shadow(0 0 8px #9370db) drop-shadow(0 0 12px #8a2be2) drop-shadow(0 0 16px #9370db);
+}
+
+@keyframes queen-protection-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.2); opacity: 0.8; }
+}
+
+@keyframes queen-protecting-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.15); opacity: 0.85; }
+}

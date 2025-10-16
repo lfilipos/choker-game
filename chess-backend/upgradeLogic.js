@@ -356,13 +356,15 @@ function applyUpgradesToMoves(board, position, piece, standardMoves, upgrades, u
   }
 }
 
-// Check if a piece is protected by queen's aura
+// Check if a piece is protected by queen's aura and can evade
+// Returns {canEvade: boolean, evasionPosition?: {row, col}, queenPosition?: {row, col}}
 function isProtectedByQueenAura(board, position, color, upgrades) {
   if (!upgrades[color][PieceType.QUEEN].includes('queen_aura')) {
-    return false;
+    return { canEvade: false };
   }
   
   // Check all adjacent squares for allied queen
+  let queenPosition = null;
   for (let dRow = -1; dRow <= 1; dRow++) {
     for (let dCol = -1; dCol <= 1; dCol++) {
       if (dRow === 0 && dCol === 0) continue;
@@ -373,13 +375,41 @@ function isProtectedByQueenAura(board, position, color, upgrades) {
       if (checkRow >= 0 && checkRow < 10 && checkCol >= 0 && checkCol < 16) {
         const piece = board[checkRow][checkCol];
         if (piece && piece.type === PieceType.QUEEN && piece.color === color) {
-          return true;
+          queenPosition = { row: checkRow, col: checkCol };
+          break;
         }
       }
     }
+    if (queenPosition) break;
   }
   
-  return false;
+  // No adjacent queen found
+  if (!queenPosition) {
+    return { canEvade: false };
+  }
+  
+  // Calculate backwards position (towards home row)
+  // White pieces move towards row 9 (backwards = row + 1)
+  // Black pieces move towards row 0 (backwards = row - 1)
+  const backwardsDirection = color === PieceColor.WHITE ? 1 : -1;
+  const evasionPosition = {
+    row: position.row + backwardsDirection,
+    col: position.col
+  };
+  
+  // Check if evasion position is valid (in bounds and empty)
+  if (evasionPosition.row < 0 || evasionPosition.row >= 10 || 
+      evasionPosition.col < 0 || evasionPosition.col >= 16) {
+    return { canEvade: false, queenPosition };
+  }
+  
+  // Check if evasion position is empty
+  if (board[evasionPosition.row][evasionPosition.col] !== null) {
+    return { canEvade: false, queenPosition };
+  }
+  
+  // Evasion is possible
+  return { canEvade: true, evasionPosition, queenPosition };
 }
 
 // Check if a pawn is protected by a rook's protection ability

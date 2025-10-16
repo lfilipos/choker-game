@@ -138,6 +138,32 @@ class GameManager {
       }
     }
     
+    // Check for Queen Aura Evasion
+    let queenEvasion = null;
+    if (capturedPiece) {
+      const { isProtectedByQueenAura } = require('./upgradeLogic');
+      const evasionResult = isProtectedByQueenAura(game.board, to, capturedPiece.color, game.upgrades);
+      if (evasionResult.canEvade) {
+        // Piece evades backwards
+        console.log(`Queen Aura Evasion! Piece at (${to.row},${to.col}) evading to (${evasionResult.evasionPosition.row},${evasionResult.evasionPosition.col})`);
+        
+        // Move the defending piece to evasion position
+        game.board[evasionResult.evasionPosition.row][evasionResult.evasionPosition.col] = capturedPiece;
+        
+        // Clear the target position so the attacker can move there
+        game.board[to.row][to.col] = null;
+        
+        // No capture occurred
+        queenEvasion = {
+          evadedPiece: capturedPiece,
+          fromPos: to,
+          toPos: evasionResult.evasionPosition,
+          queenPos: evasionResult.queenPosition
+        };
+        capturedPiece = null;
+      }
+    }
+    
     game.board = makeMove(game.board, from, to);
     
     // Update rook links after move
@@ -161,7 +187,9 @@ class GameManager {
       piece,
       capturedPiece,
       player: player.color,
-      timestamp: new Date()
+      timestamp: new Date(),
+      bishopProtectionSwap,
+      queenEvasion
     };
     game.moveHistory.push(move);
 

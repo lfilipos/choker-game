@@ -255,6 +255,32 @@ export const isProtectedByRook = (board: Board, position: Position, color: Piece
   return false;
 };
 
+// Check if a piece is protected by queen's aura
+export const isProtectedByQueenAura = (board: Board, position: Position, color: PieceColor, upgrades: any): boolean => {
+  if (!upgrades || !upgrades[color] || !upgrades[color].queen || !upgrades[color].queen.includes('queen_aura')) {
+    return false;
+  }
+  
+  // Check all adjacent squares for allied queen
+  for (let dRow = -1; dRow <= 1; dRow++) {
+    for (let dCol = -1; dCol <= 1; dCol++) {
+      if (dRow === 0 && dCol === 0) continue;
+      
+      const checkRow = position.row + dRow;
+      const checkCol = position.col + dCol;
+      
+      if (checkRow >= 0 && checkRow < 10 && checkCol >= 0 && checkCol < 16) {
+        const piece = board[checkRow][checkCol];
+        if (piece && piece.type === 'queen' && piece.color === color) {
+          return true;
+        }
+      }
+    }
+  }
+  
+  return false;
+};
+
 export const isValidMove = (board: Board, from: Position, to: Position, color: PieceColor): boolean => {
   const piece = board[from.row][from.col];
   if (!piece || piece.color !== color) return false;

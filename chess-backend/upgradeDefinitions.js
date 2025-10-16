@@ -182,13 +182,13 @@ const UPGRADE_DEFINITIONS = {
   queen_aura: {
     id: 'queen_aura',
     name: 'Royal Aura',
-    description: 'Allied pieces adjacent to Queen cannot be captured',
+    description: 'Allied pieces adjacent to Queen attempt to evade backwards when attacked',
     cost: 450,
     pieceType: PieceType.QUEEN,
     effects: [{
       type: UpgradeType.DEFENSE,
-      value: 'protection_aura',
-      description: 'Protects adjacent allies'
+      value: 'evasion_aura',
+      description: 'Protected pieces evade towards home row if space available'
     }],
     activationMethod: ActivationMethod.CONTROL_ZONE,
     duration: 10 // Temporary upgrade lasting 10 turns
