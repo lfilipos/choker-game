@@ -93,9 +93,6 @@ Knights
   * Cost:  
     * 250  
   * Functional requirements: this already exists. Nothing is needed to implement
-
-    
-
 * Level 3  
   * Summary: Double move  
   * Game requirements to be eligible for purchase:  
