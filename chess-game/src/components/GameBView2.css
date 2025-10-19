@@ -61,61 +61,6 @@
   flex-shrink: 0;
 }
 
-/* Team Economy Box */
-.team-economy-box {
-  background: white;
-  padding: 12px;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.team-economy-box h3 {
-  margin: 0 0 8px 0;
-  font-size: 14px;
-  font-weight: 600;
-  color: #333;
-}
-
-.treasury-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 20px;
-}
-
-.treasury-item-compact {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.treasury-item {
-  margin-bottom: 12px;
-}
-
-.treasury-item:last-child {
-  margin-bottom: 0;
-}
-
-.treasury-label {
-  font-size: 18px;
-  color: #666;
-  font-weight: 500;
-}
-
-.treasury-value {
-  font-size: 24px;
-  font-weight: bold;
-  color: #28a745;
-  display: flex;
-  align-items: center;
-}
-
-.currency-symbol {
-  font-size: 16px;
-  margin-right: 3px;
-}
-
 /* Control Zones Box */
 .control-zones-box {
   background: white;

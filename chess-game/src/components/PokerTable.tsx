@@ -7,9 +7,10 @@ interface PokerTableProps {
   gameState: PokerGameState;
   onAction?: (action: string, amount?: number) => void;
   onReady?: () => void;
+  economy?: { white: number; black: number };
 }
 
-export const PokerTable: React.FC<PokerTableProps> = ({ gameState, onAction, onReady }) => {
+export const PokerTable: React.FC<PokerTableProps> = ({ gameState, onAction, onReady, economy }) => {
   const [showResult, setShowResult] = useState<ShowdownResult | null>(null);
   const [showResultTimer, setShowResultTimer] = useState<NodeJS.Timeout | null>(null);
   const [showBetInput, setShowBetInput] = useState(false);
@@ -201,6 +202,11 @@ export const PokerTable: React.FC<PokerTableProps> = ({ gameState, onAction, onR
             <div className="player-name">
               {gameState.opponent.name} ({gameState.opponent.team})
               {getPositionBadge(gameState.opponent.position)}
+              {economy && (
+                <span className="player-balance">
+                  💰${economy[gameState.opponent.team as 'white' | 'black']}
+                </span>
+              )}
             </div>
             <div className="player-status">
               {gameState.opponent.folded && <span className="folded-text">FOLDED</span>}
@@ -290,6 +296,11 @@ export const PokerTable: React.FC<PokerTableProps> = ({ gameState, onAction, onR
             <div className="player-name">
               {gameState.player.name} ({gameState.player.team})
               {getPositionBadge(gameState.player.position)}
+              {economy && (
+                <span className="player-balance">
+                  💰${economy[gameState.player.team as 'white' | 'black']}
+                </span>
+              )}
             </div>
             <div className="player-status">
               {gameState.player.folded && <span className="folded-text">FOLDED</span>}

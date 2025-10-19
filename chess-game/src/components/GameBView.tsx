@@ -367,26 +367,6 @@ const GameBView: React.FC<GameBViewProps> = ({ matchId, socket, playerName, onLe
 
       <div className="game-b-content">
         <div className="info-sidebar">
-          <div className="team-economy-box">
-            <h3>Team Economy</h3>
-            <div className="treasury-row">
-              <div className="treasury-item-compact">
-                <span className="treasury-label">Black:</span>
-                <span className="treasury-value">
-                  <span className="currency-symbol">$</span>
-                  {economy.black}
-                </span>
-              </div>
-              <div className="treasury-item-compact">
-                <span className="treasury-label">White:</span>
-                <span className="treasury-value">
-                  <span className="currency-symbol">$</span>
-                  {economy.white}
-                </span>
-              </div>
-            </div>
-          </div>
-          
           <div className="control-zones-box">
             <h3>Control zones</h3>
             {controlZoneStatuses.length > 0 ? (
@@ -461,6 +441,7 @@ const GameBView: React.FC<GameBViewProps> = ({ matchId, socket, playerName, onLe
               gameState={pokerState} 
               onAction={handlePokerAction}
               onReady={handlePokerReady}
+              economy={economy}
             />
           ) : (
             <div className="game-b-placeholder">

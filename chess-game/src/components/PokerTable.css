@@ -141,6 +141,16 @@
   /* Color is now handled by specific player area styles */
 }
 
+.player-balance {
+  font-size: 32px;
+  font-weight: bold;
+  color: #3AAD52;
+  margin-left: 5px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
 .position-badge {
   display: inline-block;
   padding: 2px 8px;

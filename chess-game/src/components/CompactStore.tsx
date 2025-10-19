@@ -36,6 +36,7 @@ const CompactStore: React.FC<CompactStoreProps> = ({
   const [upgrades, setUpgrades] = useState<UpgradeDefinition[]>([]);
   const [modifiers, setModifiers] = useState<Modifier[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedPieceType, setSelectedPieceType] = useState<PieceType>('pawn');
   
   const playerBalance = economy[playerTeam];
 
@@ -79,12 +80,22 @@ const CompactStore: React.FC<CompactStoreProps> = ({
     socket.emit('get_modifiers');
   };
 
+  const pieceSymbols: { [key in PieceType]: string } = {
+    pawn: '♟',
+    knight: '♞',
+    bishop: '♝',
+    rook: '♜',
+    queen: '♛',
+    king: '♚'
+  };
+
   const getCurrentItems = () => {
     switch (activeTab) {
       case 'pieces':
         return purchasablePieces;
       case 'upgrades':
-        return upgrades;
+        // Filter upgrades by selected piece type
+        return upgrades.filter(u => u.pieceType === selectedPieceType);
       case 'modifiers':
         return modifiers;
       default:
@@ -186,13 +197,20 @@ const CompactStore: React.FC<CompactStoreProps> = ({
     const canPurchase = canAfford && eligible;
     
     return (
-      <div key={upgrade.id} className={`compact-store-item ${!eligible ? 'locked' : ''}`}>
-        <div className="item-header">
+      <div key={upgrade.id} className={`compact-store-item upgrade-item ${!eligible ? 'locked' : ''}`}>
+        <div className="upgrade-item-header">
           <span className="item-name">
             {upgrade.name}
             {upgrade.level && <span className="item-level"> Lv.{upgrade.level}</span>}
           </span>
           <span className="item-cost">₿{upgrade.cost}</span>
+          <button
+            className={`buy-button ${!canPurchase ? 'disabled' : ''}`}
+            onClick={() => handlePurchaseUpgrade(upgrade.id)}
+            disabled={!canPurchase || isLoading}
+          >
+            {!eligible ? 'Locked' : canAfford ? 'Buy' : 'Can\'t afford'}
+          </button>
         </div>
         <div className="item-desc">{formatDescription(upgrade.description)}</div>
         {!eligible && upgrade.lockedReasons && upgrade.lockedReasons.length > 0 && (
@@ -202,13 +220,6 @@ const CompactStore: React.FC<CompactStoreProps> = ({
             ))}
           </div>
         )}
-        <button
-          className={`buy-button ${!canPurchase ? 'disabled' : ''}`}
-          onClick={() => handlePurchaseUpgrade(upgrade.id)}
-          disabled={!canPurchase || isLoading}
-        >
-          {!eligible ? 'Locked' : canAfford ? 'Buy' : 'Can\'t afford'}
-        </button>
       </div>
     );
   };
@@ -269,6 +280,20 @@ const CompactStore: React.FC<CompactStoreProps> = ({
           Modifiers
         </button>
       </div>
+
+      {activeTab === 'upgrades' && (
+        <div className="piece-sub-tabs">
+          {(['pawn', 'rook', 'knight', 'bishop', 'queen', 'king'] as PieceType[]).map(pieceType => (
+            <button
+              key={pieceType}
+              className={`piece-sub-tab ${selectedPieceType === pieceType ? 'active' : ''}`}
+              onClick={() => setSelectedPieceType(pieceType)}
+            >
+              {pieceSymbols[pieceType]}
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className="store-items">
         {currentItems.length > 0 ? (
