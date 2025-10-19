@@ -174,16 +174,19 @@ const UpgradeStore: React.FC<UpgradeStoreProps> = ({
             {filteredUpgrades.map(upgrade => {
           const owned = isOwned(upgrade.id, upgrade.pieceType);
           const affordable = canAfford(upgrade.cost);
+          const eligible = upgrade.eligible !== false;
+          const canPurchase = affordable && eligible && !owned;
           return (
             <div 
               key={upgrade.id} 
-              className={`upgrade-card ${!affordable ? 'unaffordable' : ''} ${owned ? 'owned' : ''}`}
+              className={`upgrade-card ${!affordable ? 'unaffordable' : ''} ${owned ? 'owned' : ''} ${!eligible ? 'locked' : ''}`}
               onMouseEnter={() => setShowingUpgrade(upgrade.id)}
               onMouseLeave={() => setShowingUpgrade(null)}
             >
               <div className="upgrade-header">
                 <span className="piece-icon">{pieceEmojis[upgrade.pieceType]}</span>
                 <h3>{upgrade.name}</h3>
+                {upgrade.level && <span className="upgrade-level">Lv.{upgrade.level}</span>}
               </div>
               
               <p className="upgrade-description">{upgrade.description}</p>
@@ -196,6 +199,15 @@ const UpgradeStore: React.FC<UpgradeStoreProps> = ({
                   </div>
                 ))}
               </div>
+
+              {!eligible && upgrade.lockedReasons && upgrade.lockedReasons.length > 0 && (
+                <div className="upgrade-requirements">
+                  <div className="requirements-header">🔒 Requirements:</div>
+                  {upgrade.lockedReasons.map((reason, idx) => (
+                    <div key={idx} className="requirement-item">{reason}</div>
+                  ))}
+                </div>
+              )}
 
               <div className="upgrade-footer">
                 <div className="upgrade-cost">
@@ -210,10 +222,10 @@ const UpgradeStore: React.FC<UpgradeStoreProps> = ({
                 ) : (
                   <button 
                     className="purchase-btn"
-                    disabled={!affordable}
+                    disabled={!canPurchase}
                     onClick={() => handlePurchase(upgrade)}
                   >
-                    {affordable ? 'Purchase' : 'Insufficient Funds'}
+                    {!eligible ? 'Locked' : !affordable ? 'Insufficient Funds' : 'Purchase'}
                   </button>
                 )}
               </div>

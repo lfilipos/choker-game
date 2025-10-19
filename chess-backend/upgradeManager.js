@@ -43,8 +43,64 @@ class UpgradeManager {
     return this.economy[color] > cost;
   }
 
+  // Check if a team meets the requirements for an upgrade
+  isEligible(color, upgradeId, teamStats) {
+    const upgrade = UPGRADE_DEFINITIONS[upgradeId];
+    
+    if (!upgrade) {
+      return { eligible: false, reasons: ['Invalid upgrade'] };
+    }
+    
+    const reasons = [];
+    
+    // Check prerequisite upgrade
+    if (upgrade.requires) {
+      const prereqUpgrade = UPGRADE_DEFINITIONS[upgrade.requires];
+      if (!prereqUpgrade || !this.hasUpgrade(color, prereqUpgrade.pieceType, upgrade.requires)) {
+        const prereqName = prereqUpgrade ? prereqUpgrade.name : upgrade.requires;
+        reasons.push(`Requires: ${prereqName}`);
+      }
+    }
+    
+    // Check requirements
+    if (upgrade.requirements) {
+      const reqs = upgrade.requirements;
+      
+      // Check capture requirements
+      if (reqs.captures) {
+        if (reqs.captures.byType) {
+          for (const [pieceType, count] of Object.entries(reqs.captures.byType)) {
+            const captured = teamStats.captureCount[pieceType] || 0;
+            if (captured < count) {
+              reasons.push(`Capture ${count} ${pieceType}(s) (${captured}/${count})`);
+            }
+          }
+        }
+        
+        if (reqs.captures.total) {
+          const totalCaptured = teamStats.totalCaptures || 0;
+          if (totalCaptured < reqs.captures.total) {
+            reasons.push(`Capture ${reqs.captures.total} pieces total (${totalCaptured}/${reqs.captures.total})`);
+          }
+        }
+      }
+      
+      // Check treasury minimum
+      if (reqs.treasuryMin) {
+        if (this.economy[color] < reqs.treasuryMin) {
+          reasons.push(`Treasury must reach ${reqs.treasuryMin} (currently ${this.economy[color]})`);
+        }
+      }
+    }
+    
+    return {
+      eligible: reasons.length === 0,
+      reasons
+    };
+  }
+
   // Purchase an upgrade
-  purchaseUpgrade(color, upgradeId) {
+  purchaseUpgrade(color, upgradeId, teamStats) {
     const upgrade = UPGRADE_DEFINITIONS[upgradeId];
     
     if (!upgrade) {
@@ -60,6 +116,14 @@ class UpgradeManager {
     
     if (this.hasUpgrade(color, upgrade.pieceType, upgradeId)) {
       throw new Error('Upgrade already owned');
+    }
+    
+    // Check eligibility
+    if (teamStats) {
+      const eligibility = this.isEligible(color, upgradeId, teamStats);
+      if (!eligibility.eligible) {
+        throw new Error(`Requirements not met: ${eligibility.reasons.join(', ')}`);
+      }
     }
     
     // Deduct cost and add upgrade
@@ -189,15 +253,19 @@ class UpgradeManager {
   }
 
   // Get available upgrades for purchase
-  getAvailableUpgrades(color) {
+  getAvailableUpgrades(color, teamStats) {
     const available = [];
     
     Object.entries(UPGRADE_DEFINITIONS).forEach(([id, upgrade]) => {
       // Show all upgrades that the player doesn't already have
       if (!this.hasUpgrade(color, upgrade.pieceType, id)) {
+        const eligibility = teamStats ? this.isEligible(color, id, teamStats) : { eligible: true, reasons: [] };
+        
         available.push({
           ...upgrade,
-          canAfford: this.canAfford(color, upgrade.cost)
+          canAfford: this.canAfford(color, upgrade.cost),
+          eligible: eligibility.eligible,
+          lockedReasons: eligibility.reasons
         });
       }
     });

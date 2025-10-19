@@ -116,6 +116,16 @@
   border-color: #4CAF50;
 }
 
+.upgrade-card.locked {
+  opacity: 0.8;
+  background: #fafafa;
+  border-color: #bbb;
+}
+
+.upgrade-card.locked:hover {
+  transform: none;
+}
+
 .upgrade-header {
   display: flex;
   align-items: center;
@@ -137,6 +147,16 @@
   margin: 0;
   font-size: 18px;
   color: #333;
+  flex: 1;
+}
+
+.upgrade-level {
+  background: #1976d2;
+  color: white;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: bold;
 }
 
 .upgrade-description {
@@ -513,6 +533,35 @@
   color: #666;
   font-style: italic;
   grid-column: 1 / -1;
+}
+
+/* Upgrade requirements display */
+.upgrade-requirements {
+  background: #fff3e0;
+  border: 1px solid #ffb74d;
+  border-radius: 4px;
+  padding: 10px;
+  margin: 10px 0;
+  font-size: 12px;
+}
+
+.requirements-header {
+  font-weight: bold;
+  color: #e65100;
+  margin-bottom: 5px;
+}
+
+.requirement-item {
+  color: #666;
+  padding: 3px 0;
+  padding-left: 15px;
+  position: relative;
+}
+
+.requirement-item::before {
+  content: '•';
+  position: absolute;
+  left: 5px;
 }
 
 @media (max-width: 768px) {

@@ -41,6 +41,7 @@ class MatchManager {
           barracks: [], // Array of pieces waiting to be placed
           unlockedPieceTypes: [], // Array of piece types that can be purchased
           captureCount: {}, // Track captures by piece type for upgrade unlocking
+          totalCaptures: 0, // Track total captures for upgrade requirements
           players: {
             [GameSlot.A]: null,
             [GameSlot.B]: null
@@ -52,6 +53,7 @@ class MatchManager {
           barracks: [], // Array of pieces waiting to be placed
           unlockedPieceTypes: [], // Array of piece types that can be purchased
           captureCount: {}, // Track captures by piece type for upgrade unlocking
+          totalCaptures: 0, // Track total captures for upgrade requirements
           players: {
             [GameSlot.A]: null,
             [GameSlot.B]: null
@@ -374,7 +376,9 @@ class MatchManager {
         match.teams[playerTeam].captureCount[capturedPiece.type] = 0;
       }
       match.teams[playerTeam].captureCount[capturedPiece.type]++;
-      console.log(`${playerTeam} has now captured ${match.teams[playerTeam].captureCount[capturedPiece.type]} ${capturedPiece.type}(s)`);
+      match.teams[playerTeam].totalCaptures++;
+      console.log(`[CAPTURE STATS] ${playerTeam} has now captured ${match.teams[playerTeam].captureCount[capturedPiece.type]} ${capturedPiece.type}(s), ${match.teams[playerTeam].totalCaptures} total`);
+      console.log(`[CAPTURE STATS] Full captureCount for ${playerTeam}:`, match.teams[playerTeam].captureCount);
       
       // Remove links for captured rook
       game.rookLinks = removeLinksForCapturedRook(game.rookLinks, to);
@@ -395,6 +399,14 @@ class MatchManager {
       // Update team economy
       const upgradeState = match.sharedState.upgradeManager.getUpgradeState();
       match.teams[playerTeam].economy = upgradeState.economy[playerTeam];
+      
+      // Track siege capture count
+      if (!match.teams[playerTeam].captureCount[siegeCapture.type]) {
+        match.teams[playerTeam].captureCount[siegeCapture.type] = 0;
+      }
+      match.teams[playerTeam].captureCount[siegeCapture.type]++;
+      match.teams[playerTeam].totalCaptures++;
+      console.log(`${playerTeam} siege captured ${siegeCapture.type}, now ${match.teams[playerTeam].captureCount[siegeCapture.type]} ${siegeCapture.type}(s), ${match.teams[playerTeam].totalCaptures} total`);
       
       // Unlock the captured piece type for the capturing team
       if (!match.teams[playerTeam].unlockedPieceTypes.includes(siegeCapture.type)) {
@@ -1062,13 +1074,16 @@ class MatchManager {
     }
     
     const playerTeam = getTeamFromRole(role);
+    const teamData = match.teams[playerTeam];
     
     try {
-      // Check for specific upgrade requirements
-      // Note: Capture requirements can be added here later if needed
-      // Example: if (upgradeId === 'queens_hook') { check pawn captures }
+      // Prepare team stats for eligibility checking
+      const teamStats = {
+        captureCount: teamData.captureCount || {},
+        totalCaptures: teamData.totalCaptures || 0
+      };
       
-      match.sharedState.upgradeManager.purchaseUpgrade(playerTeam, upgradeId);
+      match.sharedState.upgradeManager.purchaseUpgrade(playerTeam, upgradeId, teamStats);
       
       // Update match state with latest upgrade/economy info
       const upgradeState = match.sharedState.upgradeManager.getUpgradeState();

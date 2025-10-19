@@ -19,6 +19,17 @@ export interface UpgradeDefinition {
   activationMethod: ActivationMethod;
   duration?: number;
   canAfford?: boolean;
+  level?: number;
+  requires?: string;
+  requirements?: {
+    captures?: {
+      byType?: Record<string, number>;
+      total?: number;
+    };
+    treasuryMin?: number;
+  };
+  eligible?: boolean;
+  lockedReasons?: string[];
 }
 
 export interface TeamUpgrades {

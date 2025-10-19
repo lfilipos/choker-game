@@ -60,7 +60,8 @@ Knights
     * Capture at least 3 enemy pieces total
   * Cost: 300  
 * Level 3  
-  * Summary: Double move  
+  * Name: Double jump
+  * Summary: Knights can move twice per turn (cannot capture twice)
   * Game requirements to be eligible for purchase:  
     * Purchase knight level 2  
     * Capture 2 knights  
@@ -75,13 +76,13 @@ Bishop
     * Capture 2 pawns  
   * Cost: 200  
 * Level 2  
-  * Name: Bishop's hop
+  * Name: Bishop's Hop
   * Summary: Bishops can jump over one friendly piece per move
   * Game requirements to be eligible for purchase:  
     * Capture 1 bishop  
   * Cost: 300  
 * Level 3  
-  * Name:
+  * Name: Royal Protection
   * Summary: King protection from knight
   * Game requirements to be eligible for purchase:  
     * Purchase bishop level 1  

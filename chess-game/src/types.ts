@@ -54,6 +54,17 @@ export interface UpgradeDefinition {
   effects: UpgradeEffect[];
   activationMethod: ActivationMethod;
   duration?: number; // For temporary upgrades
+  level?: number;
+  requires?: string;
+  requirements?: {
+    captures?: {
+      byType?: Record<string, number>;
+      total?: number;
+    };
+    treasuryMin?: number;
+  };
+  eligible?: boolean;
+  lockedReasons?: string[];
 }
 
 export interface TeamUpgrades {

@@ -39,8 +39,30 @@ const CompactStore: React.FC<CompactStoreProps> = ({
   
   const playerBalance = economy[playerTeam];
 
+  // Set up socket listeners on mount
   useEffect(() => {
-    fetchStoreData();
+    const socket = socketService.getSocket();
+    if (!socket) return;
+
+    // Listen for upgrades (use 'on' not 'once' to continue receiving updates)
+    const handleUpgrades = (data: any) => {
+      console.log('CompactStore received available_upgrades:', data.upgrades?.length || 0);
+      setUpgrades(data.upgrades || []);
+    };
+    
+    socket.on('available_upgrades', handleUpgrades);
+
+    // Fetch initial data
+    socket.emit('get_available_upgrades');
+    socket.emit('get_modifiers');
+    socket.once('available_modifiers', (data: any) => {
+      setModifiers(data.modifiers || []);
+    });
+    
+    // Cleanup listener on unmount
+    return () => {
+      socket.off('available_upgrades', handleUpgrades);
+    };
   }, []);
 
   // Update pieces when purchasablePieces prop changes
@@ -52,17 +74,9 @@ const CompactStore: React.FC<CompactStoreProps> = ({
     const socket = socketService.getSocket();
     if (!socket) return;
 
-    // Fetch upgrades
+    // Fetch current upgrades and modifiers
     socket.emit('get_available_upgrades');
-    socket.once('available_upgrades', (data: any) => {
-      setUpgrades(data.upgrades || []);
-    });
-
-    // Fetch modifiers
     socket.emit('get_modifiers');
-    socket.once('available_modifiers', (data: any) => {
-      setModifiers(data.modifiers || []);
-    });
   };
 
   const getCurrentItems = () => {
@@ -168,20 +182,32 @@ const CompactStore: React.FC<CompactStoreProps> = ({
 
   const renderUpgradeItem = (upgrade: UpgradeDefinition) => {
     const canAfford = playerBalance >= upgrade.cost;
+    const eligible = upgrade.eligible !== false;
+    const canPurchase = canAfford && eligible;
     
     return (
-      <div key={upgrade.id} className="compact-store-item">
+      <div key={upgrade.id} className={`compact-store-item ${!eligible ? 'locked' : ''}`}>
         <div className="item-header">
-          <span className="item-name">{upgrade.name}</span>
+          <span className="item-name">
+            {upgrade.name}
+            {upgrade.level && <span className="item-level"> Lv.{upgrade.level}</span>}
+          </span>
           <span className="item-cost">₿{upgrade.cost}</span>
         </div>
         <div className="item-desc">{formatDescription(upgrade.description)}</div>
+        {!eligible && upgrade.lockedReasons && upgrade.lockedReasons.length > 0 && (
+          <div className="item-requirements">
+            {upgrade.lockedReasons.map((reason, idx) => (
+              <div key={idx} className="requirement-text">🔒 {reason}</div>
+            ))}
+          </div>
+        )}
         <button
-          className={`buy-button ${!canAfford ? 'disabled' : ''}`}
+          className={`buy-button ${!canPurchase ? 'disabled' : ''}`}
           onClick={() => handlePurchaseUpgrade(upgrade.id)}
-          disabled={!canAfford || isLoading}
+          disabled={!canPurchase || isLoading}
         >
-          {canAfford ? 'Buy' : 'Can\'t afford'}
+          {!eligible ? 'Locked' : canAfford ? 'Buy' : 'Can\'t afford'}
         </button>
       </div>
     );

@@ -214,3 +214,34 @@
 .store-items::-webkit-scrollbar-thumb:hover {
   background: #666;
 }
+
+/* Upgrade levels and locked state */
+.item-level {
+  background: #1976d2;
+  color: white;
+  padding: 1px 5px;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: bold;
+  margin-left: 4px;
+}
+
+.compact-store-item.locked {
+  opacity: 0.75;
+  background: #fafafa;
+  border-color: #ccc;
+}
+
+.item-requirements {
+  background: #fff3e0;
+  border: 1px solid #ffb74d;
+  border-radius: 3px;
+  padding: 4px 6px;
+  margin: 2px 0;
+}
+
+.requirement-text {
+  font-size: 10px;
+  color: #e65100;
+  line-height: 1.3;
+}

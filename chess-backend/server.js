@@ -248,6 +248,23 @@ io.on('connection', (socket) => {
               }
             }
           }
+          
+          // If a capture occurred, send updated available upgrades to all players
+          // (capture stats may unlock new upgrades)
+          if (result.move && (result.move.capturedPiece || result.move.siegeCapture)) {
+            const playerRole = matchManager.playerSockets.get(socketId)?.role;
+            if (playerRole) {
+              const playerTeam = getTeamFromRole(playerRole);
+              const teamData = match.teams[playerTeam];
+              const teamStats = {
+                captureCount: teamData.captureCount || {},
+                totalCaptures: teamData.totalCaptures || 0
+              };
+              const upgrades = match.sharedState.upgradeManager.getAvailableUpgrades(playerTeam, teamStats);
+              io.to(socketId).emit('available_upgrades', { upgrades });
+              console.log(`Sent updated available upgrades to ${socketId} (team ${playerTeam}) after capture. Stats:`, teamStats);
+            }
+          }
         }
       }
       
@@ -876,7 +893,15 @@ io.on('connection', (socket) => {
         throw new Error('Match not found');
       }
       const playerTeam = getTeamFromRole(playerInfo.role);
-      const upgrades = match.sharedState.upgradeManager.getAvailableUpgrades(playerTeam);
+      const teamData = match.teams[playerTeam];
+      
+      // Prepare team stats for eligibility checking
+      const teamStats = {
+        captureCount: teamData.captureCount || {},
+        totalCaptures: teamData.totalCaptures || 0
+      };
+      
+      const upgrades = match.sharedState.upgradeManager.getAvailableUpgrades(playerTeam, teamStats);
       socket.emit('available_upgrades', { upgrades });
     } catch (error) {
       socket.emit('error', { message: error.message });
@@ -983,7 +1008,12 @@ io.on('connection', (socket) => {
             const playerRole = matchManager.playerSockets.get(socketId)?.role;
             if (playerRole) {
               const playerTeam = getTeamFromRole(playerRole);
-              const upgrades = match.sharedState.upgradeManager.getAvailableUpgrades(playerTeam);
+              const teamData = match.teams[playerTeam];
+              const teamStats = {
+                captureCount: teamData.captureCount || {},
+                totalCaptures: teamData.totalCaptures || 0
+              };
+              const upgrades = match.sharedState.upgradeManager.getAvailableUpgrades(playerTeam, teamStats);
               io.to(socketId).emit('available_upgrades', { upgrades });
             }
           }
@@ -1098,7 +1128,12 @@ io.on('connection', (socket) => {
           const playerRole = matchManager.playerSockets.get(socketId)?.role;
           if (playerRole) {
             const playerTeam = getTeamFromRole(playerRole);
-            const upgrades = match.sharedState.upgradeManager.getAvailableUpgrades(playerTeam);
+            const teamData = match.teams[playerTeam];
+            const teamStats = {
+              captureCount: teamData.captureCount || {},
+              totalCaptures: teamData.totalCaptures || 0
+            };
+            const upgrades = match.sharedState.upgradeManager.getAvailableUpgrades(playerTeam, teamStats);
             io.to(socketId).emit('available_upgrades', { upgrades });
           }
         }
@@ -1389,7 +1424,12 @@ io.on('connection', (socket) => {
           const playerRole = matchManager.playerSockets.get(socketId)?.role;
           if (playerRole && match) {
             const playerTeam = getTeamFromRole(playerRole);
-            const upgrades = match.sharedState.upgradeManager.getAvailableUpgrades(playerTeam);
+            const teamData = match.teams[playerTeam];
+            const teamStats = {
+              captureCount: teamData.captureCount || {},
+              totalCaptures: teamData.totalCaptures || 0
+            };
+            const upgrades = match.sharedState.upgradeManager.getAvailableUpgrades(playerTeam, teamStats);
             io.to(socketId).emit('available_upgrades', { upgrades });
           }
         }
