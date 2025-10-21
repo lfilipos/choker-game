@@ -179,21 +179,6 @@ export const PokerTable: React.FC<PokerTableProps> = ({ gameState, onAction, onR
 
   return (
     <div className="poker-table">
-      <div className="table-info">
-        <div className="phase-indicator">
-          Phase: <strong>{getPhaseDisplay(gameState.phase)}</strong>
-        </div>
-        <div className="deck-info">
-          <div className="deck-stats">
-            Cards: {gameState.deckState.cardsRemaining} | 
-            Burn: {gameState.deckState.burnCount} | 
-            Discard: {gameState.deckState.discardCount}
-          </div>
-        </div>
-        <div className="hand-number">
-          Hand #{gameState.handNumber}
-        </div>
-      </div>
 
       {/* Opponent area */}
       <div className="opponent-area">

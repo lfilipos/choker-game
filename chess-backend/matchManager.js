@@ -42,6 +42,7 @@ class MatchManager {
           unlockedPieceTypes: [], // Array of piece types that can be purchased
           captureCount: {}, // Track captures by piece type for upgrade unlocking
           totalCaptures: 0, // Track total captures for upgrade requirements
+          preferredPieceForUpgrade: null, // Chess player's preferred piece for poker player to upgrade
           players: {
             [GameSlot.A]: null,
             [GameSlot.B]: null
@@ -54,6 +55,7 @@ class MatchManager {
           unlockedPieceTypes: [], // Array of piece types that can be purchased
           captureCount: {}, // Track captures by piece type for upgrade unlocking
           totalCaptures: 0, // Track total captures for upgrade requirements
+          preferredPieceForUpgrade: null, // Chess player's preferred piece for poker player to upgrade
           players: {
             [GameSlot.A]: null,
             [GameSlot.B]: null
@@ -1320,12 +1322,16 @@ class MatchManager {
           economy: match.teams[TeamColor.WHITE].economy,
           upgrades: match.teams[TeamColor.WHITE].upgrades,
           barracks: match.teams[TeamColor.WHITE].barracks || [],
+          captureCount: match.teams[TeamColor.WHITE].captureCount || {},
+          totalCaptures: match.teams[TeamColor.WHITE].totalCaptures || 0,
           players: this._getTeamPlayers(match, TeamColor.WHITE)
         },
         [TeamColor.BLACK]: {
           economy: match.teams[TeamColor.BLACK].economy,
           upgrades: match.teams[TeamColor.BLACK].upgrades,
           barracks: match.teams[TeamColor.BLACK].barracks || [],
+          captureCount: match.teams[TeamColor.BLACK].captureCount || {},
+          totalCaptures: match.teams[TeamColor.BLACK].totalCaptures || 0,
           players: this._getTeamPlayers(match, TeamColor.BLACK)
         }
       },
@@ -1861,6 +1867,42 @@ class MatchManager {
         this.matches.delete(matchId);
       }
     }
+  }
+
+  // Set upgrade preference for a team (chess player communicates to poker player)
+  setUpgradePreference(socketId, pieceType) {
+    const playerInfo = this.playerSockets.get(socketId);
+    if (!playerInfo) {
+      throw new Error('Player not found');
+    }
+
+    const { matchId, role } = playerInfo;
+    const match = this.matches.get(matchId);
+    
+    if (!match) {
+      throw new Error('Match not found');
+    }
+
+    const playerTeam = getTeamFromRole(role);
+    const gameSlot = getGameSlotFromRole(role);
+
+    // Only chess players can set preferences
+    if (gameSlot !== GameSlot.A) {
+      throw new Error('Only chess players can set upgrade preferences');
+    }
+
+    // Toggle: if same piece is clicked, deselect
+    if (match.teams[playerTeam].preferredPieceForUpgrade === pieceType) {
+      match.teams[playerTeam].preferredPieceForUpgrade = null;
+    } else {
+      match.teams[playerTeam].preferredPieceForUpgrade = pieceType;
+    }
+
+    return {
+      match,
+      team: playerTeam,
+      pieceType: match.teams[playerTeam].preferredPieceForUpgrade
+    };
   }
 }
 

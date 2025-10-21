@@ -1566,6 +1566,35 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Set upgrade preference (chess player to poker player communication)
+  socket.on('set_upgrade_preference', (data) => {
+    try {
+      const { pieceType } = data;
+      const result = matchManager.setUpgradePreference(socket.id, pieceType);
+      
+      const playerInfo = matchManager.playerSockets.get(socket.id);
+      const matchId = playerInfo.matchId;
+      const team = result.team;
+      
+      // Broadcast only to players on the same team
+      for (const [socketId, info] of matchManager.playerSockets) {
+        if (info.matchId === matchId && info.role) {
+          const playerTeam = getTeamFromRole(info.role);
+          if (playerTeam === team) {
+            io.to(socketId).emit('upgrade_preference_updated', {
+              team: team,
+              pieceType: result.pieceType
+            });
+          }
+        }
+      }
+      
+      console.log(`Upgrade preference set for ${team} team in match ${matchId}: ${result.pieceType || 'none'}`);
+    } catch (error) {
+      socket.emit('error', { message: error.message });
+    }
+  });
+
   // Handle disconnection
   socket.on('disconnect', () => {
     console.log(`Player disconnected: ${socket.id}`);

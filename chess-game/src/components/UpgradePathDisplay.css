@@ -1,0 +1,264 @@
+.upgrade-path-display {
+  background: #FFFFFF;
+  border-radius: 8px;
+  padding: 5px;
+  margin-top: 5px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.upgrade-path-header {
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #333;
+}
+
+.upgrade-path-header h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #e0e0e0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.upgrade-path-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.piece-upgrade-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 6px;
+  background: #FFFFFF;
+  border-radius: 6px;
+  transition: background 0.2s;
+}
+
+
+
+.piece-icon {
+  width: 45px;
+  height: 45px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #FFFFFF;
+  color: #c3c3c3;
+  border: 2px solid #c3c3c3;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.piece-icon:hover {
+  background: #FFFFFF;
+  color: #000000;
+  border-color: #000000;
+  transform: scale(1.05);
+}
+
+.piece-icon.selected {
+  border-width: 3px;
+  box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+  border: 2px solid #444;
+}
+
+.piece-icon.selected.white {
+  border-color: #f0f0f0;
+  background: #FFFFFF;
+  color: #000000;
+  box-shadow: 0 0 12px rgba(187, 187, 187, 0.6);
+  border: 2px solid #444;
+}
+
+.piece-icon.selected.black {
+  border-color: #FFFFFF;
+  background: #000000;
+  color: #FFFFFF;
+  box-shadow: 0 0 12px rgba(100, 100, 100, 0.6);
+}
+
+.piece-symbol {
+  font-size: 36px;
+  line-height: 1;
+}
+
+.upgrade-paths {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.team-path {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.black-path {
+  /* Black team on top */
+}
+
+.white-path {
+  /* White team on bottom */
+}
+
+.upgrade-pip {
+  position: relative;
+  width: 55px;
+  height: 15px;
+  border: 2px solid;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  overflow: hidden;
+  background: #1a1a1a;
+}
+
+.upgrade-pip:hover {
+  transform: scale(1.1);
+  z-index: 10;
+}
+
+/* Pip borders by team */
+.upgrade-pip.black {
+  border-color: #666;
+  background: #707070;
+}
+
+.upgrade-pip.white {
+  border-color: #ddd;
+  background: #FFFFFF;
+}
+
+/* Pip number */
+.pip-number {
+  position: relative;
+  z-index: 2;
+  font-size: 11px;
+  font-weight: 700;
+  transition: color 0.2s;
+}
+
+.pip-number.white {
+  color: #000000;
+}
+
+.pip-number.black {
+  color: #FFFFFF;
+}
+
+/* Empty state - just border and number in team color */
+.upgrade-pip.empty.black .pip-number {
+  color: #FFFFFF;
+}
+
+.upgrade-pip.empty.white .pip-number {
+  color: #000000;
+}
+
+/* Pip fills */
+.pip-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  z-index: 1;
+  transition: width 0.3s ease;
+}
+
+.partial.black {
+  color: #FFFFFF;
+}
+
+/* Partial fill - gradient from left */
+.partial-fill.black {
+  background: linear-gradient(to right, #555 0%, #555 100%);
+}
+
+.partial-fill.white {
+  background: linear-gradient(to right, #ccc 0%, #ccc 100%);
+}
+
+
+.ready-fill {
+  width: 100%;
+}
+
+.ready-fill.black {
+  background: #555;
+  color: #ffffff;;
+}
+
+.ready-fill.white {
+  background: #ccc;
+}
+.ready.black {
+  color: #ffffff;
+}
+
+.ready.white {
+  color: #000000;
+}
+
+/*.upgrade-pip .ready .pip-number {
+  color: #000000;
+}
+  */
+.pip-number.black {
+  color: #ffffff;
+}
+
+
+/* Completed fill - fully filled */
+
+.completed.black {
+  background: #000000;
+  border: 2px solid #707070;
+}
+
+.completed.white {
+  background: #ffffff;
+  border: 2px solid #000000;
+}
+
+.upgrade-pip.completed.black .pip-number {
+  color: #fff;
+}
+
+.upgrade-pip.completed.white .pip-number {
+  color: #222;
+}
+
+/* Adjust pip fill colors based on team context */
+.upgrade-pip.black .pip-fill {
+  background: #000000;
+}
+
+.upgrade-pip.white .pip-fill {
+  background: #ccc;
+}
+
+/* Animation for selected piece */
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(149, 149, 149, 0.8);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(84, 84, 84, 0.9);
+  }
+}
+
+.piece-icon.selected {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+

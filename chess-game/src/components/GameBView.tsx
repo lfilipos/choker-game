@@ -53,6 +53,10 @@ interface GameBViewProps {
 
 const GameBView: React.FC<GameBViewProps> = ({ matchId, socket, playerName, onLeaveGame }) => {
   const [matchState, setMatchState] = useState<MatchState | null>(null);
+  const [requestedPieceType, setRequestedPieceType] = useState<{
+    white: PieceType | null;
+    black: PieceType | null;
+  }>({ white: null, black: null });
   const [chessMoveHistory, setChessMoveHistory] = useState<Move[]>([]);
   const [availableUpgrades, setAvailableUpgrades] = useState<any[]>([]);
   const [purchasablePieces, setPurchasablePieces] = useState<PurchasablePiece[]>([]);
@@ -293,6 +297,15 @@ const GameBView: React.FC<GameBViewProps> = ({ matchId, socket, playerName, onLe
       setTimeout(() => setError(null), 5000);
     });
 
+    socket.on('upgrade_preference_updated', (data: { team: string, pieceType: PieceType | null }) => {
+      console.log('Upgrade preference updated:', data);
+      // Update the preference for the appropriate team
+      setRequestedPieceType(prev => ({
+        ...prev,
+        [data.team]: data.pieceType
+      }));
+    });
+
     return () => {
       socket.off('match_state');
       socket.off('match_state_updated');
@@ -306,6 +319,7 @@ const GameBView: React.FC<GameBViewProps> = ({ matchId, socket, playerName, onLe
       socket.off('available_modifiers');
       socket.off('modifier_purchased');
       socket.off('modifier_error');
+      socket.off('upgrade_preference_updated');
       socket.off('blind_level_changed');
     };
   }, [matchId, socket]);
@@ -426,6 +440,7 @@ const GameBView: React.FC<GameBViewProps> = ({ matchId, socket, playerName, onLe
             onPurchaseUpgrade={handlePurchaseUpgrade}
             onPurchaseModifier={handlePurchaseModifier}
             onPurchasePiece={handlePurchasePiece}
+            requestedPieceType={requestedPieceType[matchState.playerTeam as 'white' | 'black']}
           />
         </div>
 

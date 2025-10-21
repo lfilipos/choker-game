@@ -257,17 +257,17 @@ class UpgradeManager {
     const available = [];
     
     Object.entries(UPGRADE_DEFINITIONS).forEach(([id, upgrade]) => {
-      // Show all upgrades that the player doesn't already have
-      if (!this.hasUpgrade(color, upgrade.pieceType, id)) {
-        const eligibility = teamStats ? this.isEligible(color, id, teamStats) : { eligible: true, reasons: [] };
-        
-        available.push({
-          ...upgrade,
-          canAfford: this.canAfford(color, upgrade.cost),
-          eligible: eligibility.eligible,
-          lockedReasons: eligibility.reasons
-        });
-      }
+      // Show ALL upgrades, including owned ones
+      const isOwned = this.hasUpgrade(color, upgrade.pieceType, id);
+      const eligibility = teamStats ? this.isEligible(color, id, teamStats) : { eligible: true, reasons: [] };
+      
+      available.push({
+        ...upgrade,
+        canAfford: this.canAfford(color, upgrade.cost),
+        eligible: eligibility.eligible,
+        lockedReasons: eligibility.reasons,
+        isPurchased: isOwned  // Add flag to indicate if already purchased
+      });
     });
     
     return available;

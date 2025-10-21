@@ -1,0 +1,163 @@
+.upgrade-tooltip {
+  position: fixed;
+  background: #2a2a2a;
+  border: 2px solid #444;
+  border-radius: 8px;
+  padding: 12px;
+  min-width: 250px;
+  max-width: 350px;
+  max-height: 500px;
+  overflow-y: auto;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  z-index: 10000;
+  pointer-events: none;
+  color: #e0e0e0;
+  font-size: 13px;
+  transition: none;
+}
+
+.tooltip-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #444;
+}
+
+.tooltip-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.tooltip-level {
+  background: #4a4a4a;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #ffd700;
+}
+
+.tooltip-description {
+  margin: 8px 0;
+  line-height: 1.4;
+  color: #ccc;
+}
+
+.tooltip-effects {
+  margin: 10px 0;
+}
+
+.tooltip-effect {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 6px;
+  padding: 6px;
+  background: #333;
+  border-radius: 4px;
+  border-left: 3px solid #666;
+}
+
+.tooltip-effect.movement {
+  border-left-color: #4CAF50;
+}
+
+.tooltip-effect.attack {
+  border-left-color: #f44336;
+}
+
+.tooltip-effect.defense {
+  border-left-color: #2196F3;
+}
+
+.tooltip-effect.special {
+  border-left-color: #9C27B0;
+}
+
+.effect-type {
+  font-size: 10px;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: #999;
+  letter-spacing: 0.5px;
+}
+
+.effect-desc {
+  font-size: 12px;
+  color: #ddd;
+}
+
+.tooltip-cost {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 10px 0;
+  padding: 6px 10px;
+  background: #1a1a1a;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.tooltip-cost .currency-symbol {
+  color: #ffd700;
+  font-size: 14px;
+}
+
+.tooltip-cost .cost-amount {
+  color: #ffd700;
+  font-size: 15px;
+}
+
+.tooltip-requirements {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #444;
+}
+
+.requirements-header {
+  font-size: 11px;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: #999;
+  margin-bottom: 6px;
+  letter-spacing: 0.5px;
+}
+
+.requirement-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+  font-size: 12px;
+}
+
+.requirement-icon {
+  font-size: 10px;
+  width: 14px;
+  text-align: center;
+}
+
+.requirement-item.met {
+  color: #4CAF50;
+}
+
+.requirement-item.met .requirement-icon {
+  color: #4CAF50;
+}
+
+.requirement-item.unmet {
+  color: #aaa;
+}
+
+.requirement-item.unmet .requirement-icon {
+  color: #666;
+}
+
+.requirement-text {
+  flex: 1;
+}
+

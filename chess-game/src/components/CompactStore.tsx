@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { PurchasablePiece, UpgradeDefinition, PieceType } from '../types';
 import { socketService } from '../services/socketService';
+import { UPGRADE_PATHS } from '../utils/upgradeProgress';
 import './CompactStore.css';
 
 interface CompactStoreProps {
@@ -11,6 +12,7 @@ interface CompactStoreProps {
   onPurchaseUpgrade?: (upgradeId: string) => void;
   onPurchaseModifier?: (modifierId: string) => void;
   onPurchasePiece?: (pieceType: PieceType) => void;
+  requestedPieceType?: PieceType | null;
 }
 
 interface Modifier {
@@ -30,7 +32,8 @@ const CompactStore: React.FC<CompactStoreProps> = ({
   purchasablePieces = [],
   onPurchaseUpgrade,
   onPurchaseModifier,
-  onPurchasePiece
+  onPurchasePiece,
+  requestedPieceType = null
 }) => {
   const [activeTab, setActiveTab] = useState<TabType>('pieces');
   const [upgrades, setUpgrades] = useState<UpgradeDefinition[]>([]);
@@ -39,6 +42,31 @@ const CompactStore: React.FC<CompactStoreProps> = ({
   const [selectedPieceType, setSelectedPieceType] = useState<PieceType>('pawn');
   
   const playerBalance = economy[playerTeam];
+
+  // Calculate which upgrade is the "next" one for the requested piece
+  const nextRequestedUpgradeId = useMemo(() => {
+    if (!requestedPieceType || upgrades.length === 0) return null;
+    
+    // Get the upgrade path for this piece
+    const upgradePath = UPGRADE_PATHS[requestedPieceType];
+    if (!upgradePath) return null;
+    
+    // Find the first upgrade in the path that's not yet owned (eligible = false means locked/not owned)
+    for (let level = 1; level <= 3; level++) {
+      const upgradeId = upgradePath[level];
+      const upgrade = upgrades.find(u => u.id === upgradeId);
+      
+      // If this upgrade exists and is either not eligible (locked) or eligible but not owned
+      // we consider it the "next" one
+      if (upgrade && upgrade.eligible !== undefined) {
+        // Check if already owned by looking at the available upgrades list
+        // If it's in the list, it's not owned yet
+        return upgradeId;
+      }
+    }
+    
+    return null;
+  }, [requestedPieceType, upgrades]);
 
   // Set up socket listeners on mount
   useEffect(() => {
@@ -71,6 +99,15 @@ const CompactStore: React.FC<CompactStoreProps> = ({
     console.log('CompactStore received new purchasablePieces:', purchasablePieces);
   }, [purchasablePieces]);
 
+  // Auto-switch to requested piece type and upgrades tab when preference is set
+  useEffect(() => {
+    if (requestedPieceType) {
+      console.log('CompactStore: Requested piece type changed to:', requestedPieceType);
+      setActiveTab('upgrades');
+      setSelectedPieceType(requestedPieceType);
+    }
+  }, [requestedPieceType]);
+
   const fetchStoreData = () => {
     const socket = socketService.getSocket();
     if (!socket) return;
@@ -94,8 +131,10 @@ const CompactStore: React.FC<CompactStoreProps> = ({
       case 'pieces':
         return purchasablePieces;
       case 'upgrades':
-        // Filter upgrades by selected piece type
-        return upgrades.filter(u => u.pieceType === selectedPieceType);
+        // Filter upgrades by selected piece type and sort by level (1, 2, 3)
+        return upgrades
+          .filter(u => u.pieceType === selectedPieceType)
+          .sort((a, b) => (a.level || 0) - (b.level || 0));
       case 'modifiers':
         return modifiers;
       default:
@@ -146,7 +185,8 @@ const CompactStore: React.FC<CompactStoreProps> = ({
 
   const formatDescription = (desc: string) => {
     // Truncate long descriptions for compact view
-    return desc.length > 60 ? desc.substring(0, 57) + '...' : desc;
+    //return desc.length > 60 ? desc.substring(0, 57) + '...' : desc;
+    return desc;
   };
 
   const renderPieceItem = (piece: PurchasablePiece) => {
@@ -191,29 +231,36 @@ const CompactStore: React.FC<CompactStoreProps> = ({
     );
   };
 
-  const renderUpgradeItem = (upgrade: UpgradeDefinition) => {
+  const renderUpgradeItem = (upgrade: UpgradeDefinition & { isPurchased?: boolean }) => {
     const canAfford = playerBalance >= upgrade.cost;
     const eligible = upgrade.eligible !== false;
-    const canPurchase = canAfford && eligible;
+    const isPurchased = upgrade.isPurchased === true;
+    const canPurchase = canAfford && eligible && !isPurchased;
+    
+    // Check if this is the next upgrade for the requested piece
+    const isNextForRequested = upgrade.id === nextRequestedUpgradeId;
     
     return (
-      <div key={upgrade.id} className={`compact-store-item upgrade-item ${!eligible ? 'locked' : ''}`}>
+      <div key={upgrade.id} className={`compact-store-item upgrade-item ${!eligible ? 'locked' : ''} ${isPurchased ? 'purchased' : ''} ${isNextForRequested ? 'next-requested' : ''}`}>
         <div className="upgrade-item-header">
           <span className="item-name">
             {upgrade.name}
             {upgrade.level && <span className="item-level"> Lv.{upgrade.level}</span>}
+            {isPurchased && <span className="purchased-badge">Purchased</span>}
           </span>
           <span className="item-cost">₿{upgrade.cost}</span>
-          <button
-            className={`buy-button ${!canPurchase ? 'disabled' : ''}`}
-            onClick={() => handlePurchaseUpgrade(upgrade.id)}
-            disabled={!canPurchase || isLoading}
-          >
-            {!eligible ? 'Locked' : canAfford ? 'Buy' : 'Can\'t afford'}
-          </button>
+          {!isPurchased && (
+            <button
+              className={`buy-button ${!canPurchase ? 'disabled' : ''}`}
+              onClick={() => handlePurchaseUpgrade(upgrade.id)}
+              disabled={!canPurchase || isLoading}
+            >
+              {!eligible ? 'Locked' : canAfford ? 'Buy' : 'Can\'t afford'}
+            </button>
+          )}
         </div>
         <div className="item-desc">{formatDescription(upgrade.description)}</div>
-        {!eligible && upgrade.lockedReasons && upgrade.lockedReasons.length > 0 && (
+        {!isPurchased && !eligible && upgrade.lockedReasons && upgrade.lockedReasons.length > 0 && (
           <div className="item-requirements">
             {upgrade.lockedReasons.map((reason, idx) => (
               <div key={idx} className="requirement-text">🔒 {reason}</div>
@@ -286,7 +333,7 @@ const CompactStore: React.FC<CompactStoreProps> = ({
           {(['pawn', 'rook', 'knight', 'bishop', 'queen', 'king'] as PieceType[]).map(pieceType => (
             <button
               key={pieceType}
-              className={`piece-sub-tab ${selectedPieceType === pieceType ? 'active' : ''}`}
+              className={`piece-sub-tab ${selectedPieceType === pieceType ? 'active' : ''} ${requestedPieceType === pieceType ? 'requested' : ''}`}
               onClick={() => setSelectedPieceType(pieceType)}
             >
               {pieceSymbols[pieceType]}

@@ -8,6 +8,7 @@ import GameOverlay from './GameOverlay';
 import DualBarracks from './DualBarracks';
 import SidebarTreasury from './SidebarTreasury';
 import { EnhancedControlZones } from './EnhancedControlZones';
+import UpgradePathDisplay from './UpgradePathDisplay';
 import './ChessGame.css';
 
 interface MultiplayerChessGameProps {
@@ -77,6 +78,13 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
     kingPosition: null,
     selectedRookPosition: null,
     playerTeam: null
+  });
+  const [upgradePreference, setUpgradePreference] = useState<{
+    white: PieceType | null;
+    black: PieceType | null;
+  }>({
+    white: null,
+    black: null
   });
 
   // Convert match state to game state format
@@ -170,6 +178,8 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
     socket.on('move_made', (data: { move: any; gameSlot: string; matchState: MatchState }) => {
       if (data.gameSlot === 'A') {
         console.log('Received move in chess game:', data);
+        console.log('White capture count:', data.matchState.teams?.white?.captureCount);
+        console.log('Black capture count:', data.matchState.teams?.black?.captureCount);
         setMatchState(data.matchState);
         const gameState = convertMatchStateToGameState(data.matchState);
         if (gameState) {
@@ -196,6 +206,8 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
           // Request updated purchasable pieces (prices may have changed due to Zone C)
           socket.emit('get_purchasable_pieces');
         }
+        // Request updated available upgrades (capture stats may have changed)
+        socket.emit('get_available_upgrades');
       }
     });
 
@@ -217,6 +229,8 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
       
       // Request modifiers after state update
       socket.emit('get_modifiers');
+      // Request updated available upgrades (capture stats or economy may have changed)
+      socket.emit('get_available_upgrades');
       // Update barracks from match state
       if (data.matchState.teams) {
         setBarracks({
@@ -409,6 +423,14 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
       setTimeout(() => setError(null), 5000);
     });
 
+    socket.on('upgrade_preference_updated', (data: { team: PieceColor, pieceType: PieceType | null }) => {
+      console.log('Upgrade preference updated:', data);
+      setUpgradePreference(prev => ({
+        ...prev,
+        [data.team]: data.pieceType
+      }));
+    });
+
     return () => {
       socket.off('match_state');
       socket.off('move_made');
@@ -428,6 +450,7 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
       socket.off('modifier_purchased');
       socket.off('modifier_error');
       socket.off('blind_level_changed');
+      socket.off('upgrade_preference_updated');
     };
   }, [gameId, convertMatchStateToGameState]);
 
@@ -948,6 +971,13 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
     }
   };
 
+  const handlePieceSelect = (team: PieceColor, pieceType: PieceType) => {
+    const socket = socketService.getSocket();
+    if (socket) {
+      socket.emit('set_upgrade_preference', { pieceType });
+    }
+  };
+
   if (!gameState) {
     return (
       <div className="chess-game">
@@ -1200,6 +1230,22 @@ export const MultiplayerChessGame: React.FC<MultiplayerChessGameProps> = ({
                 </div>
               </div>
               
+              {/* Upgrade Path Display */}
+              {matchState && (
+                <UpgradePathDisplay
+                  whiteUpgrades={gameState.upgrades.white}
+                  blackUpgrades={gameState.upgrades.black}
+                  whiteEconomy={gameState.economy.white}
+                  blackEconomy={gameState.economy.black}
+                  whiteCaptureCount={matchState.teams?.white?.captureCount || {}}
+                  blackCaptureCount={matchState.teams?.black?.captureCount || {}}
+                  whiteTotalCaptures={matchState.teams?.white?.totalCaptures || 0}
+                  blackTotalCaptures={matchState.teams?.black?.totalCaptures || 0}
+                  availableUpgrades={availableUpgrades}
+                  selectedPiece={upgradePreference}
+                  onPieceSelect={handlePieceSelect}
+                />
+              )}
 
             </>
           )}

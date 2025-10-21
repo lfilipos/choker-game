@@ -32,6 +32,8 @@ export interface MatchState {
       economy: number;
       upgrades: any;
       barracks?: BarracksPiece[];
+      captureCount?: Record<string, number>;
+      totalCaptures?: number;
       players: {
         A?: { name: string; ready: boolean };
         B?: { name: string; ready: boolean };
@@ -41,6 +43,8 @@ export interface MatchState {
       economy: number;
       upgrades: any;
       barracks?: BarracksPiece[];
+      captureCount?: Record<string, number>;
+      totalCaptures?: number;
       players: {
         A?: { name: string; ready: boolean };
         B?: { name: string; ready: boolean };

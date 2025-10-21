@@ -258,7 +258,7 @@
   flex: 0 0 260px;
   display: flex;
   flex-direction: column;
-  gap: 15px;
+  gap: 5px;
   height: 100%;
   padding-right: 5px;
 }

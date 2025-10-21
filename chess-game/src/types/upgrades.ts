@@ -30,6 +30,7 @@ export interface UpgradeDefinition {
   };
   eligible?: boolean;
   lockedReasons?: string[];
+  isPurchased?: boolean;
 }
 
 export interface TeamUpgrades {
